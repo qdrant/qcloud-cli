@@ -14,8 +14,8 @@ import (
 
 func TestLoad_ExplicitPath(t *testing.T) {
 	path := testutil.WriteConfigFile(t, t.TempDir(), map[string]any{
-		"api_key": "explicit-key",
-		"account_id":     "explicit-account",
+		"api_key":    "explicit-key",
+		"account_id": "explicit-account",
 	})
 
 	c := config.New()
@@ -27,8 +27,8 @@ func TestLoad_ExplicitPath(t *testing.T) {
 
 func TestLoad_EnvVar(t *testing.T) {
 	path := testutil.WriteConfigFile(t, t.TempDir(), map[string]any{
-		"api_key": "env-key",
-		"account_id":     "env-account",
+		"api_key":    "env-key",
+		"account_id": "env-account",
 	})
 
 	t.Setenv("QDRANT_CLOUD_CONFIG", path)
@@ -58,8 +58,8 @@ func TestLoad_MissingDefaultPathIsNotError(t *testing.T) {
 
 func TestLoad_ExplicitYAMLPath(t *testing.T) {
 	path := testutil.WriteYAMLConfigFile(t, t.TempDir(), map[string]any{
-		"api_key": "yaml-explicit-key",
-		"account_id":     "yaml-explicit-account",
+		"api_key":    "yaml-explicit-key",
+		"account_id": "yaml-explicit-account",
 	})
 
 	c := config.New()
@@ -71,8 +71,8 @@ func TestLoad_ExplicitYAMLPath(t *testing.T) {
 
 func TestLoad_EnvVarYAML(t *testing.T) {
 	path := testutil.WriteYAMLConfigFile(t, t.TempDir(), map[string]any{
-		"api_key": "yaml-env-key",
-		"account_id":     "yaml-env-account",
+		"api_key":    "yaml-env-key",
+		"account_id": "yaml-env-account",
 	})
 
 	t.Setenv("QDRANT_CLOUD_CONFIG", path)
@@ -89,8 +89,8 @@ func TestLoad_DefaultDirYAML(t *testing.T) {
 	configDir := filepath.Join(home, ".config", "qcloud")
 	require.NoError(t, os.MkdirAll(configDir, 0700))
 	testutil.WriteYAMLConfigFile(t, configDir, map[string]any{
-		"api_key": "yaml-default-key",
-		"account_id":     "yaml-default-account",
+		"api_key":    "yaml-default-key",
+		"account_id": "yaml-default-account",
 	})
 
 	t.Setenv("QDRANT_CLOUD_CONFIG", "")
@@ -102,4 +102,3 @@ func TestLoad_DefaultDirYAML(t *testing.T) {
 	assert.Equal(t, "yaml-default-key", c.APIKey())
 	assert.Equal(t, "yaml-default-account", c.AccountID())
 }
-
