@@ -15,8 +15,8 @@ const (
 	defaultAPIEndpoint = "grpc.cloud.qdrant.io:443"
 	envPrefix          = "QDRANT_CLOUD"
 
-	// KeyManagementKey is the config key for the Management API key.
-	KeyManagementKey = "management_key"
+	// KeyAPIKey is the config key for the Management API key.
+	KeyAPIKey = "api_key"
 	// KeyAccountID is the config key for the account ID.
 	KeyAccountID = "account_id"
 	// KeyEndpoint is the config key for the API endpoint.
@@ -87,7 +87,7 @@ func (c *Config) SetDefault(key, value string) {
 
 // APIKey returns the management key from config/env/flags.
 func (c *Config) APIKey() string {
-	return c.v.GetString(KeyManagementKey)
+	return c.v.GetString(KeyAPIKey)
 }
 
 // AccountID returns the account ID from config/env/flags.

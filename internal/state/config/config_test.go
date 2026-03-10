@@ -14,7 +14,7 @@ import (
 
 func TestLoad_ExplicitPath(t *testing.T) {
 	path := testutil.WriteConfigFile(t, t.TempDir(), map[string]any{
-		"management_key": "explicit-key",
+		"api_key": "explicit-key",
 		"account_id":     "explicit-account",
 	})
 
@@ -27,7 +27,7 @@ func TestLoad_ExplicitPath(t *testing.T) {
 
 func TestLoad_EnvVar(t *testing.T) {
 	path := testutil.WriteConfigFile(t, t.TempDir(), map[string]any{
-		"management_key": "env-key",
+		"api_key": "env-key",
 		"account_id":     "env-account",
 	})
 
@@ -58,7 +58,7 @@ func TestLoad_MissingDefaultPathIsNotError(t *testing.T) {
 
 func TestLoad_ExplicitYAMLPath(t *testing.T) {
 	path := testutil.WriteYAMLConfigFile(t, t.TempDir(), map[string]any{
-		"management_key": "yaml-explicit-key",
+		"api_key": "yaml-explicit-key",
 		"account_id":     "yaml-explicit-account",
 	})
 
@@ -71,7 +71,7 @@ func TestLoad_ExplicitYAMLPath(t *testing.T) {
 
 func TestLoad_EnvVarYAML(t *testing.T) {
 	path := testutil.WriteYAMLConfigFile(t, t.TempDir(), map[string]any{
-		"management_key": "yaml-env-key",
+		"api_key": "yaml-env-key",
 		"account_id":     "yaml-env-account",
 	})
 
@@ -89,7 +89,7 @@ func TestLoad_DefaultDirYAML(t *testing.T) {
 	configDir := filepath.Join(home, ".config", "qcloud")
 	require.NoError(t, os.MkdirAll(configDir, 0700))
 	testutil.WriteYAMLConfigFile(t, configDir, map[string]any{
-		"management_key": "yaml-default-key",
+		"api_key": "yaml-default-key",
 		"account_id":     "yaml-default-account",
 	})
 
