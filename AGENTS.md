@@ -6,7 +6,7 @@ Go CLI for [Qdrant Cloud](https://cloud.qdrant.io), built with Cobra / Viper and
 
 - **Module:** `github.com/qdrant/qcloud-cli`
 - **Binary:** `qcloud` (built to `build/qcloud`)
-- **Go version:** 1.25+
+- **Go version:** 1.26+
 - **Key dependencies:** `cobra`, `viper`, `google.golang.org/grpc`, `qdrant-cloud-public-api` (generated gRPC stubs)
 
 ## Project structure

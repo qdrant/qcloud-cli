@@ -1,6 +1,6 @@
 module github.com/qdrant/qcloud-cli
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/jedib0t/go-pretty/v6 v6.7.8
