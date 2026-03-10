@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultAPIEndpoint = "api.cloud.qdrant.io:443"
+	defaultAPIEndpoint = "grpc.cloud.qdrant.io:443"
 	envPrefix          = "QDRANT_CLOUD"
 
 	// KeyManagementKey is the config key for the Management API key.
