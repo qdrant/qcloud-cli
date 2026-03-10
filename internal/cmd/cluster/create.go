@@ -61,7 +61,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 
 			created := resp.GetCluster()
 			if s.Config.JSONOutput() {
-				return output.PrintJSON(created)
+				return output.PrintJSON(cmd.OutOrStdout(), created)
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) created successfully.\n", created.GetId(), created.GetName())

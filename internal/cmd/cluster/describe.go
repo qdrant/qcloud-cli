@@ -38,7 +38,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 
 			cluster := resp.GetCluster()
 			if s.Config.JSONOutput() {
-				return output.PrintJSON(cluster)
+				return output.PrintJSON(cmd.OutOrStdout(), cluster)
 			}
 
 			w := cmd.OutOrStdout()

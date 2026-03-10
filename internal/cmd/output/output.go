@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -18,9 +17,9 @@ type Table struct {
 	fields  []func(any) string
 }
 
-// NewTable creates a new Table that writes to stdout.
-func NewTable() *Table {
-	return &Table{w: os.Stdout}
+// NewTable creates a new Table that writes to the given writer.
+func NewTable(w io.Writer) *Table {
+	return &Table{w: w}
 }
 
 // AddField adds a column to the table with a header name and a field extraction function.
@@ -51,52 +50,52 @@ func (t *Table) Write(items []any) {
 	tw.Render()
 }
 
-// PrintJSON marshals items as JSON and prints to stdout.
+// PrintJSON marshals items as JSON and writes to w.
 // For proto messages, uses protojson for proper field naming.
-func PrintJSON(items any) error {
+func PrintJSON(w io.Writer, items any) error {
 	// Handle slice of proto messages.
 	if msgs, ok := items.([]proto.Message); ok {
-		return printProtoSlice(msgs)
+		return printProtoSlice(w, msgs)
 	}
 	// Handle single proto message.
 	if msg, ok := items.(proto.Message); ok {
-		return printProtoSingle(msg)
+		return printProtoSingle(w, msg)
 	}
 	// Fallback: standard JSON.
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(items)
 }
 
-func printProtoSlice(msgs []proto.Message) error {
+func printProtoSlice(w io.Writer, msgs []proto.Message) error {
 	marshaler := protojson.MarshalOptions{Indent: "  "}
-	fmt.Print("[")
+	fmt.Fprint(w, "[")
 	for i, msg := range msgs {
 		if i > 0 {
-			fmt.Print(",")
+			fmt.Fprint(w, ",")
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 		b, err := marshaler.Marshal(msg)
 		if err != nil {
 			return err
 		}
-		fmt.Print("  ")
-		os.Stdout.Write(b)
+		fmt.Fprint(w, "  ")
+		_, _ = w.Write(b)
 	}
 	if len(msgs) > 0 {
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
-	fmt.Println("]")
+	fmt.Fprintln(w, "]")
 	return nil
 }
 
-func printProtoSingle(msg proto.Message) error {
+func printProtoSingle(w io.Writer, msg proto.Message) error {
 	marshaler := protojson.MarshalOptions{Indent: "  "}
 	b, err := marshaler.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	os.Stdout.Write(b)
-	fmt.Println()
+	_, _ = w.Write(b)
+	fmt.Fprintln(w)
 	return nil
 }

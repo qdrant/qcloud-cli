@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -14,7 +15,7 @@ const (
 	defaultAPIEndpoint = "api.cloud.qdrant.io:443"
 	envPrefix          = "QDRANT_CLOUD"
 
-	// KeyManagementKey is the config key for the API management key.
+	// KeyManagementKey is the config key for the Management API key.
 	KeyManagementKey = "management_key"
 	// KeyAccountID is the config key for the account ID.
 	KeyAccountID = "account_id"
@@ -36,33 +37,48 @@ func DefaultConfigPath() string {
 	return filepath.Join(home, ".config", "qcloud", "config.json")
 }
 
-// New creates a new Config backed by a fresh viper instance.
-func New(configPath string) (*Config, error) {
+// New creates a new Config backed by a fresh viper instance. No I/O is performed.
+func New() *Config {
 	v := viper.New()
-
-	if configPath != "" {
-		v.SetConfigFile(configPath)
-	} else {
-		v.SetConfigFile(DefaultConfigPath())
-	}
-	v.SetConfigType("json")
 	v.SetEnvPrefix(envPrefix)
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	v.AutomaticEnv()
-
 	v.SetDefault(KeyEndpoint, defaultAPIEndpoint)
+	return &Config{v: v}
+}
 
-	if err := v.ReadInConfig(); err != nil {
+// Load reads the config file. If configPath is non-empty it is used directly;
+// otherwise the default ~/.config/qcloud/config.json location is used.
+// A missing config file is not an error.
+func (c *Config) Load(configPath string) error {
+	if configPath != "" {
+		c.v.SetConfigFile(configPath)
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("resolving home directory: %w", err)
+		}
+		c.v.SetConfigName("config")
+		c.v.SetConfigType("json")
+		c.v.AddConfigPath(filepath.Join(home, ".config", "qcloud"))
+	}
+
+	if err := c.v.ReadInConfig(); err != nil {
 		if _, ok := errors.AsType[viper.ConfigFileNotFoundError](err); !ok {
-			return nil, fmt.Errorf("reading config: %w", err)
+			return fmt.Errorf("reading config: %w", err)
 		}
 	}
-
-	return &Config{v: v}, nil
+	return nil
 }
 
 // BindPFlag binds a viper key to a pflag.Flag.
 func (c *Config) BindPFlag(key string, flag *pflag.Flag) {
 	_ = c.v.BindPFlag(key, flag)
+}
+
+// SetDefault sets a default value for the given key (lowest viper priority).
+func (c *Config) SetDefault(key, value string) {
+	c.v.SetDefault(key, value)
 }
 
 // APIKey returns the management key from config/env/flags.

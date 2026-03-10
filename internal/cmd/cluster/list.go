@@ -40,10 +40,10 @@ func newListCommand(s *state.State) *cobra.Command {
 				for i, c := range resp.Items {
 					msgs[i] = c
 				}
-				return output.PrintJSON(msgs)
+				return output.PrintJSON(cmd.OutOrStdout(), msgs)
 			}
 
-			t := output.NewTable()
+			t := output.NewTable(cmd.OutOrStdout())
 			t.AddField("ID", func(v any) string {
 				return v.(*clusterv1.Cluster).GetId()
 			})
