@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,8 +51,10 @@ func New(configPath string) (*Config, error) {
 
 	v.SetDefault(KeyEndpoint, defaultAPIEndpoint)
 
-	if err := v.ReadInConfig(); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("reading config: %w", err)
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := errors.AsType[viper.ConfigFileNotFoundError](err); !ok {
+			return nil, fmt.Errorf("reading config: %w", err)
+		}
 	}
 
 	return &Config{v: v}, nil
