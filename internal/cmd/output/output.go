@@ -11,25 +11,25 @@ import (
 )
 
 // Table renders items as an ASCII table.
-type Table struct {
+type Table[T any] struct {
 	w       io.Writer
 	headers []string
-	fields  []func(any) string
+	fields  []func(T) string
 }
 
 // NewTable creates a new Table that writes to the given writer.
-func NewTable(w io.Writer) *Table {
-	return &Table{w: w}
+func NewTable[T any](w io.Writer) *Table[T] {
+	return &Table[T]{w: w}
 }
 
 // AddField adds a column to the table with a header name and a field extraction function.
-func (t *Table) AddField(name string, fn func(any) string) {
+func (t *Table[T]) AddField(name string, fn func(T) string) {
 	t.headers = append(t.headers, name)
 	t.fields = append(t.fields, fn)
 }
 
 // Write renders the table with the given items.
-func (t *Table) Write(items []any) {
+func (t *Table[T]) Write(items []T) {
 	tw := table.NewWriter()
 	tw.SetOutputMirror(t.w)
 	tw.SetStyle(table.StyleLight)
@@ -52,50 +52,19 @@ func (t *Table) Write(items []any) {
 
 // PrintJSON marshals items as JSON and writes to w.
 // For proto messages, uses protojson for proper field naming.
-func PrintJSON(w io.Writer, items any) error {
-	// Handle slice of proto messages.
-	if msgs, ok := items.([]proto.Message); ok {
-		return printProtoSlice(w, msgs)
-	}
-	// Handle single proto message.
-	if msg, ok := items.(proto.Message); ok {
-		return printProtoSingle(w, msg)
-	}
-	// Fallback: standard JSON.
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(items)
-}
-
-func printProtoSlice(w io.Writer, msgs []proto.Message) error {
-	marshaler := protojson.MarshalOptions{Indent: "  "}
-	fmt.Fprint(w, "[")
-	for i, msg := range msgs {
-		if i > 0 {
-			fmt.Fprint(w, ",")
-		}
-		fmt.Fprintln(w)
+func PrintJSON(w io.Writer, v any) error {
+	if msg, ok := v.(proto.Message); ok {
+		marshaler := protojson.MarshalOptions{Indent: "  "}
 		b, err := marshaler.Marshal(msg)
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(w, "  ")
 		_, _ = w.Write(b)
-	}
-	if len(msgs) > 0 {
 		fmt.Fprintln(w)
+		return nil
 	}
-	fmt.Fprintln(w, "]")
-	return nil
-}
-
-func printProtoSingle(w io.Writer, msg proto.Message) error {
-	marshaler := protojson.MarshalOptions{Indent: "  "}
-	b, err := marshaler.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	_, _ = w.Write(b)
-	fmt.Fprintln(w)
-	return nil
+	// Fallback: standard JSON.
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
 }

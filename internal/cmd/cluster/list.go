@@ -2,82 +2,68 @@ package cluster
 
 import (
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 func newListCommand(s *state.State) *cobra.Command {
-	cmd := &cobra.Command{
+	return base.ListCmd[*clusterv1.ListClustersResponse]{
 		Use:   "list",
 		Short: "List all clusters",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Fetch: func(s *state.State, cmd *cobra.Command) (*clusterv1.ListClustersResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			accountID, err := s.AccountID()
 			if err != nil {
-				return err
+				return nil, err
 			}
-
 			resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{
 				AccountId: accountID,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to list clusters: %w", err)
+				return nil, fmt.Errorf("failed to list clusters: %w", err)
 			}
-
-			if s.Config.JSONOutput() {
-				msgs := make([]proto.Message, len(resp.Items))
-				for i, c := range resp.Items {
-					msgs[i] = c
-				}
-				return output.PrintJSON(cmd.OutOrStdout(), msgs)
-			}
-
-			t := output.NewTable(cmd.OutOrStdout())
-			t.AddField("ID", func(v any) string {
-				return v.(*clusterv1.Cluster).GetId()
+			return resp, nil
+		},
+		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {
+			t := output.NewTable[*clusterv1.Cluster](w)
+			t.AddField("ID", func(v *clusterv1.Cluster) string {
+				return v.GetId()
 			})
-			t.AddField("NAME", func(v any) string {
-				return v.(*clusterv1.Cluster).GetName()
+			t.AddField("NAME", func(v *clusterv1.Cluster) string {
+				return v.GetName()
 			})
-			t.AddField("STATUS", func(v any) string {
-				c := v.(*clusterv1.Cluster)
-				if c.GetState() != nil {
-					return c.GetState().GetPhase().String()
+			t.AddField("STATUS", func(v *clusterv1.Cluster) string {
+				if v.GetState() != nil {
+					return strings.TrimPrefix(v.GetState().GetPhase().String(), "CLUSTER_PHASE_")
 				}
 				return ""
 			})
-			t.AddField("VERSION", func(v any) string {
-				c := v.(*clusterv1.Cluster)
-				if c.GetConfiguration() != nil {
-					return c.GetConfiguration().GetVersion()
+			t.AddField("VERSION", func(v *clusterv1.Cluster) string {
+				if v.GetConfiguration() != nil {
+					return v.GetConfiguration().GetVersion()
 				}
 				return ""
 			})
-			t.AddField("CLOUD", func(v any) string {
-				return v.(*clusterv1.Cluster).GetCloudProviderId()
+			t.AddField("CLOUD", func(v *clusterv1.Cluster) string {
+				return v.GetCloudProviderId()
 			})
-			t.AddField("REGION", func(v any) string {
-				return v.(*clusterv1.Cluster).GetCloudProviderRegionId()
+			t.AddField("REGION", func(v *clusterv1.Cluster) string {
+				return v.GetCloudProviderRegionId()
 			})
-
-			items := make([]any, len(resp.Items))
-			for i, c := range resp.Items {
-				items[i] = c
-			}
-			t.Write(items)
+			t.Write(resp.Items)
 			return nil
 		},
-	}
-	return cmd
+	}.CobraCommand(s)
 }

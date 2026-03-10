@@ -44,7 +44,7 @@ func TestListClusters_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "my-cluster")
 	assert.Contains(t, stdout, "aws")
 	assert.Contains(t, stdout, "us-east-1")
-	assert.Contains(t, stdout, "CLUSTER_PHASE_HEALTHY")
+	assert.Contains(t, stdout, "HEALTHY")
 	assert.Contains(t, stdout, "1.8.0")
 
 	assert.Contains(t, stdout, "cluster-2")
