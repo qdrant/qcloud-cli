@@ -17,7 +17,7 @@ type State struct {
 
 // New creates a new State with the given version string.
 func New(version string) *State {
-	return &State{Version: version}
+	return &State{Version: version, Config: config.New()}
 }
 
 // Client returns the gRPC client, creating it lazily on first call.
