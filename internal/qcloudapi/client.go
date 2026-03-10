@@ -33,11 +33,6 @@ func New(ctx context.Context, endpoint, apiKey string) (*Client, error) {
 	}, nil
 }
 
-// Cluster returns the ClusterService gRPC client.
-func (c *Client) Cluster() clusterv1.ClusterServiceClient {
-	return c.cluster
-}
-
 // NewFromConn creates a Client from an existing gRPC connection.
 // This is useful for testing with bufconn or other custom transports.
 func NewFromConn(conn *grpc.ClientConn) *Client {
@@ -45,6 +40,11 @@ func NewFromConn(conn *grpc.ClientConn) *Client {
 		conn:    conn,
 		cluster: clusterv1.NewClusterServiceClient(conn),
 	}
+}
+
+// Cluster returns the ClusterService gRPC client.
+func (c *Client) Cluster() clusterv1.ClusterServiceClient {
+	return c.cluster
 }
 
 // Close closes the underlying gRPC connection.
