@@ -85,7 +85,7 @@ func (c *Config) SetDefault(key, value string) {
 	c.v.SetDefault(key, value)
 }
 
-// APIKey returns the management key from config/env/flags.
+// APIKey returns the management api key from config/env/flags.
 func (c *Config) APIKey() string {
 	return c.v.GetString(KeyAPIKey)
 }
