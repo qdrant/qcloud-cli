@@ -29,6 +29,7 @@ type Config struct {
 }
 
 // DefaultConfigPath returns the default config file path (~/.config/qcloud/config.json).
+// The config file can also be written as config.yaml or config.yml.
 func DefaultConfigPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -63,7 +64,6 @@ func (c *Config) Load(configPath string) error {
 			return fmt.Errorf("resolving home directory: %w", err)
 		}
 		c.v.SetConfigName("config")
-		c.v.SetConfigType("json")
 		c.v.AddConfigPath(filepath.Join(home, ".config", "qcloud"))
 	}
 
