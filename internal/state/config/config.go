@@ -48,9 +48,13 @@ func New() *Config {
 }
 
 // Load reads the config file. If configPath is non-empty it is used directly;
-// otherwise the default ~/.config/qcloud/config.json location is used.
+// otherwise QDRANT_CLOUD_CONFIG env var is checked (via viper), then the
+// default ~/.config/qcloud/config.json location is used.
 // A missing config file is not an error.
 func (c *Config) Load(configPath string) error {
+	if configPath == "" {
+		configPath = c.v.GetString("config")
+	}
 	if configPath != "" {
 		c.v.SetConfigFile(configPath)
 	} else {

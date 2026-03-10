@@ -30,6 +30,7 @@ func NewRootCommand(s *state.State) *cobra.Command {
 	cmd.PersistentFlags().String("endpoint", "", "API endpoint (default api.cloud.qdrant.io:443)")
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")
 
+	s.Config.BindPFlag("config", cmd.PersistentFlags().Lookup("config"))
 	s.Config.BindPFlag(config.KeyManagementKey, cmd.PersistentFlags().Lookup("api-key"))
 	s.Config.BindPFlag(config.KeyAccountID, cmd.PersistentFlags().Lookup("account-id"))
 	s.Config.BindPFlag("json", cmd.PersistentFlags().Lookup("json"))
