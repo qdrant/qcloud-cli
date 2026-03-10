@@ -28,17 +28,17 @@ type Config struct {
 	v *viper.Viper
 }
 
-// DefaultConfigPath returns the default config file path (~/.config/qcloud/config.json).
+// DefaultConfigPath returns the default config file path (~/.config/qcloud/config.yaml).
 // The config file can also be written as config.yaml or config.yml.
 func DefaultConfigPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".config", "qcloud", "config.json")
+	return filepath.Join(home, ".config", "qcloud", "config.yaml")
 }
 
-// New creates a new Config backed by a fresh viper instance. No I/O is performed.
+// New creates a new Config backed by a fresh viper instance with defaults applied. No I/O is performed.
 func New() *Config {
 	v := viper.New()
 	v.SetEnvPrefix(envPrefix)
@@ -50,7 +50,7 @@ func New() *Config {
 
 // Load reads the config file. If configPath is non-empty it is used directly;
 // otherwise QDRANT_CLOUD_CONFIG env var is checked (via viper), then the
-// default ~/.config/qcloud/config.json location is used.
+// default ~/.config/qcloud/config.yaml location is used.
 // A missing config file is not an error.
 func (c *Config) Load(configPath string) error {
 	if configPath == "" {
