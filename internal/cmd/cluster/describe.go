@@ -59,6 +59,15 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 				t := cluster.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:  %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+			if labels := cluster.GetLabels(); len(labels) > 0 {
+				fmt.Fprintf(w, "Labels:   ")
+				for i, kv := range labels {
+					if i > 0 {
+						fmt.Fprintf(w, "          ")
+					}
+					fmt.Fprintf(w, "%s=%s\n", kv.GetKey(), kv.GetValue())
+				}
+			}
 
 			if st := cluster.GetState(); st != nil {
 				if ep := st.GetEndpoint(); ep != nil {
