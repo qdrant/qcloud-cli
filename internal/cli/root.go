@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"log/slog"
+
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/cluster"
@@ -13,18 +15,28 @@ import (
 // NewRootCommand creates the root cobra command with all subcommands registered.
 func NewRootCommand(s *state.State) *cobra.Command {
 	var configPath string
+	var debug bool
 
 	cmd := &cobra.Command{
 		Use:   "qcloud",
 		Short: "Qdrant Cloud CLI",
 		Long:  "The command-line interface for Qdrant Cloud",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return s.Config.Load(configPath)
+			if err := s.Config.Load(configPath); err != nil {
+				return err
+			}
+			if debug {
+				s.Logger = slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{
+					Level: slog.LevelDebug,
+				}))
+			}
+			return nil
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 
+	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug logging to stderr")
 	cmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)")
 	cmd.PersistentFlags().String("api-key", "", "Management API Key (env: QDRANT_CLOUD_API_KEY)")
 	cmd.PersistentFlags().String("account-id", "", "Qdrant Cloud Account ID (env: QDRANT_CLOUD_ACCOUNT_ID)")

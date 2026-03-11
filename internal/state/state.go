@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
@@ -12,12 +13,17 @@ import (
 type State struct {
 	Version string
 	Config  *config.Config
+	Logger  *slog.Logger
 	client  *qcloudapi.Client
 }
 
 // New creates a new State with the given version string.
 func New(version string) *State {
-	return &State{Version: version, Config: config.New()}
+	return &State{
+		Version: version,
+		Config:  config.New(),
+		Logger:  slog.New(slog.DiscardHandler),
+	}
 }
 
 // Client returns the gRPC client, creating it lazily on first call.
