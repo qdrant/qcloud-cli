@@ -41,18 +41,7 @@ func WriteYAMLConfigFile(t *testing.T, dir string, content map[string]any) strin
 func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts map[string]map[string]string) string {
 	t.Helper()
 
-	type contextEntry struct {
-		Name      string `yaml:"name"`
-		Endpoint  string `yaml:"endpoint,omitempty"`
-		APIKey    string `yaml:"api_key,omitempty"`
-		AccountID string `yaml:"account_id,omitempty"`
-	}
-	type fileData struct {
-		CurrentContext string         `yaml:"current-context,omitempty"`
-		Contexts       []contextEntry `yaml:"contexts,omitempty"`
-	}
-
-	fd := fileData{CurrentContext: currentContext}
+	fd := config.ConfigFile{CurrentContext: currentContext}
 
 	names := make([]string, 0, len(contexts))
 	for name := range contexts {
@@ -62,7 +51,7 @@ func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts m
 
 	for _, name := range names {
 		vals := contexts[name]
-		fd.Contexts = append(fd.Contexts, contextEntry{
+		fd.Contexts = append(fd.Contexts, config.ContextEntry{
 			Name:      name,
 			Endpoint:  vals["endpoint"],
 			APIKey:    vals["api_key"],

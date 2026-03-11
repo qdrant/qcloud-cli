@@ -34,8 +34,9 @@ type ContextEntry struct {
 	AccountID string `mapstructure:"account_id"  yaml:"account_id,omitempty"  json:"account_id,omitempty"`
 }
 
-type configFile struct {
-	CurrentContext string         `mapstructure:"current-context" yaml:"current-context,omitempty" json:"current-context,omitempty"`
+// ConfigFile holds the top-level structure of the config file.
+type ConfigFile struct {
+	CurrentContext string         `mapstructure:"current_context" yaml:"current_context,omitempty" json:"current_context,omitempty"`
 	Contexts       []ContextEntry `mapstructure:"contexts"        yaml:"contexts,omitempty"        json:"contexts,omitempty"`
 }
 
@@ -43,7 +44,7 @@ type configFile struct {
 type Config struct {
 	v        *viper.Viper
 	filePath string     // from v.ConfigFileUsed() after Load
-	file     configFile // parsed file contents, for write-back
+	file     ConfigFile // parsed file contents, for write-back
 }
 
 // DefaultConfigPath returns the default config file path (~/.config/qcloud/config.yaml).
@@ -92,10 +93,10 @@ func (c *Config) Load(configPath string) error {
 	}
 
 	c.filePath = c.v.ConfigFileUsed()
-	c.file = configFile{}
+	c.file = ConfigFile{}
 
 	// Populate typed file struct from viper (before MergeConfigMap).
-	c.file.CurrentContext = c.v.GetString("current-context")
+	c.file.CurrentContext = c.v.GetString("current_context")
 	if err := c.v.UnmarshalKey("contexts", &c.file.Contexts); err != nil {
 		return fmt.Errorf("parsing contexts: %w", err)
 	}
@@ -156,12 +157,12 @@ func (c *Config) JSONOutput() bool {
 	return c.v.GetBool("json")
 }
 
-// CurrentContext returns the current-context value from the config file.
+// CurrentContext returns the current_context value from the config file.
 func (c *Config) CurrentContext() string {
 	return c.file.CurrentContext
 }
 
-// ActiveContext returns the active context name: --context flag if set, else current-context.
+// ActiveContext returns the active context name: --context flag if set, else current_context.
 func (c *Config) ActiveContext() string {
 	if ctx := c.v.GetString("context"); ctx != "" {
 		return ctx
@@ -194,7 +195,7 @@ func (c *Config) ConfigFilePath() string {
 	return c.filePath
 }
 
-// SetCurrentContext sets the current-context in the file data.
+// SetCurrentContext sets the current_context in the file data.
 func (c *Config) SetCurrentContext(name string) {
 	c.file.CurrentContext = name
 }
@@ -211,7 +212,7 @@ func (c *Config) UpsertContext(ctx ContextEntry) {
 }
 
 // DeleteContext removes a named context from the file data.
-// If the deleted context is the current-context, it is also cleared.
+// If the deleted context is the current_context, it is also cleared.
 func (c *Config) DeleteContext(name string) {
 	filtered := c.file.Contexts[:0]
 	for _, ctx := range c.file.Contexts {

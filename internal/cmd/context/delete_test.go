@@ -25,9 +25,9 @@ func TestContextDelete_RemovesContext(t *testing.T) {
 
 	assert.Nil(t, testutil.FindContextEntry(t, cfgPath, "prod"), "prod context should be removed")
 	assert.NotNil(t, testutil.FindContextEntry(t, cfgPath, "staging"), "staging context should be preserved")
-	// current-context unchanged since prod was not current.
+	// current_context unchanged since prod was not current.
 	m := readYAML(t, cfgPath)
-	assert.Equal(t, "staging", m["current-context"])
+	assert.Equal(t, "staging", m["current_context"])
 }
 
 func TestContextDelete_ClearsCurrentContext(t *testing.T) {
@@ -44,9 +44,9 @@ func TestContextDelete_ClearsCurrentContext(t *testing.T) {
 	require.NoError(t, err)
 
 	m := readYAML(t, cfgPath)
-	// current-context was "staging" — it must be cleared after deletion.
-	_, hasCurrent := m["current-context"]
-	assert.False(t, hasCurrent, "current-context should be removed when the current context is deleted")
+	// current_context was "staging" — it must be cleared after deletion.
+	_, hasCurrent := m["current_context"]
+	assert.False(t, hasCurrent, "current_context should be removed when the current context is deleted")
 }
 
 func TestContextDelete_UnknownContext(t *testing.T) {

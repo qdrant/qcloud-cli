@@ -24,7 +24,7 @@ func TestContextUse_SwitchesCurrentContext(t *testing.T) {
 	assert.Contains(t, stdout, `"prod"`)
 
 	m := readYAML(t, cfgPath)
-	assert.Equal(t, "prod", m["current-context"])
+	assert.Equal(t, "prod", m["current_context"])
 }
 
 func TestContextUse_UnknownContext(t *testing.T) {

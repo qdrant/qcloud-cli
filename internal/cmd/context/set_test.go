@@ -73,7 +73,7 @@ func TestContextSet_AutoActivatesWhenNoCurrentContext(t *testing.T) {
 	assert.Contains(t, stdout, `"first"`)
 
 	m := readYAML(t, cfgPath)
-	assert.Equal(t, "first", m["current-context"])
+	assert.Equal(t, "first", m["current_context"])
 }
 
 func TestContextSet_DoesNotActivateWhenCurrentContextExists(t *testing.T) {
@@ -91,5 +91,5 @@ func TestContextSet_DoesNotActivateWhenCurrentContextExists(t *testing.T) {
 	require.NoError(t, err)
 
 	m := readYAML(t, cfgPath)
-	assert.Equal(t, "existing", m["current-context"])
+	assert.Equal(t, "existing", m["current_context"])
 }

@@ -3,6 +3,9 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -226,7 +229,7 @@ func TestSetCurrentContext_UpdatesFile(t *testing.T) {
 	require.NoError(t, err)
 	var m map[string]any
 	require.NoError(t, yaml.Unmarshal(data, &m))
-	assert.Equal(t, "prod", m["current-context"])
+	assert.Equal(t, "prod", m["current_context"])
 }
 
 func TestDeleteContext_RemovesContextAndClearsCurrent(t *testing.T) {
@@ -250,7 +253,7 @@ func TestDeleteContext_RemovesContextAndClearsCurrent(t *testing.T) {
 
 	var m map[string]any
 	require.NoError(t, yaml.Unmarshal(data, &m))
-	_, hasCurrent := m["current-context"]
+	_, hasCurrent := m["current_context"]
 	assert.False(t, hasCurrent, "current-context should be removed when the current context is deleted")
 }
 
@@ -271,7 +274,7 @@ func TestWriteToFile_ValidYAML(t *testing.T) {
 	require.NoError(t, err)
 	var m map[string]any
 	require.NoError(t, yaml.Unmarshal(data, &m))
-	assert.Equal(t, "staging", m["current-context"])
+	assert.Equal(t, "staging", m["current_context"])
 }
 
 func TestWriteToFile_CreatesDefaultPath(t *testing.T) {
@@ -289,4 +292,29 @@ func TestWriteToFile_CreatesDefaultPath(t *testing.T) {
 	assert.FileExists(t, defaultPath)
 
 	assert.NotNil(t, testutil.FindContextEntry(t, defaultPath, "dev"), "dev context not found in saved file")
+}
+
+// TestStructTagsAreSnakeCase asserts that every field tag (mapstructure, yaml, json)
+// on the exported config structs uses snake_case names.
+// This prevents accidental camelCase or other styles from being introduced.
+func TestStructTagsAreSnakeCase(t *testing.T) {
+	snakeCase := regexp.MustCompile(`^[a-z][a-z0-9]*(_[a-z0-9]+)*$`)
+	tagNames := []string{"mapstructure", "yaml", "json"}
+
+	structs := []any{config.ContextEntry{}, config.ConfigFile{}}
+	for _, s := range structs {
+		typ := reflect.TypeOf(s)
+		for i := range typ.NumField() {
+			field := typ.Field(i)
+			for _, tagName := range tagNames {
+				val := field.Tag.Get(tagName)
+				if val == "" || val == "-" {
+					continue
+				}
+				name, _, _ := strings.Cut(val, ",")
+				assert.Truef(t, snakeCase.MatchString(name),
+					"%s.%s: tag %q value %q is not snake_case", typ.Name(), field.Name, tagName, name)
+			}
+		}
+	}
 }
