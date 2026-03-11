@@ -22,7 +22,7 @@ internal/
     util/                # shared command utilities
   qcloudapi/             # gRPC client wrapper for the Qdrant Cloud API
   state/                 # State struct (shared deps: config, lazy gRPC client)
-    config/              # Viper-based config (file, env vars, flags)
+    config/              # Viper-based config (file, env vars, flags
 ```
 
 ## Build & verification
@@ -37,6 +37,15 @@ internal/
 | `make format`    | Run golangci-lint with `--fix`                |
 | `make bootstrap` | Install tool dependencies into `bin/`         |
 | `make clean`     | Remove build artifacts                        |
+
+To verify your changes, you should run the following makefile targets:
+```bash
+make lint
+make build
+make test
+```
+
+If make lint fails from formatting problems, use `make format` to fix them.
 
 ## Conventions
 
