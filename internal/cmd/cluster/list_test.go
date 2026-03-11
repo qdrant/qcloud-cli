@@ -3,9 +3,11 @@ package cluster_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
@@ -26,6 +28,7 @@ func TestListClusters_TableOutput(t *testing.T) {
 					CloudProviderRegionId: "us-east-1",
 					State:                 &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY},
 					Configuration:         &clusterv1.ClusterConfiguration{Version: new("1.8.0")},
+					CreatedAt:             timestamppb.New(time.Now().Add(-3 * time.Hour)),
 				},
 				{
 					Id:                    "cluster-2",
@@ -46,6 +49,8 @@ func TestListClusters_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "us-east-1")
 	assert.Contains(t, stdout, "HEALTHY")
 	assert.Contains(t, stdout, "1.8.0")
+
+	assert.Contains(t, stdout, "ago")
 
 	assert.Contains(t, stdout, "cluster-2")
 	assert.Contains(t, stdout, "other-cluster")

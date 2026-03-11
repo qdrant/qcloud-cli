@@ -9,6 +9,7 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -55,7 +56,8 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(w, "Cloud:    %s\n", cluster.GetCloudProviderId())
 			fmt.Fprintf(w, "Region:   %s\n", cluster.GetCloudProviderRegionId())
 			if cluster.GetCreatedAt() != nil {
-				fmt.Fprintf(w, "Created:  %s\n", cluster.GetCreatedAt().AsTime().Format("2006-01-02 15:04:05 UTC"))
+				t := cluster.GetCreatedAt().AsTime()
+				fmt.Fprintf(w, "Created:  %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
 			return nil
 		},

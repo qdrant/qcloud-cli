@@ -64,6 +64,12 @@ func newListCommand(s *state.State) *cobra.Command {
 			t.AddField("REGION", func(v *clusterv1.Cluster) string {
 				return v.GetCloudProviderRegionId()
 			})
+			t.AddField("CREATED", func(v *clusterv1.Cluster) string {
+				if v.GetCreatedAt() != nil {
+					return output.HumanTime(v.GetCreatedAt().AsTime())
+				}
+				return ""
+			})
 			t.Write(resp.Items)
 			return nil
 		},

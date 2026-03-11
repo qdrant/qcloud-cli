@@ -30,7 +30,6 @@ func (t *Table[T]) AddField(name string, fn func(T) string) {
 
 // Write renders the table with the given items.
 func (t *Table[T]) Write(items []T) {
-
 	style := table.Style{
 		Name:    "minimal",
 		Box:     table.StyleBoxLight,
@@ -44,8 +43,8 @@ func (t *Table[T]) Write(items []T) {
 	style.Box.MiddleVertical = "   "
 	style.Box.PaddingLeft = ""
 	style.Box.PaddingRight = ""
-
 	style.Options.SeparateColumns = true
+
 	tw := table.NewWriter()
 	tw.SetOutputMirror(t.w)
 	tw.SetStyle(style)
