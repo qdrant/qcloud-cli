@@ -30,9 +30,25 @@ func (t *Table[T]) AddField(name string, fn func(T) string) {
 
 // Write renders the table with the given items.
 func (t *Table[T]) Write(items []T) {
+
+	style := table.Style{
+		Name:    "minimal",
+		Box:     table.StyleBoxLight,
+		Color:   table.ColorOptionsDefault,
+		Format:  table.FormatOptionsDefault,
+		HTML:    table.DefaultHTMLOptions,
+		Options: table.OptionsNoBordersAndSeparators,
+		Size:    table.SizeOptionsDefault,
+		Title:   table.TitleOptionsDefault,
+	}
+	style.Box.MiddleVertical = "   "
+	style.Box.PaddingLeft = ""
+	style.Box.PaddingRight = ""
+
+	style.Options.SeparateColumns = true
 	tw := table.NewWriter()
 	tw.SetOutputMirror(t.w)
-	tw.SetStyle(table.StyleLight)
+	tw.SetStyle(style)
 
 	header := make(table.Row, len(t.headers))
 	for i, h := range t.headers {
