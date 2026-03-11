@@ -254,7 +254,7 @@ func TestDeleteContext_RemovesContextAndClearsCurrent(t *testing.T) {
 	var m map[string]any
 	require.NoError(t, yaml.Unmarshal(data, &m))
 	_, hasCurrent := m["current_context"]
-	assert.False(t, hasCurrent, "current-context should be removed when the current context is deleted")
+	assert.False(t, hasCurrent, "current_context should be removed when the current context is deleted")
 }
 
 func TestWriteToFile_ValidYAML(t *testing.T) {
@@ -294,18 +294,17 @@ func TestWriteToFile_CreatesDefaultPath(t *testing.T) {
 	assert.NotNil(t, testutil.FindContextEntry(t, defaultPath, "dev"), "dev context not found in saved file")
 }
 
-// TestStructTagsAreSnakeCase asserts that every field tag (mapstructure, yaml, json)
+// TestConfigFileTagsAreSnakeCase asserts that every field tag (mapstructure, yaml, json)
 // on the exported config structs uses snake_case names.
 // This prevents accidental camelCase or other styles from being introduced.
-func TestStructTagsAreSnakeCase(t *testing.T) {
+func TestConfigFileTagsAreSnakeCase(t *testing.T) {
 	snakeCase := regexp.MustCompile(`^[a-z][a-z0-9]*(_[a-z0-9]+)*$`)
 	tagNames := []string{"mapstructure", "yaml", "json"}
 
 	structs := []any{config.ContextEntry{}, config.ConfigFile{}}
 	for _, s := range structs {
 		typ := reflect.TypeOf(s)
-		for i := range typ.NumField() {
-			field := typ.Field(i)
+		for field := range typ.Fields() {
 			for _, tagName := range tagNames {
 				val := field.Tag.Get(tagName)
 				if val == "" || val == "-" {
