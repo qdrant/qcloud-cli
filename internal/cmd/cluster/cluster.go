@@ -17,6 +17,7 @@ func NewCommand(s *state.State) *cobra.Command {
 		newListCommand(s),
 		newDescribeCommand(s),
 		newCreateCommand(s),
+		newUpdateCommand(s),
 		newDeleteCommand(s),
 		newWaitCommand(s),
 		newPackageCommand(s),

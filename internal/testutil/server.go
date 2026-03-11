@@ -29,6 +29,7 @@ type FakeClusterService struct {
 	ListClustersFunc  func(context.Context, *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error)
 	GetClusterFunc    func(context.Context, *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error)
 	CreateClusterFunc func(context.Context, *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error)
+	UpdateClusterFunc func(context.Context, *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error)
 	DeleteClusterFunc func(context.Context, *clusterv1.DeleteClusterRequest) (*clusterv1.DeleteClusterResponse, error)
 }
 
@@ -54,6 +55,14 @@ func (f *FakeClusterService) CreateCluster(ctx context.Context, req *clusterv1.C
 		return f.CreateClusterFunc(ctx, req)
 	}
 	return f.UnimplementedClusterServiceServer.CreateCluster(ctx, req)
+}
+
+// UpdateCluster delegates to UpdateClusterFunc if set.
+func (f *FakeClusterService) UpdateCluster(ctx context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+	if f.UpdateClusterFunc != nil {
+		return f.UpdateClusterFunc(ctx, req)
+	}
+	return f.UnimplementedClusterServiceServer.UpdateCluster(ctx, req)
 }
 
 // DeleteCluster delegates to DeleteClusterFunc if set.
