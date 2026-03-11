@@ -5,16 +5,25 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 func newSetCommand(s *state.State) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "set <name>",
-		Short: "Create or update a context",
-		Args:  util.ExactArgs(1, "a context name"),
-		RunE: func(cmd *cobra.Command, args []string) error {
+	return base.Cmd{
+		BaseCobraCommand: func() *cobra.Command {
+			cmd := &cobra.Command{
+				Use:   "set <name>",
+				Short: "Create or update a context",
+				Args:  util.ExactArgs(1, "a context name"),
+			}
+			cmd.Flags().String("endpoint", "", "API endpoint for this context")
+			cmd.Flags().String("api-key", "", "API key for this context")
+			cmd.Flags().String("account-id", "", "Account ID for this context")
+			return cmd
+		},
+		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			name := args[0]
 
 			// Load existing context values or start with an empty entry.
@@ -48,13 +57,7 @@ func newSetCommand(s *state.State) *cobra.Command {
 			}
 			return nil
 		},
-	}
-
-	cmd.Flags().String("endpoint", "", "API endpoint for this context")
-	cmd.Flags().String("api-key", "", "API key for this context")
-	cmd.Flags().String("account-id", "", "Account ID for this context")
-
-	return cmd
+	}.CobraCommand(s)
 }
 
 func changedString(cmd *cobra.Command, name string) (string, bool) {

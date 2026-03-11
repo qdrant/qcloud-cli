@@ -7,20 +7,26 @@ import (
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 func newDeleteCommand(s *state.State) *cobra.Command {
-	var force bool
-
-	cmd := &cobra.Command{
-		Use:   "delete <cluster-id>",
-		Short: "Delete a cluster",
-		Args:  util.ExactArgs(1, "a cluster ID"),
-		RunE: func(cmd *cobra.Command, args []string) error {
+	return base.Cmd{
+		BaseCobraCommand: func() *cobra.Command {
+			cmd := &cobra.Command{
+				Use:   "delete <cluster-id>",
+				Short: "Delete a cluster",
+				Args:  util.ExactArgs(1, "a cluster ID"),
+			}
+			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
+			return cmd
+		},
+		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			clusterID := args[0]
 
+			force, _ := cmd.Flags().GetBool("force")
 			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to delete cluster %s?", clusterID)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
@@ -31,6 +37,7 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return err
@@ -47,9 +54,5 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s deleted.\n", clusterID)
 			return nil
 		},
-	}
-
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation prompt")
-
-	return cmd
+	}.CobraCommand(s)
 }

@@ -23,16 +23,19 @@ func newListCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return nil, err
 			}
+
 			resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{
 				AccountId: accountID,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to list clusters: %w", err)
 			}
+
 			return resp, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {

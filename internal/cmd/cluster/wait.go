@@ -1,71 +1,59 @@
 package cluster
 
 import (
-	"context"
 	"fmt"
-	"io"
 	"time"
 
-	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+	"github.com/spf13/cobra"
+
+	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
+	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-var failurePhases = map[clusterv1.ClusterPhase]bool{
-	clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_CREATE: true,
-	clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_SYNC:   true,
-	clusterv1.ClusterPhase_CLUSTER_PHASE_NOT_FOUND:        true,
-}
-
-func waitForHealthyWithInterval(
-	ctx context.Context,
-	svc clusterv1.ClusterServiceClient,
-	out io.Writer,
-	accountID, clusterID string,
-	timeout, pollInterval time.Duration,
-) (*clusterv1.Cluster, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	ticker := time.NewTicker(pollInterval)
-	defer ticker.Stop()
-
-	start := time.Now()
-
-	poll := func() (*clusterv1.Cluster, error) {
-		resp, err := svc.GetCluster(ctx, &clusterv1.GetClusterRequest{
-			AccountId: accountID,
-			ClusterId: clusterID,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get cluster status: %w", err)
-		}
-
-		cluster := resp.GetCluster()
-		phase := cluster.GetState().GetPhase()
-		elapsed := time.Since(start).Round(time.Second)
-		fmt.Fprintf(out, "phase=%s (%s)\n", phaseString(phase), elapsed)
-
-		if phase == clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
-			return cluster, nil
-		}
-		if failurePhases[phase] {
-			reason := cluster.GetState().GetReason()
-			return nil, fmt.Errorf("failed to create cluster: phase=%s, reason=%s", phaseString(phase), reason)
-		}
-		return nil, nil //nolint:nilnil // nil cluster means keep polling
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out waiting for cluster to become healthy: %w", ctx.Err())
-		case <-ticker.C:
-			cluster, err := poll()
+func newWaitCommand(s *state.State) *cobra.Command {
+	return base.Cmd{
+		BaseCobraCommand: func() *cobra.Command {
+			cmd := &cobra.Command{
+				Use:   "wait <cluster-id>",
+				Short: "Wait for a cluster to become healthy",
+				Args:  util.ExactArgs(1, "a cluster ID"),
+			}
+			cmd.Flags().Duration("timeout", 10*time.Minute, "Maximum time to wait for the cluster to become healthy")
+			cmd.Flags().Duration("poll-interval", 5*time.Second, "How often to poll for cluster health")
+			_ = cmd.Flags().MarkHidden("poll-interval")
+			return cmd
+		},
+		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			client, err := s.Client(ctx)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			if cluster != nil {
-				return cluster, nil
+
+			accountID, err := s.AccountID()
+			if err != nil {
+				return err
 			}
-		}
-	}
+
+			timeout, _ := cmd.Flags().GetDuration("timeout")
+			pollInterval, _ := cmd.Flags().GetDuration("poll-interval")
+			cluster, err := waitForHealthyWithInterval(
+				ctx, client.Cluster(), cmd.ErrOrStderr(),
+				accountID, args[0], timeout, pollInterval,
+			)
+			if err != nil {
+				return err
+			}
+
+			if ep := cluster.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) is ready. Endpoint: %s\n",
+					cluster.GetId(), cluster.GetName(), ep.GetUrl())
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) is ready.\n",
+					cluster.GetId(), cluster.GetName())
+			}
+			return nil
+		},
+	}.CobraCommand(s)
 }

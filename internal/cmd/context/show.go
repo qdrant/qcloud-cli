@@ -3,6 +3,7 @@ package context
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -14,11 +15,15 @@ type showOutput struct {
 }
 
 func newShowCommand(s *state.State) *cobra.Command {
-	return &cobra.Command{
-		Use:   "show",
-		Short: "Show the active context configuration",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+	return base.Cmd{
+		BaseCobraCommand: func() *cobra.Command {
+			return &cobra.Command{
+				Use:   "show",
+				Short: "Show the active context configuration",
+				Args:  cobra.NoArgs,
+			}
+		},
+		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			activeCtx := s.Config.ActiveContext()
 			endpoint := s.Config.Endpoint()
 			accountID := s.Config.AccountID()
@@ -37,5 +42,5 @@ func newShowCommand(s *state.State) *cobra.Command {
 			})
 			return nil
 		},
-	}
+	}.CobraCommand(s)
 }

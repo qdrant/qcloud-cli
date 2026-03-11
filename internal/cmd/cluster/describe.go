@@ -24,10 +24,12 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return nil, err
 			}
+
 			resp, err := client.Cluster().GetCluster(ctx, &clusterv1.GetClusterRequest{
 				AccountId: accountID,
 				ClusterId: args[0],
@@ -35,6 +37,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to get cluster: %w", err)
 			}
+
 			return resp.GetCluster(), nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, cluster *clusterv1.Cluster) error {

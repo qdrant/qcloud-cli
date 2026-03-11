@@ -42,10 +42,12 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return nil, err
 			}
+
 			name, _ := cmd.Flags().GetString("name")
 			cloudProvider, _ := cmd.Flags().GetString("cloud-provider")
 			cloudRegion, _ := cmd.Flags().GetString("cloud-region")
@@ -75,6 +77,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to create cluster: %w", err)
 			}
+
 			created := resp.GetCluster()
 
 			wait, _ := cmd.Flags().GetBool("wait")
