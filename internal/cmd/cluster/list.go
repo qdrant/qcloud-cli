@@ -3,7 +3,6 @@ package cluster
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -46,7 +45,7 @@ func newListCommand(s *state.State) *cobra.Command {
 			})
 			t.AddField("STATUS", func(v *clusterv1.Cluster) string {
 				if v.GetState() != nil {
-					return strings.TrimPrefix(v.GetState().GetPhase().String(), "CLUSTER_PHASE_")
+					return phaseString(v.GetState().GetPhase())
 				}
 				return ""
 			})

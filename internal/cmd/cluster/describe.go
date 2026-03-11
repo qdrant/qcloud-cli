@@ -41,7 +41,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(w, "ID:       %s\n", cluster.GetId())
 			fmt.Fprintf(w, "Name:     %s\n", cluster.GetName())
 			if cluster.GetState() != nil {
-				fmt.Fprintf(w, "Status:   %s\n", cluster.GetState().GetPhase().String())
+				fmt.Fprintf(w, "Status:   %s\n", phaseString(cluster.GetState().GetPhase()))
 			}
 			if cluster.GetConfiguration() != nil {
 				cfg := cluster.GetConfiguration()

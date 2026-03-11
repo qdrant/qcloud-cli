@@ -91,7 +91,7 @@ func TestCreateCluster_WaitSuccess(t *testing.T) {
 		"--wait-poll-interval", "10ms",
 	)
 	require.NoError(t, err)
-	assert.Contains(t, stderr, "phase=CLUSTER_PHASE_CREATING")
+	assert.Contains(t, stderr, "phase=CREATING")
 	assert.Contains(t, stdout, "cluster-xyz")
 	assert.Contains(t, stdout, "ready")
 	assert.Contains(t, stdout, "https://xyz.aws.cloud.qdrant.io")
@@ -128,7 +128,7 @@ func TestCreateCluster_WaitFailure(t *testing.T) {
 		"--wait-poll-interval", "10ms",
 	)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "CLUSTER_PHASE_FAILED_TO_CREATE")
+	assert.Contains(t, err.Error(), "FAILED_TO_CREATE")
 	assert.Contains(t, err.Error(), "quota exceeded")
 }
 

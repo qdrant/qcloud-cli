@@ -42,14 +42,14 @@ func waitForHealthyWithInterval(
 		cluster := resp.GetCluster()
 		phase := cluster.GetState().GetPhase()
 		elapsed := time.Since(start).Round(time.Second)
-		fmt.Fprintf(out, "phase=%s (%s)\n", phase, elapsed)
+		fmt.Fprintf(out, "phase=%s (%s)\n", phaseString(phase), elapsed)
 
 		if phase == clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
 			return cluster, nil
 		}
 		if failurePhases[phase] {
 			reason := cluster.GetState().GetReason()
-			return nil, fmt.Errorf("failed to create cluster: phase=%s, reason=%s", phase, reason)
+			return nil, fmt.Errorf("failed to create cluster: phase=%s, reason=%s", phaseString(phase), reason)
 		}
 		return nil, nil //nolint:nilnil // nil cluster means keep polling
 	}
