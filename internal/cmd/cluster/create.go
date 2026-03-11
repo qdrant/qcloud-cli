@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -26,6 +27,10 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().String("version", "", "Qdrant version")
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes")
 			cmd.Flags().String("package-id", "", "Booking package ID")
+			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
+			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
+			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
+			_ = cmd.Flags().MarkHidden("wait-poll-interval")
 			_ = cmd.MarkFlagRequired("name")
 			_ = cmd.MarkFlagRequired("cloud-provider")
 			_ = cmd.MarkFlagRequired("cloud-region")
@@ -70,10 +75,24 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to create cluster: %w", err)
 			}
-			return resp.GetCluster(), nil
+			created := resp.GetCluster()
+
+			wait, _ := cmd.Flags().GetBool("wait")
+			if !wait {
+				return created, nil
+			}
+
+			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
+			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
+			fmt.Fprintf(cmd.ErrOrStderr(), "Cluster %s created, waiting for it to become healthy...\n", created.GetId())
+			return waitForHealthyWithInterval(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, created *clusterv1.Cluster) {
-			fmt.Fprintf(out, "Cluster %s (%s) created successfully.\n", created.GetId(), created.GetName())
+			if ep := created.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
+				fmt.Fprintf(out, "Cluster %s (%s) is ready. Endpoint: %s\n", created.GetId(), created.GetName(), ep.GetUrl())
+			} else {
+				fmt.Fprintf(out, "Cluster %s (%s) created successfully.\n", created.GetId(), created.GetName())
+			}
 		},
 	}.CobraCommand(s)
 }
