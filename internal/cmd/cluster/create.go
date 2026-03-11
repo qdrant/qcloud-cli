@@ -26,7 +26,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required)")
 			cmd.Flags().String("version", "", "Qdrant version")
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes")
-			cmd.Flags().String("package-id", "", "Booking package ID")
+			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list')")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
@@ -53,7 +53,20 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cloudRegion, _ := cmd.Flags().GetString("cloud-region")
 			version, _ := cmd.Flags().GetString("version")
 			nodes, _ := cmd.Flags().GetUint32("nodes")
-			packageID, _ := cmd.Flags().GetString("package-id")
+			packageValue, _ := cmd.Flags().GetString("package")
+
+			var packageID string
+			if packageValue != "" {
+				if isUUID(packageValue) {
+					packageID = packageValue
+				} else {
+					pkg, err := resolvePackageByName(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, packageValue)
+					if err != nil {
+						return nil, err
+					}
+					packageID = pkg.GetId()
+				}
+			}
 
 			cluster := &clusterv1.Cluster{
 				AccountId:             accountID,

@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
+	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 )
 
@@ -14,6 +15,7 @@ import (
 type Client struct {
 	conn    *grpc.ClientConn
 	cluster clusterv1.ClusterServiceClient
+	booking bookingv1.BookingServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -30,6 +32,7 @@ func New(ctx context.Context, endpoint, apiKey string) (*Client, error) {
 	return &Client{
 		conn:    conn,
 		cluster: clusterv1.NewClusterServiceClient(conn),
+		booking: bookingv1.NewBookingServiceClient(conn),
 	}, nil
 }
 
@@ -39,12 +42,18 @@ func NewFromConn(conn *grpc.ClientConn) *Client {
 	return &Client{
 		conn:    conn,
 		cluster: clusterv1.NewClusterServiceClient(conn),
+		booking: bookingv1.NewBookingServiceClient(conn),
 	}
 }
 
 // Cluster returns the ClusterService gRPC client.
 func (c *Client) Cluster() clusterv1.ClusterServiceClient {
 	return c.cluster
+}
+
+// Booking returns the BookingService gRPC client.
+func (c *Client) Booking() bookingv1.BookingServiceClient {
+	return c.booking
 }
 
 // Close closes the underlying gRPC connection.

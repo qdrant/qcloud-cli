@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/testutil"
@@ -160,4 +161,84 @@ func TestCreateCluster_WaitTimeout(t *testing.T) {
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "timed out")
+}
+
+func TestCreateCluster_PackageByUUID(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	var listCallCount int32
+	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
+		atomic.AddInt32(&listCallCount, 1)
+		return &bookingv1.ListPackagesResponse{}, nil
+	}
+
+	var capturedPackageID string
+	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+		capturedPackageID = req.GetCluster().GetConfiguration().GetPackageId()
+		return &clusterv1.CreateClusterResponse{
+			Cluster: &clusterv1.Cluster{Id: "cluster-pkg-uuid"},
+		}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "550e8400-e29b-41d4-a716-446655440000",
+	)
+	require.NoError(t, err)
+	assert.EqualValues(t, 0, atomic.LoadInt32(&listCallCount), "ListPackages should not be called for UUID input")
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", capturedPackageID)
+}
+
+func TestCreateCluster_PackageByName(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
+		return &bookingv1.ListPackagesResponse{
+			Items: []*bookingv1.Package{
+				{Id: "pkg-uuid-123", Name: "starter"},
+			},
+		}, nil
+	}
+
+	var capturedPackageID string
+	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+		capturedPackageID = req.GetCluster().GetConfiguration().GetPackageId()
+		return &clusterv1.CreateClusterResponse{
+			Cluster: &clusterv1.Cluster{Id: "cluster-named-pkg"},
+		}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "starter",
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "pkg-uuid-123", capturedPackageID)
+}
+
+func TestCreateCluster_PackageNameNotFound(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
+		return &bookingv1.ListPackagesResponse{}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "starter",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "starter")
 }

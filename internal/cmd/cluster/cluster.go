@@ -19,6 +19,7 @@ func NewCommand(s *state.State) *cobra.Command {
 		newCreateCommand(s),
 		newDeleteCommand(s),
 		newWaitCommand(s),
+		newPackageCommand(s),
 	)
 	return cmd
 }

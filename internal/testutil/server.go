@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 
+	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
@@ -63,6 +64,22 @@ func (f *FakeClusterService) DeleteCluster(ctx context.Context, req *clusterv1.D
 	return f.UnimplementedClusterServiceServer.DeleteCluster(ctx, req)
 }
 
+// FakeBookingService is a test fake that implements BookingServiceServer.
+// Set the function fields to control responses per test.
+type FakeBookingService struct {
+	bookingv1.UnimplementedBookingServiceServer
+
+	ListPackagesFunc func(context.Context, *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error)
+}
+
+// ListPackages delegates to ListPackagesFunc if set.
+func (f *FakeBookingService) ListPackages(ctx context.Context, req *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
+	if f.ListPackagesFunc != nil {
+		return f.ListPackagesFunc(ctx, req)
+	}
+	return f.UnimplementedBookingServiceServer.ListPackages(ctx, req)
+}
+
 // RequestCapture is a server-side unary interceptor that records incoming metadata.
 type RequestCapture struct {
 	mu   sync.Mutex
@@ -91,10 +108,11 @@ func (rc *RequestCapture) intercept(
 
 // TestEnv bundles everything a test needs.
 type TestEnv struct {
-	State   *state.State
-	Server  *FakeClusterService
-	Capture *RequestCapture
-	Cleanup func()
+	State         *state.State
+	Server        *FakeClusterService
+	BookingServer *FakeBookingService
+	Capture       *RequestCapture
+	Cleanup       func()
 }
 
 // Option configures a TestEnv.
@@ -129,12 +147,14 @@ func NewTestEnv(t *testing.T, opts ...Option) *TestEnv {
 	}
 
 	fake := &FakeClusterService{}
+	fakeBooking := &FakeBookingService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
 	lis := bufconn.Listen(bufSize)
 	srv := grpc.NewServer(grpc.UnaryInterceptor(capture.intercept))
 	clusterv1.RegisterClusterServiceServer(srv, fake)
+	bookingv1.RegisterBookingServiceServer(srv, fakeBooking)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -163,9 +183,10 @@ func NewTestEnv(t *testing.T, opts ...Option) *TestEnv {
 	s.Config = stateCfg
 
 	return &TestEnv{
-		State:   s,
-		Server:  fake,
-		Capture: capture,
+		State:         s,
+		Server:        fake,
+		BookingServer: fakeBooking,
+		Capture:       capture,
 		Cleanup: func() {
 			_ = conn.Close()
 			srv.Stop()
