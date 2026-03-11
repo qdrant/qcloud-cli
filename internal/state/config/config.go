@@ -95,10 +95,8 @@ func (c *Config) Load(configPath string) error {
 	c.filePath = c.v.ConfigFileUsed()
 	c.file = File{}
 
-	// Populate typed file struct from viper (before MergeConfigMap).
-	c.file.CurrentContext = c.v.GetString("current_context")
-	if err := c.v.UnmarshalKey("contexts", &c.file.Contexts); err != nil {
-		return fmt.Errorf("parsing contexts: %w", err)
+	if err := c.v.Unmarshal(&c.file); err != nil {
+		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	activeContext := c.v.GetString("context")
