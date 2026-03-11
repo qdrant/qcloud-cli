@@ -59,6 +59,46 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 				t := cluster.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:  %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
+			if st := cluster.GetState(); st != nil {
+				if ep := st.GetEndpoint(); ep != nil {
+					fmt.Fprintln(w)
+					fmt.Fprintf(w, "Endpoint:   %s\n", ep.GetUrl())
+					fmt.Fprintf(w, "REST Port:  %d\n", ep.GetRestPort())
+					fmt.Fprintf(w, "gRPC Port:  %d\n", ep.GetGrpcPort())
+				}
+
+				if res := st.GetResources(); res != nil {
+					fmt.Fprintln(w)
+					fmt.Fprintln(w, "Resources (per node):")
+					if disk := res.GetDisk(); disk != nil {
+						fmt.Fprintf(w, "  Disk:  %s base, %s available\n",
+							formatGiB(disk.GetBase()), formatGiB(disk.GetAvailable()))
+					}
+					if ram := res.GetRam(); ram != nil {
+						fmt.Fprintf(w, "  RAM:   %s base, %s reserved, %s available\n",
+							formatGiB(ram.GetBase()), formatGiB(ram.GetReserved()), formatGiB(ram.GetAvailable()))
+					}
+					if cpu := res.GetCpu(); cpu != nil {
+						fmt.Fprintf(w, "  CPU:   %s base, %s reserved, %s available\n",
+							formatMillicores(cpu.GetBase()), formatMillicores(cpu.GetReserved()), formatMillicores(cpu.GetAvailable()))
+					}
+				}
+
+				if nodes := st.GetNodes(); len(nodes) > 0 {
+					fmt.Fprintln(w)
+					fmt.Fprintln(w, "Nodes:")
+					for _, n := range nodes {
+						started := ""
+						if n.GetStartedAt() != nil {
+							started = "started " + output.HumanTime(n.GetStartedAt().AsTime())
+						}
+						fmt.Fprintf(w, "  %-40s  %-12s  %-10s  %s\n",
+							n.GetName(), nodeStateString(n.GetState()), n.GetVersion(), started)
+					}
+				}
+			}
+
 			return nil
 		},
 	}.CobraCommand(s)

@@ -41,6 +41,18 @@ func resolvePackageByName(ctx context.Context, booking bookingv1.BookingServiceC
 	return nil, fmt.Errorf("package %q not found for provider=%s region=%s", name, cloudProvider, cloudRegion)
 }
 
+func nodeStateString(state clusterv1.ClusterNodeState) string {
+	return strings.TrimPrefix(state.String(), "CLUSTER_NODE_STATE_")
+}
+
+func formatGiB(v float64) string {
+	return fmt.Sprintf("%.2f GiB", v)
+}
+
+func formatMillicores(v float64) string {
+	return fmt.Sprintf("%.0fm", v)
+}
+
 // formatMillicents formats millicent pricing as a human-readable price string.
 // 1 unit of currency = 100,000 millicents. Returns "free" for zero.
 // currency should be an ISO 4217 code (e.g. "USD").
