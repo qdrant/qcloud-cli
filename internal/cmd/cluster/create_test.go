@@ -14,6 +14,33 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
 
+func TestCreateCluster_WithLabels(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	var capturedLabels map[string]string
+	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+		capturedLabels = make(map[string]string)
+		for _, kv := range req.GetCluster().GetLabels() {
+			capturedLabels[kv.GetKey()] = kv.GetValue()
+		}
+		return &clusterv1.CreateClusterResponse{
+			Cluster: &clusterv1.Cluster{Id: "cluster-labeled"},
+		}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--label", "env=prod",
+		"--label", "team=platform",
+	)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"env": "prod", "team": "platform"}, capturedLabels)
+}
+
 func TestCreateCluster_NoWait(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	t.Cleanup(env.Cleanup)
