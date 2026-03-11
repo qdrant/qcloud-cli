@@ -25,7 +25,7 @@ func TestListClusters_TableOutput(t *testing.T) {
 					CloudProviderId:       "aws",
 					CloudProviderRegionId: "us-east-1",
 					State:                 &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY},
-					Configuration:         &clusterv1.ClusterConfiguration{Version: ptrStr("1.8.0")},
+					Configuration:         &clusterv1.ClusterConfiguration{Version: new("1.8.0")},
 				},
 				{
 					Id:                    "cluster-2",
@@ -125,6 +125,3 @@ func TestListClusters_AccountIDPassedToServer(t *testing.T) {
 	assert.Equal(t, "acct-42", capturedAccountID)
 }
 
-func ptrStr(s string) *string {
-	return &s
-}
