@@ -1,14 +1,17 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -23,9 +26,24 @@ const (
 	KeyEndpoint = "endpoint"
 )
 
+// ContextEntry holds the configuration for a single named context.
+type ContextEntry struct {
+	Name      string `mapstructure:"name"        yaml:"name"                  json:"name"`
+	Endpoint  string `mapstructure:"endpoint"    yaml:"endpoint,omitempty"    json:"endpoint,omitempty"`
+	APIKey    string `mapstructure:"api_key"     yaml:"api_key,omitempty"     json:"api_key,omitempty"`
+	AccountID string `mapstructure:"account_id"  yaml:"account_id,omitempty"  json:"account_id,omitempty"`
+}
+
+type configFile struct {
+	CurrentContext string         `mapstructure:"current-context" yaml:"current-context,omitempty" json:"current-context,omitempty"`
+	Contexts       []ContextEntry `mapstructure:"contexts"        yaml:"contexts,omitempty"        json:"contexts,omitempty"`
+}
+
 // Config wraps a viper instance to provide typed access to configuration values.
 type Config struct {
-	v *viper.Viper
+	v        *viper.Viper
+	filePath string     // from v.ConfigFileUsed() after Load
+	file     configFile // parsed file contents, for write-back
 }
 
 // DefaultConfigPath returns the default config file path (~/.config/qcloud/config.yaml).
@@ -72,6 +90,39 @@ func (c *Config) Load(configPath string) error {
 			return fmt.Errorf("reading config: %w", err)
 		}
 	}
+
+	c.filePath = c.v.ConfigFileUsed()
+	c.file = configFile{}
+
+	// Populate typed file struct from viper (before MergeConfigMap).
+	c.file.CurrentContext = c.v.GetString("current-context")
+	if err := c.v.UnmarshalKey("contexts", &c.file.Contexts); err != nil {
+		return fmt.Errorf("parsing contexts: %w", err)
+	}
+
+	activeContext := c.v.GetString("context")
+	if activeContext == "" {
+		activeContext = c.file.CurrentContext
+	}
+
+	// Inject active context values at config-file priority so env vars and flags still win.
+	for _, ctx := range c.file.Contexts {
+		if ctx.Name == activeContext {
+			flat := map[string]any{}
+			if ctx.Endpoint != "" {
+				flat[KeyEndpoint] = ctx.Endpoint
+			}
+			if ctx.APIKey != "" {
+				flat[KeyAPIKey] = ctx.APIKey
+			}
+			if ctx.AccountID != "" {
+				flat[KeyAccountID] = ctx.AccountID
+			}
+			_ = c.v.MergeConfigMap(flat)
+			break
+		}
+	}
+
 	return nil
 }
 
@@ -103,4 +154,111 @@ func (c *Config) Endpoint() string {
 // JSONOutput returns whether JSON output is enabled.
 func (c *Config) JSONOutput() bool {
 	return c.v.GetBool("json")
+}
+
+// CurrentContext returns the current-context value from the config file.
+func (c *Config) CurrentContext() string {
+	return c.file.CurrentContext
+}
+
+// ActiveContext returns the active context name: --context flag if set, else current-context.
+func (c *Config) ActiveContext() string {
+	if ctx := c.v.GetString("context"); ctx != "" {
+		return ctx
+	}
+	return c.file.CurrentContext
+}
+
+// ContextNames returns a sorted list of all context names.
+func (c *Config) ContextNames() []string {
+	names := make([]string, 0, len(c.file.Contexts))
+	for _, ctx := range c.file.Contexts {
+		names = append(names, ctx.Name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// GetContext returns the ContextEntry for the named context, or false if not found.
+func (c *Config) GetContext(name string) (ContextEntry, bool) {
+	for _, ctx := range c.file.Contexts {
+		if ctx.Name == name {
+			return ctx, true
+		}
+	}
+	return ContextEntry{}, false
+}
+
+// ConfigFilePath returns the path to the loaded config file.
+func (c *Config) ConfigFilePath() string {
+	return c.filePath
+}
+
+// SetCurrentContext sets the current-context in the file data.
+func (c *Config) SetCurrentContext(name string) {
+	c.file.CurrentContext = name
+}
+
+// UpsertContext creates or updates a named context in the file data.
+func (c *Config) UpsertContext(ctx ContextEntry) {
+	for i, existing := range c.file.Contexts {
+		if existing.Name == ctx.Name {
+			c.file.Contexts[i] = ctx
+			return
+		}
+	}
+	c.file.Contexts = append(c.file.Contexts, ctx)
+}
+
+// DeleteContext removes a named context from the file data.
+// If the deleted context is the current-context, it is also cleared.
+func (c *Config) DeleteContext(name string) {
+	filtered := c.file.Contexts[:0]
+	for _, ctx := range c.file.Contexts {
+		if ctx.Name != name {
+			filtered = append(filtered, ctx)
+		}
+	}
+	c.file.Contexts = filtered
+	if c.file.CurrentContext == name {
+		c.file.CurrentContext = ""
+	}
+}
+
+// WriteToFile writes file data to the config file.
+// If no file was loaded, it writes to DefaultConfigPath() as YAML.
+func (c *Config) WriteToFile() error {
+	path := c.filePath
+	if path == "" {
+		path = DefaultConfigPath()
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			return fmt.Errorf("creating config dir: %w", err)
+		}
+	}
+
+	var data []byte
+	var err error
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".json" {
+		data, err = json.MarshalIndent(c.file, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshaling config: %w", err)
+		}
+		data = append(data, '\n')
+	} else {
+		data, err = yaml.Marshal(c.file)
+		if err != nil {
+			return fmt.Errorf("marshaling config: %w", err)
+		}
+	}
+
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+
+	if c.filePath == "" {
+		c.filePath = path
+	}
+
+	return nil
 }

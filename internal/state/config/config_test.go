@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/qdrant/qcloud-cli/internal/state/config"
 	"github.com/qdrant/qcloud-cli/internal/testutil"
@@ -101,4 +102,191 @@ func TestLoad_DefaultDirYAML(t *testing.T) {
 
 	assert.Equal(t, "yaml-default-key", c.APIKey())
 	assert.Equal(t, "yaml-default-account", c.AccountID())
+}
+
+// ----- context format tests -----
+
+func TestLoad_ContextFormat_InjectsActiveContextValues(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "staging", map[string]map[string]string{
+		"staging": {
+			"endpoint":   "grpc.staging.qdrant.io:443",
+			"api_key":    "staging-key",
+			"account_id": "staging-acct",
+		},
+		"prod": {
+			"endpoint":   "grpc.prod.qdrant.io:443",
+			"api_key":    "prod-key",
+			"account_id": "prod-acct",
+		},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	// Active context is "staging" — its values should be resolved.
+	assert.Equal(t, "staging-key", c.APIKey())
+	assert.Equal(t, "staging-acct", c.AccountID())
+	assert.Equal(t, "grpc.staging.qdrant.io:443", c.Endpoint())
+	assert.Equal(t, "staging", c.CurrentContext())
+}
+
+func TestLoad_ContextFormat_NoCurrentContext(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "", map[string]map[string]string{
+		"prod": {"api_key": "pk", "account_id": "pa"},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	// No active context — top-level values fall back to defaults/empty.
+	assert.Empty(t, c.APIKey())
+	assert.Empty(t, c.CurrentContext())
+}
+
+func TestContextNames_SortedList(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk"},
+		"prod":    {"api_key": "pk"},
+		"dev":     {"api_key": "dk"},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Equal(t, []string{"dev", "prod", "staging"}, c.ContextNames())
+}
+
+func TestContextNames_Empty(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "", nil)
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Empty(t, c.ContextNames())
+}
+
+func TestGetContext_Found(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk", "account_id": "sa"},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	entry, ok := c.GetContext("staging")
+	require.True(t, ok)
+	assert.Equal(t, "sk", entry.APIKey)
+	assert.Equal(t, "sa", entry.AccountID)
+}
+
+func TestGetContext_NotFound(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "", nil)
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	_, ok := c.GetContext("missing")
+	assert.False(t, ok)
+}
+
+func TestUpsertContext_NewContext(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := testutil.WriteContextConfigFile(t, dir, "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk"},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	c.UpsertContext(config.ContextEntry{Name: "prod", APIKey: "pk", AccountID: "pa"})
+	require.NoError(t, c.WriteToFile())
+
+	prod := testutil.FindContextEntry(t, cfgPath, "prod")
+	require.NotNil(t, prod, "prod context not found in saved file")
+	assert.Equal(t, "pk", prod.APIKey)
+	assert.Equal(t, "pa", prod.AccountID)
+	// Original context preserved.
+	assert.NotNil(t, testutil.FindContextEntry(t, cfgPath, "staging"), "staging context should be preserved")
+}
+
+func TestSetCurrentContext_UpdatesFile(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := testutil.WriteContextConfigFile(t, dir, "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk"},
+		"prod":    {"api_key": "pk"},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	c.SetCurrentContext("prod")
+	require.NoError(t, c.WriteToFile())
+
+	data, err := os.ReadFile(cfgPath)
+	require.NoError(t, err)
+	var m map[string]any
+	require.NoError(t, yaml.Unmarshal(data, &m))
+	assert.Equal(t, "prod", m["current-context"])
+}
+
+func TestDeleteContext_RemovesContextAndClearsCurrent(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := testutil.WriteContextConfigFile(t, dir, "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk"},
+		"prod":    {"api_key": "pk"},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	c.DeleteContext("staging")
+	require.NoError(t, c.WriteToFile())
+
+	data, err := os.ReadFile(cfgPath)
+	require.NoError(t, err)
+
+	assert.Nil(t, testutil.FindContextEntry(t, cfgPath, "staging"), "staging context should be removed")
+	assert.NotNil(t, testutil.FindContextEntry(t, cfgPath, "prod"), "prod context should be preserved")
+
+	var m map[string]any
+	require.NoError(t, yaml.Unmarshal(data, &m))
+	_, hasCurrent := m["current-context"]
+	assert.False(t, hasCurrent, "current-context should be removed when the current context is deleted")
+}
+
+func TestWriteToFile_ValidYAML(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := testutil.WriteContextConfigFile(t, dir, "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk"},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	c.SetCurrentContext("staging")
+	require.NoError(t, c.WriteToFile())
+
+	// File must still be valid YAML after save.
+	data, err := os.ReadFile(cfgPath)
+	require.NoError(t, err)
+	var m map[string]any
+	require.NoError(t, yaml.Unmarshal(data, &m))
+	assert.Equal(t, "staging", m["current-context"])
+}
+
+func TestWriteToFile_CreatesDefaultPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("QDRANT_CLOUD_CONFIG", "")
+
+	c := config.New()
+	require.NoError(t, c.Load(""))
+
+	c.UpsertContext(config.ContextEntry{Name: "dev", APIKey: "dk"})
+	require.NoError(t, c.WriteToFile())
+
+	defaultPath := filepath.Join(home, ".config", "qcloud", "config.yaml")
+	assert.FileExists(t, defaultPath)
+
+	assert.NotNil(t, testutil.FindContextEntry(t, defaultPath, "dev"), "dev context not found in saved file")
 }
