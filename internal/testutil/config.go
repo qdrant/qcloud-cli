@@ -41,7 +41,7 @@ func WriteYAMLConfigFile(t *testing.T, dir string, content map[string]any) strin
 func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts map[string]map[string]string) string {
 	t.Helper()
 
-	fd := config.ConfigFile{CurrentContext: currentContext}
+	fd := config.File{CurrentContext: currentContext}
 
 	names := make([]string, 0, len(contexts))
 	for name := range contexts {

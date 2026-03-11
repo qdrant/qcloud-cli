@@ -34,8 +34,8 @@ type ContextEntry struct {
 	AccountID string `mapstructure:"account_id"  yaml:"account_id,omitempty"  json:"account_id,omitempty"`
 }
 
-// ConfigFile holds the top-level structure of the config file.
-type ConfigFile struct {
+// File holds the top-level structure of the config file.
+type File struct {
 	CurrentContext string         `mapstructure:"current_context" yaml:"current_context,omitempty" json:"current_context,omitempty"`
 	Contexts       []ContextEntry `mapstructure:"contexts"        yaml:"contexts,omitempty"        json:"contexts,omitempty"`
 }
@@ -43,8 +43,8 @@ type ConfigFile struct {
 // Config wraps a viper instance to provide typed access to configuration values.
 type Config struct {
 	v        *viper.Viper
-	filePath string     // from v.ConfigFileUsed() after Load
-	file     ConfigFile // parsed file contents, for write-back
+	filePath string // from v.ConfigFileUsed() after Load
+	file     File   // parsed file contents, for write-back
 }
 
 // DefaultConfigPath returns the default config file path (~/.config/qcloud/config.yaml).
@@ -93,7 +93,7 @@ func (c *Config) Load(configPath string) error {
 	}
 
 	c.filePath = c.v.ConfigFileUsed()
-	c.file = ConfigFile{}
+	c.file = File{}
 
 	// Populate typed file struct from viper (before MergeConfigMap).
 	c.file.CurrentContext = c.v.GetString("current_context")

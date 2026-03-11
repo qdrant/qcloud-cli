@@ -301,7 +301,7 @@ func TestConfigFileTagsAreSnakeCase(t *testing.T) {
 	snakeCase := regexp.MustCompile(`^[a-z][a-z0-9]*(_[a-z0-9]+)*$`)
 	tagNames := []string{"mapstructure", "yaml", "json"}
 
-	structs := []any{config.ContextEntry{}, config.ConfigFile{}}
+	structs := []any{config.ContextEntry{}, config.File{}}
 	for _, s := range structs {
 		typ := reflect.TypeOf(s)
 		for field := range typ.Fields() {
