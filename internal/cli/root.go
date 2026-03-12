@@ -40,7 +40,7 @@ func NewRootCommand(s *state.State) *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)")
 	cmd.PersistentFlags().String("api-key", "", "Management API Key (env: QDRANT_CLOUD_API_KEY)")
 	cmd.PersistentFlags().String("account-id", "", "Qdrant Cloud Account ID (env: QDRANT_CLOUD_ACCOUNT_ID)")
-	cmd.PersistentFlags().String("endpoint", "", "API endpoint (env: QDRANT_CLOUD_ENDPOINT, default api.cloud.qdrant.io:443)")
+	cmd.PersistentFlags().String("endpoint", "", "gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)")
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")
 	cmd.PersistentFlags().String("context", "", "Override the active context (env: QDRANT_CLOUD_CONTEXT)")
 
