@@ -31,6 +31,16 @@ func newListCommand(s *state.State) *cobra.Command {
 
 			pageSizeChanged := cmd.Flags().Changed("page-size")
 			pageTokenChanged := cmd.Flags().Changed("page-token")
+			cloudProviderChanged := cmd.Flags().Changed("cloud-provider")
+			cloudRegionChanged := cmd.Flags().Changed("cloud-region")
+
+			var cloudProvider, cloudRegion string
+			if cloudProviderChanged {
+				cloudProvider, _ = cmd.Flags().GetString("cloud-provider")
+			}
+			if cloudRegionChanged {
+				cloudRegion, _ = cmd.Flags().GetString("cloud-region")
+			}
 
 			if !pageSizeChanged && !pageTokenChanged {
 				// Auto-paginate: fetch all pages and return combined results.
@@ -40,6 +50,12 @@ func newListCommand(s *state.State) *cobra.Command {
 					req := &clusterv1.ListClustersRequest{AccountId: accountID}
 					if nextToken != nil {
 						req.PageToken = nextToken
+					}
+					if cloudProviderChanged {
+						req.CloudProviderId = &cloudProvider
+					}
+					if cloudRegionChanged {
+						req.CloudProviderRegionId = &cloudRegion
 					}
 					resp, err := client.Cluster().ListClusters(ctx, req)
 					if err != nil {
@@ -63,6 +79,12 @@ func newListCommand(s *state.State) *cobra.Command {
 			if pageTokenChanged {
 				pt, _ := cmd.Flags().GetString("page-token")
 				req.PageToken = &pt
+			}
+			if cloudProviderChanged {
+				req.CloudProviderId = &cloudProvider
+			}
+			if cloudRegionChanged {
+				req.CloudProviderRegionId = &cloudRegion
 			}
 			resp, err := client.Cluster().ListClusters(ctx, req)
 			if err != nil {
@@ -117,10 +139,16 @@ By default, all clusters are fetched automatically across multiple pages.
 Use --page-size and --page-token for manual pagination:
   --page-size limits how many clusters are returned per call.
   --page-token resumes from a specific page (token is printed when more pages exist).
-  If --page-token is omitted, listing starts from the beginning.`
+  If --page-token is omitted, listing starts from the beginning.
+
+Use --cloud-provider and --cloud-region to filter results server-side:
+  --cloud-provider filters clusters by cloud provider ID (e.g. aws, gcp).
+  --cloud-region filters clusters by cloud provider region ID (e.g. us-east-1).`
 
 	cmd.Flags().Int32("page-size", 0, "Maximum number of clusters to return per page (manual pagination mode)")
 	cmd.Flags().String("page-token", "", "Page token from a previous response to resume from (manual pagination mode)")
+	cmd.Flags().String("cloud-provider", "", "Filter by cloud provider ID")
+	cmd.Flags().String("cloud-region", "", "Filter by cloud provider region ID")
 
 	return cmd
 }

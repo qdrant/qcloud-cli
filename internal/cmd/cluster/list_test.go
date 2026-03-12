@@ -224,6 +224,45 @@ func TestListClusters_PageTokenFlagSingleRequest(t *testing.T) {
 	assert.Equal(t, "my-token", *capturedPageToken)
 }
 
+func TestListClusters_CloudProviderFilter(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	var capturedReq *clusterv1.ListClustersRequest
+	env.Server.ListClustersFunc = func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+		capturedReq = req
+		return &clusterv1.ListClustersResponse{}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env, "cluster", "list", "--cloud-provider", "aws")
+	require.NoError(t, err)
+
+	require.NotNil(t, capturedReq)
+	require.NotNil(t, capturedReq.CloudProviderId)
+	assert.Equal(t, "aws", *capturedReq.CloudProviderId)
+	assert.Nil(t, capturedReq.CloudProviderRegionId)
+}
+
+func TestListClusters_CloudRegionFilter(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	var capturedReq *clusterv1.ListClustersRequest
+	env.Server.ListClustersFunc = func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+		capturedReq = req
+		return &clusterv1.ListClustersResponse{}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env, "cluster", "list", "--cloud-provider", "aws", "--cloud-region", "us-east-1")
+	require.NoError(t, err)
+
+	require.NotNil(t, capturedReq)
+	require.NotNil(t, capturedReq.CloudProviderId)
+	assert.Equal(t, "aws", *capturedReq.CloudProviderId)
+	require.NotNil(t, capturedReq.CloudProviderRegionId)
+	assert.Equal(t, "us-east-1", *capturedReq.CloudProviderRegionId)
+}
+
 func TestListClusters_NextPageTokenPrintedAsFooter(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	t.Cleanup(env.Cleanup)
