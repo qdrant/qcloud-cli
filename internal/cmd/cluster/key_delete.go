@@ -56,5 +56,6 @@ func newKeyDeleteCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "API key %s deleted.\n", keyID)
 			return nil
 		},
+		ValidArgsFunction: clusterIDCompletion(s),
 	}.CobraCommand(s)
 }

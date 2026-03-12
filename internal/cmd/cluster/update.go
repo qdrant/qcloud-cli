@@ -70,5 +70,6 @@ func newUpdateCommand(s *state.State) *cobra.Command {
 		PrintResource: func(_ *cobra.Command, out io.Writer, updated *clusterv1.Cluster) {
 			fmt.Fprintf(out, "Cluster %s (%s) updated successfully.\n", updated.GetId(), updated.GetName())
 		},
+		ValidArgsFunction: clusterIDCompletion(s),
 	}.CobraCommand(s)
 }

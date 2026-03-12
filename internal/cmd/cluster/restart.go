@@ -25,7 +25,7 @@ func newRestartCommand(s *state.State) *cobra.Command {
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to restart to a healthy status")
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster the cluster to restart to healthy status")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for the cluster to restart to healthy status")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")       
+			_ = cmd.Flags().MarkHidden("wait-poll-interval")
 			return cmd
 		},
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
@@ -76,5 +76,6 @@ func newRestartCommand(s *state.State) *cobra.Command {
 			}
 			return nil
 		},
+		ValidArgsFunction: clusterIDCompletion(s),
 	}.CobraCommand(s)
 }

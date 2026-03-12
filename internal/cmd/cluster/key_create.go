@@ -99,5 +99,6 @@ func newKeyCreateCommand(s *state.State) *cobra.Command {
 				fmt.Fprintf(out, "  %s\n", k)
 			}
 		},
+		ValidArgsFunction: clusterIDCompletion(s),
 	}.CobraCommand(s)
 }

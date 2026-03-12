@@ -54,5 +54,6 @@ func newSuspendCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s suspended.\n", clusterID)
 			return nil
 		},
+		ValidArgsFunction: clusterIDCompletion(s),
 	}.CobraCommand(s)
 }

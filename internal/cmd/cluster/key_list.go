@@ -69,5 +69,6 @@ func newKeyListCommand(s *state.State) *cobra.Command {
 			t.Write(resp.GetItems())
 			return nil
 		},
+		ValidArgsFunction: clusterIDCompletion(s),
 	}.CobraCommand(s)
 }

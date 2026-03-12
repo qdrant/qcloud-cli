@@ -11,16 +11,17 @@ import (
 
 // DescribeCmd defines a command for fetching and displaying a single resource.
 type DescribeCmd[T any] struct {
-	Use       string
-	Short     string
-	Args      cobra.PositionalArgs
-	Fetch     func(s *state.State, cmd *cobra.Command, args []string) (T, error)
-	PrintText func(cmd *cobra.Command, out io.Writer, resource T) error
+	Use               string
+	Short             string
+	Args              cobra.PositionalArgs
+	Fetch             func(s *state.State, cmd *cobra.Command, args []string) (T, error)
+	PrintText         func(cmd *cobra.Command, out io.Writer, resource T) error
+	ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 }
 
 // CobraCommand builds a cobra.Command from this DescribeCmd.
 func (dc DescribeCmd[T]) CobraCommand(s *state.State) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   dc.Use,
 		Short: dc.Short,
 		Args:  dc.Args,
@@ -35,4 +36,8 @@ func (dc DescribeCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 			return dc.PrintText(cmd, cmd.OutOrStdout(), resource)
 		},
 	}
+	if dc.ValidArgsFunction != nil {
+		cmd.ValidArgsFunction = dc.ValidArgsFunction
+	}
+	return cmd
 }

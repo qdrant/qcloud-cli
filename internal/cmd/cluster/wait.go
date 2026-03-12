@@ -55,5 +55,6 @@ func newWaitCommand(s *state.State) *cobra.Command {
 			}
 			return nil
 		},
+		ValidArgsFunction: clusterIDCompletion(s),
 	}.CobraCommand(s)
 }

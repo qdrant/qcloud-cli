@@ -34,5 +34,6 @@ func newUseCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Switched to context %q.\n", name)
 			return nil
 		},
+		ValidArgsFunction: contextNameCompletion(s),
 	}.CobraCommand(s)
 }

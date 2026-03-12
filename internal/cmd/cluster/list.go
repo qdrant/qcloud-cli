@@ -150,5 +150,8 @@ Use --cloud-provider and --cloud-region to filter results server-side:
 	cmd.Flags().String("cloud-provider", "", "Filter by cloud provider ID")
 	cmd.Flags().String("cloud-region", "", "Filter by cloud provider region ID")
 
+	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", cloudProviderCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cloud-region", cloudRegionCompletion(s))
+
 	return cmd
 }

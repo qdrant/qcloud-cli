@@ -13,9 +13,10 @@ import (
 // BaseCobraCommand builds the cobra.Command with Use, Short, Args, and flag definitions.
 // Read flags in Run via cmd.Flags().GetString() etc. — do not use bound vars.
 type CreateCmd[T any] struct {
-	BaseCobraCommand func() *cobra.Command
-	Run              func(s *state.State, cmd *cobra.Command, args []string) (T, error)
-	PrintResource    func(cmd *cobra.Command, out io.Writer, resource T)
+	BaseCobraCommand  func() *cobra.Command
+	Run               func(s *state.State, cmd *cobra.Command, args []string) (T, error)
+	PrintResource     func(cmd *cobra.Command, out io.Writer, resource T)
+	ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 }
 
 // CobraCommand builds a cobra.Command from this CreateCmd.
@@ -33,6 +34,9 @@ func (cc CreateCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 			cc.PrintResource(cmd, cmd.OutOrStdout(), resource)
 		}
 		return nil
+	}
+	if cc.ValidArgsFunction != nil {
+		cmd.ValidArgsFunction = cc.ValidArgsFunction
 	}
 	return cmd
 }

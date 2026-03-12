@@ -15,7 +15,7 @@ import (
 )
 
 func newCreateCommand(s *state.State) *cobra.Command {
-	return base.CreateCmd[*clusterv1.Cluster]{
+	cmd := base.CreateCmd[*clusterv1.Cluster]{
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create",
@@ -126,4 +126,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			}
 		},
 	}.CobraCommand(s)
+	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", cloudProviderCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cloud-region", cloudRegionCompletion(s))
+	return cmd
 }

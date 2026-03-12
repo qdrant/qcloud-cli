@@ -42,5 +42,6 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Context %q deleted.\n", name)
 			return nil
 		},
+		ValidArgsFunction: contextNameCompletion(s),
 	}.CobraCommand(s)
 }
