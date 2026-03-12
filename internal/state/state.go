@@ -37,7 +37,7 @@ func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 		return nil, fmt.Errorf("no API Key configured — set QDRANT_CLOUD_API_KEY or use --api-key")
 	}
 
-	c, err := qcloudapi.New(ctx, s.Config.Endpoint(), key)
+	c, err := qcloudapi.New(ctx, s.Config.Endpoint(), key, s.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Qdrant Cloud API: %w", err)
 	}

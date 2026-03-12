@@ -21,9 +21,10 @@ type Client struct {
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
-func New(ctx context.Context, endpoint, apiKey string) (*Client, error) {
+func New(ctx context.Context, endpoint, apiKey, version string) (*Client, error) {
 	return NewWithDialOptions(endpoint, apiKey,
 		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		grpc.WithUserAgent("qcloud-cli/"+version),
 	)
 }
 

@@ -115,6 +115,24 @@ func TestListClusters_AuthMetadata(t *testing.T) {
 	assert.Equal(t, "apikey my-secret-key", authValues[0])
 }
 
+func TestListClusters_UserAgent(t *testing.T) {
+	env := testutil.NewTestEnv(t, testutil.WithVersion("1.2.3"))
+	t.Cleanup(env.Cleanup)
+
+	env.Server.ListClustersFunc = func(_ context.Context, _ *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+		return &clusterv1.ListClustersResponse{}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env, "cluster", "list")
+	require.NoError(t, err)
+
+	md := env.Capture.Last()
+	require.NotNil(t, md)
+	userAgent := md.Get("user-agent")
+	require.NotEmpty(t, userAgent)
+	assert.Contains(t, userAgent[0], "qcloud-cli/1.2.3")
+}
+
 func TestListClusters_AccountIDPassedToServer(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	t.Cleanup(env.Cleanup)

@@ -156,6 +156,7 @@ type Option func(*envConfig)
 type envConfig struct {
 	apiKey    string
 	accountID string
+	version   string
 }
 
 // WithAPIKey sets the API key used by the test client's auth interceptor.
@@ -170,6 +171,11 @@ func WithAccountID(id string) Option {
 	return func(c *envConfig) {
 		c.accountID = id
 	}
+}
+
+// WithVersion sets the CLI version used in the user-agent header.
+func WithVersion(v string) Option {
+	return func(c *envConfig) { c.version = v }
 }
 
 // newBaseTestEnv sets up the bufconn-backed gRPC server and wires the state,
@@ -203,19 +209,21 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	//
 	// WithTransportCredentials(insecure) skips TLS. Together these let us run
 	// a full gRPC stack in-process without any network or certificate setup.
-	client, err := qcloudapi.NewWithDialOptions(
-		"passthrough:///bufnet",
-		cfg.apiKey,
+	dialOpts := []grpc.DialOption{
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			return lis.DialContext(ctx)
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	}
+	if cfg.version != "" {
+		dialOpts = append(dialOpts, grpc.WithUserAgent("qcloud-cli/"+cfg.version))
+	}
+	client, err := qcloudapi.NewWithDialOptions("passthrough:///bufnet", cfg.apiKey, dialOpts...)
 	if err != nil {
 		t.Fatalf("failed to create test client: %v", err)
 	}
 
-	s := state.New("test")
+	s := state.New(cfg.version)
 	s.SetClient(client)
 
 	return &TestEnv{
