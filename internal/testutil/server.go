@@ -193,7 +193,16 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		_ = srv.Serve(lis)
 	}()
 
-	// Dial bufconn with auth interceptor (same as production).
+	// Dial the in-memory server. A few things here that may be surprising:
+	//
+	// "passthrough:///bufnet" is a gRPC target URI. The "passthrough" scheme
+	// tells gRPC's name resolver to skip DNS and use the address as-is.
+	// "bufnet" is a throwaway label — it is never resolved. The actual
+	// connection is made by WithContextDialer below, which ignores the address
+	// and always dials the bufconn listener directly.
+	//
+	// WithTransportCredentials(insecure) skips TLS. Together these let us run
+	// a full gRPC stack in-process without any network or certificate setup.
 	client, err := qcloudapi.NewWithDialOptions(
 		"passthrough:///bufnet",
 		cfg.apiKey,
