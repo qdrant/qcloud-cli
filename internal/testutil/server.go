@@ -36,6 +36,7 @@ type FakeClusterService struct {
 	SuspendClusterFunc     func(context.Context, *clusterv1.SuspendClusterRequest) (*clusterv1.SuspendClusterResponse, error)
 	UnsuspendClusterFunc   func(context.Context, *clusterv1.UnsuspendClusterRequest) (*clusterv1.UnsuspendClusterResponse, error)
 	SuggestClusterNameFunc func(context.Context, *clusterv1.SuggestClusterNameRequest) (*clusterv1.SuggestClusterNameResponse, error)
+	ListQdrantReleasesFunc func(context.Context, *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error)
 }
 
 // ListClusters delegates to ListClustersFunc if set.
@@ -108,6 +109,14 @@ func (f *FakeClusterService) SuggestClusterName(ctx context.Context, req *cluste
 		return f.SuggestClusterNameFunc(ctx, req)
 	}
 	return f.UnimplementedClusterServiceServer.SuggestClusterName(ctx, req)
+}
+
+// ListQdrantReleases delegates to ListQdrantReleasesFunc if set.
+func (f *FakeClusterService) ListQdrantReleases(ctx context.Context, req *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error) {
+	if f.ListQdrantReleasesFunc != nil {
+		return f.ListQdrantReleasesFunc(ctx, req)
+	}
+	return f.UnimplementedClusterServiceServer.ListQdrantReleases(ctx, req)
 }
 
 // FakeBookingService is a test fake that implements BookingServiceServer.

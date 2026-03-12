@@ -23,10 +23,10 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				Args:  cobra.NoArgs,
 			}
 			cmd.Flags().String("name", "", "Cluster name (auto-generated if not provided)")
-			cmd.Flags().String("cloud-provider", "", "Cloud provider ID (required)")
-			cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required)")
-			cmd.Flags().String("version", "", "Qdrant version")
-			cmd.Flags().Uint32("nodes", 1, "Number of nodes")
+			cmd.Flags().String("cloud-provider", "", "Cloud provider ID (required, see 'cluster cloud-provider list)")
+			cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required, see 'cluster cloud-region list --cloud-provider <provider_id>)")
+			cmd.Flags().String("version", "", "Qdrant version (default latest)")
+			cmd.Flags().Uint32("nodes", 1, "Number of nodes (default 1)")
 			cmd.Flags().String("package", "", "Booking package name or ID (required, see 'cluster package list')")
 			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
@@ -129,5 +129,6 @@ func newCreateCommand(s *state.State) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", cloudProviderCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("cloud-region", cloudRegionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("package", packageCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("version", versionCompletion(s))
 	return cmd
 }

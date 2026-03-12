@@ -109,6 +109,58 @@ func cloudRegionCompletion(s *state.State) func(*cobra.Command, []string, string
 	}
 }
 
+// versionCompletion returns a completion function for the --version flag.
+func versionCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.Cluster().ListQdrantReleases(ctx, &clusterv1.ListQdrantReleasesRequest{
+			AccountId: accountID,
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, r := range resp.GetItems() {
+			if r.GetUnavailable() {
+				continue
+			}
+			desc := ""
+			if r.GetDefault() {
+				desc += "(default)"
+			}
+			if r.GetEndOfLife() {
+				if desc != "" {
+					desc += " "
+				}
+				desc += "(end of life)"
+			}
+			if remarks := r.GetRemarks(); remarks != "" {
+				if desc != "" {
+					desc += " "
+				}
+				desc += remarks
+			}
+			entry := r.GetVersion()
+			if desc != "" {
+				entry += "\t" + desc
+			}
+			completions = append(completions, entry)
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
 // packageCompletion returns a completion function for the --package flag.
 func packageCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

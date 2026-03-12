@@ -114,3 +114,49 @@ func TestPackageCompletion_NoProvider(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, stdout, "startup-4")
 }
+
+func TestVersionCompletion(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	remarks := "upgrade recommended"
+	env.Server.ListQdrantReleasesFunc = func(_ context.Context, _ *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error) {
+		return &clusterv1.ListQdrantReleasesResponse{
+			Items: []*clusterv1.QdrantRelease{
+				{Version: "1.14.0", Default: true},
+				{Version: "1.13.0", EndOfLife: true},
+				{Version: "1.12.0", Unavailable: true},
+				{Version: "1.11.0", Remarks: &remarks},
+			},
+		}, nil
+	}
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cloud-region", "us-east-1", "--version", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "1.14.0")
+	assert.Contains(t, stdout, "(default)")
+	assert.Contains(t, stdout, "1.13.0")
+	assert.Contains(t, stdout, "(end of life)")
+	assert.Contains(t, stdout, "1.11.0")
+	assert.Contains(t, stdout, "upgrade recommended")
+	assert.NotContains(t, stdout, "1.12.0")
+}
+
+func TestVersionCompletion_UnavailableExcluded(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	env.Server.ListQdrantReleasesFunc = func(_ context.Context, _ *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error) {
+		return &clusterv1.ListQdrantReleasesResponse{
+			Items: []*clusterv1.QdrantRelease{
+				{Version: "1.14.0"},
+				{Version: "1.13.0", Unavailable: true},
+			},
+		}, nil
+	}
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cloud-region", "us-east-1", "--version", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "1.14.0")
+	assert.NotContains(t, stdout, "1.13.0")
+}
