@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
+	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 
@@ -114,6 +115,40 @@ func (f *FakePlatformService) ListCloudProviderRegions(ctx context.Context, req 
 	return f.UnimplementedPlatformServiceServer.ListCloudProviderRegions(ctx, req)
 }
 
+// FakeDatabaseApiKeyService is a test fake that implements DatabaseApiKeyServiceServer.
+// Set the function fields to control responses per test.
+type FakeDatabaseApiKeyService struct {
+	clusterauthv2.UnimplementedDatabaseApiKeyServiceServer
+
+	ListDatabaseApiKeysFunc  func(context.Context, *clusterauthv2.ListDatabaseApiKeysRequest) (*clusterauthv2.ListDatabaseApiKeysResponse, error)
+	CreateDatabaseApiKeyFunc func(context.Context, *clusterauthv2.CreateDatabaseApiKeyRequest) (*clusterauthv2.CreateDatabaseApiKeyResponse, error)
+	DeleteDatabaseApiKeyFunc func(context.Context, *clusterauthv2.DeleteDatabaseApiKeyRequest) (*clusterauthv2.DeleteDatabaseApiKeyResponse, error)
+}
+
+// ListDatabaseApiKeys delegates to ListDatabaseApiKeysFunc if set.
+func (f *FakeDatabaseApiKeyService) ListDatabaseApiKeys(ctx context.Context, req *clusterauthv2.ListDatabaseApiKeysRequest) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
+	if f.ListDatabaseApiKeysFunc != nil {
+		return f.ListDatabaseApiKeysFunc(ctx, req)
+	}
+	return f.UnimplementedDatabaseApiKeyServiceServer.ListDatabaseApiKeys(ctx, req)
+}
+
+// CreateDatabaseApiKey delegates to CreateDatabaseApiKeyFunc if set.
+func (f *FakeDatabaseApiKeyService) CreateDatabaseApiKey(ctx context.Context, req *clusterauthv2.CreateDatabaseApiKeyRequest) (*clusterauthv2.CreateDatabaseApiKeyResponse, error) {
+	if f.CreateDatabaseApiKeyFunc != nil {
+		return f.CreateDatabaseApiKeyFunc(ctx, req)
+	}
+	return f.UnimplementedDatabaseApiKeyServiceServer.CreateDatabaseApiKey(ctx, req)
+}
+
+// DeleteDatabaseApiKey delegates to DeleteDatabaseApiKeyFunc if set.
+func (f *FakeDatabaseApiKeyService) DeleteDatabaseApiKey(ctx context.Context, req *clusterauthv2.DeleteDatabaseApiKeyRequest) (*clusterauthv2.DeleteDatabaseApiKeyResponse, error) {
+	if f.DeleteDatabaseApiKeyFunc != nil {
+		return f.DeleteDatabaseApiKeyFunc(ctx, req)
+	}
+	return f.UnimplementedDatabaseApiKeyServiceServer.DeleteDatabaseApiKey(ctx, req)
+}
+
 // RequestCapture is a server-side unary interceptor that records incoming metadata.
 type RequestCapture struct {
 	mu   sync.Mutex
@@ -142,12 +177,13 @@ func (rc *RequestCapture) intercept(
 
 // TestEnv bundles everything a test needs.
 type TestEnv struct {
-	State          *state.State
-	Server         *FakeClusterService
-	BookingServer  *FakeBookingService
-	PlatformServer *FakePlatformService
-	Capture        *RequestCapture
-	Cleanup        func()
+	State                *state.State
+	Server               *FakeClusterService
+	BookingServer        *FakeBookingService
+	PlatformServer       *FakePlatformService
+	DatabaseApiKeyServer *FakeDatabaseApiKeyService
+	Capture              *RequestCapture
+	Cleanup              func()
 }
 
 // Option configures a TestEnv.
@@ -186,6 +222,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fake := &FakeClusterService{}
 	fakeBooking := &FakeBookingService{}
 	fakePlatform := &FakePlatformService{}
+	fakeDatabaseApiKey := &FakeDatabaseApiKeyService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -194,6 +231,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	clusterv1.RegisterClusterServiceServer(srv, fake)
 	bookingv1.RegisterBookingServiceServer(srv, fakeBooking)
 	platformv1.RegisterPlatformServiceServer(srv, fakePlatform)
+	clusterauthv2.RegisterDatabaseApiKeyServiceServer(srv, fakeDatabaseApiKey)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -227,11 +265,12 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	s.SetClient(client)
 
 	return &TestEnv{
-		State:          s,
-		Server:         fake,
-		BookingServer:  fakeBooking,
-		PlatformServer: fakePlatform,
-		Capture:        capture,
+		State:                s,
+		Server:               fake,
+		BookingServer:        fakeBooking,
+		PlatformServer:       fakePlatform,
+		DatabaseApiKeyServer: fakeDatabaseApiKey,
+		Capture:              capture,
 		Cleanup: func() {
 			_ = client.Close()
 			srv.Stop()
@@ -270,4 +309,3 @@ func NewBareTestEnv(t *testing.T) *TestEnv {
 	cfg := &envConfig{}
 	return newBaseTestEnv(t, cfg)
 }
-

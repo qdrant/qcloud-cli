@@ -8,16 +8,18 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
+	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 )
 
 // Client wraps a gRPC connection to the Qdrant Cloud API.
 type Client struct {
-	conn     *grpc.ClientConn
-	cluster  clusterv1.ClusterServiceClient
-	booking  bookingv1.BookingServiceClient
-	platform platformv1.PlatformServiceClient
+	conn           *grpc.ClientConn
+	cluster        clusterv1.ClusterServiceClient
+	booking        bookingv1.BookingServiceClient
+	platform       platformv1.PlatformServiceClient
+	databaseApiKey clusterauthv2.DatabaseApiKeyServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -41,10 +43,11 @@ func NewWithDialOptions(endpoint, apiKey string, opts ...grpc.DialOption) (*Clie
 
 func newFromConn(conn *grpc.ClientConn) *Client {
 	return &Client{
-		conn:     conn,
-		cluster:  clusterv1.NewClusterServiceClient(conn),
-		booking:  bookingv1.NewBookingServiceClient(conn),
-		platform: platformv1.NewPlatformServiceClient(conn),
+		conn:           conn,
+		cluster:        clusterv1.NewClusterServiceClient(conn),
+		booking:        bookingv1.NewBookingServiceClient(conn),
+		platform:       platformv1.NewPlatformServiceClient(conn),
+		databaseApiKey: clusterauthv2.NewDatabaseApiKeyServiceClient(conn),
 	}
 }
 
@@ -61,6 +64,11 @@ func (c *Client) Booking() bookingv1.BookingServiceClient {
 // Platform returns the PlatformService gRPC client.
 func (c *Client) Platform() platformv1.PlatformServiceClient {
 	return c.platform
+}
+
+// DatabaseApiKey returns the DatabaseApiKeyService gRPC client.
+func (c *Client) DatabaseApiKey() clusterauthv2.DatabaseApiKeyServiceClient {
+	return c.databaseApiKey
 }
 
 // Close closes the underlying gRPC connection.

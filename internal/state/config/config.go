@@ -154,7 +154,6 @@ func (c *Config) SetAccountID(id string) {
 	c.v.Set(KeyAccountID, id)
 }
 
-
 // Endpoint returns the API endpoint from config/env/flags.
 func (c *Config) Endpoint() string {
 	return c.v.GetString(KeyEndpoint)
