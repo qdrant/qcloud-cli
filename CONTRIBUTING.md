@@ -5,7 +5,7 @@ This CLI wraps the [qdrant/qdrant-cloud-public-api](https://github.com/qdrant/qd
 
 ## Bootstrapping
 
-The project uses GNU `make` as a wrapper to run tasks for building and testing. It must be installed before running any other targets.
+The project requires Go 1.26 or later and uses GNU `make` as a wrapper to run tasks for building and testing. Both must be installed before running any other targets.
 
 The `bootstrap` target will download into `./bin` (it's in .gitignore) all the necessary binaries to run the rest of the targets:
 ```bash
