@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -21,6 +22,10 @@ func newRestartCommand(s *state.State) *cobra.Command {
 				Args:  util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
+			cmd.Flags().Bool("wait", false, "Wait for the cluster to restart to a healthy status")
+			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster the cluster to restart to healthy status")
+			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for the cluster to restart to healthy status")
+			_ = cmd.Flags().MarkHidden("wait-poll-interval")       
 			return cmd
 		},
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
@@ -51,7 +56,24 @@ func newRestartCommand(s *state.State) *cobra.Command {
 				return fmt.Errorf("failed to restart cluster: %w", err)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s restarting.\n", clusterID)
+			wait, _ := cmd.Flags().GetBool("wait")
+			if !wait {
+				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s restarting.\n", clusterID)
+				return nil
+			}
+
+			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
+			waitPollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
+			fmt.Fprintf(cmd.ErrOrStderr(), "Cluster %s restarting, waiting for it to become healthy...\n", clusterID)
+			cluster, err := waitForHealthyWithInterval(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, clusterID, waitTimeout, waitPollInterval)
+			if err != nil {
+				return err
+			}
+			if ep := cluster.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) is ready. Endpoint: %s\n", cluster.GetId(), cluster.GetName(), ep.GetUrl())
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) is ready.\n", cluster.GetId(), cluster.GetName())
+			}
 			return nil
 		},
 	}.CobraCommand(s)

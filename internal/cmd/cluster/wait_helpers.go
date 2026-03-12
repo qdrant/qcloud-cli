@@ -49,7 +49,7 @@ func waitForHealthyWithInterval(
 		}
 		if failurePhases[phase] {
 			reason := cluster.GetState().GetReason()
-			return nil, fmt.Errorf("failed to create cluster: phase=%s, reason=%s", phaseString(phase), reason)
+			return nil, fmt.Errorf("failed waiting for cluster to become healthy: phase=%s, reason=%s", phaseString(phase), reason)
 		}
 		return nil, nil //nolint:nilnil // nil cluster means keep polling
 	}
