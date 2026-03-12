@@ -128,5 +128,6 @@ func newCreateCommand(s *state.State) *cobra.Command {
 	}.CobraCommand(s)
 	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", cloudProviderCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("cloud-region", cloudRegionCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("package", packageCompletion(s))
 	return cmd
 }

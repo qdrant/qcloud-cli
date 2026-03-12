@@ -3,7 +3,6 @@ package cluster
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -64,7 +63,7 @@ func newPackageListCommand(s *state.State) *cobra.Command {
 				return p.GetId()
 			})
 			t.AddField("TIER", func(p *bookingv1.Package) string {
-				return strings.TrimPrefix(p.GetTier().String(), "PACKAGE_TIER_")
+				return packageTierString(p.GetTier())
 			})
 			t.AddField("RAM", func(p *bookingv1.Package) string {
 				if rc := p.GetResourceConfiguration(); rc != nil {

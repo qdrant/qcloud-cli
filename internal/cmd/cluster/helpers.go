@@ -45,6 +45,10 @@ func nodeStateString(state clusterv1.ClusterNodeState) string {
 	return strings.TrimPrefix(state.String(), "CLUSTER_NODE_STATE_")
 }
 
+func packageTierString(tier bookingv1.PackageTier) string {
+	return strings.TrimPrefix(tier.String(), "PACKAGE_TIER_")
+}
+
 func formatGiB(v float64) string {
 	return fmt.Sprintf("%.2f GiB", v)
 }
