@@ -14,7 +14,7 @@ import (
 )
 
 func newListCommand(s *state.State) *cobra.Command {
-	return base.ListCmd[*clusterv1.ListClustersResponse]{
+	cmd := base.ListCmd[*clusterv1.ListClustersResponse]{
 		Use:   "list",
 		Short: "List all clusters",
 		Fetch: func(s *state.State, cmd *cobra.Command) (*clusterv1.ListClustersResponse, error) {
@@ -29,13 +29,45 @@ func newListCommand(s *state.State) *cobra.Command {
 				return nil, err
 			}
 
-			resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{
-				AccountId: accountID,
-			})
+			pageSizeChanged := cmd.Flags().Changed("page-size")
+			pageTokenChanged := cmd.Flags().Changed("page-token")
+
+			if !pageSizeChanged && !pageTokenChanged {
+				// Auto-paginate: fetch all pages and return combined results.
+				var allItems []*clusterv1.Cluster
+				var nextToken *string
+				for {
+					req := &clusterv1.ListClustersRequest{AccountId: accountID}
+					if nextToken != nil {
+						req.PageToken = nextToken
+					}
+					resp, err := client.Cluster().ListClusters(ctx, req)
+					if err != nil {
+						return nil, fmt.Errorf("failed to list clusters: %w", err)
+					}
+					allItems = append(allItems, resp.Items...)
+					if resp.NextPageToken == nil || *resp.NextPageToken == "" {
+						break
+					}
+					nextToken = resp.NextPageToken
+				}
+				return &clusterv1.ListClustersResponse{Items: allItems}, nil
+			}
+
+			// Manual mode: single request with provided flags.
+			req := &clusterv1.ListClustersRequest{AccountId: accountID}
+			if pageSizeChanged {
+				ps, _ := cmd.Flags().GetInt32("page-size")
+				req.PageSize = &ps
+			}
+			if pageTokenChanged {
+				pt, _ := cmd.Flags().GetString("page-token")
+				req.PageToken = &pt
+			}
+			resp, err := client.Cluster().ListClusters(ctx, req)
 			if err != nil {
 				return nil, fmt.Errorf("failed to list clusters: %w", err)
 			}
-
 			return resp, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {
@@ -71,7 +103,24 @@ func newListCommand(s *state.State) *cobra.Command {
 				return ""
 			})
 			t.Write(resp.Items)
+			if resp.NextPageToken != nil && *resp.NextPageToken != "" {
+				fmt.Fprintf(w, "Next page token: %s\n", *resp.NextPageToken)
+			}
 			return nil
 		},
 	}.CobraCommand(s)
+
+	cmd.Long = `List all clusters in the current account.
+
+By default, all clusters are fetched automatically across multiple pages.
+
+Use --page-size and --page-token for manual pagination:
+  --page-size limits how many clusters are returned per call.
+  --page-token resumes from a specific page (token is printed when more pages exist).
+  If --page-token is omitted, listing starts from the beginning.`
+
+	cmd.Flags().Int32("page-size", 0, "Maximum number of clusters to return per page (manual pagination mode)")
+	cmd.Flags().String("page-token", "", "Page token from a previous response to resume from (manual pagination mode)")
+
+	return cmd
 }

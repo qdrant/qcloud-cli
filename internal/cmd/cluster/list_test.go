@@ -147,3 +147,97 @@ func TestListClusters_AccountIDPassedToServer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "test-account-id", capturedAccountID)
 }
+
+func TestListClusters_AutoPaginateMultiplePages(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	token := "page-2-token"
+	callCount := 0
+	env.Server.ListClustersFunc = func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+		callCount++
+		if req.PageToken == nil || *req.PageToken == "" {
+			return &clusterv1.ListClustersResponse{
+				Items:         []*clusterv1.Cluster{{Id: "cluster-1", Name: "first"}},
+				NextPageToken: &token,
+			}, nil
+		}
+		return &clusterv1.ListClustersResponse{
+			Items: []*clusterv1.Cluster{{Id: "cluster-2", Name: "second"}},
+		}, nil
+	}
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "list")
+	require.NoError(t, err)
+
+	assert.Equal(t, 2, callCount)
+	assert.Contains(t, stdout, "cluster-1")
+	assert.Contains(t, stdout, "cluster-2")
+	// No next page token footer when auto-paginating.
+	assert.NotContains(t, stdout, "Next page token")
+}
+
+func TestListClusters_PageSizeFlagSingleRequest(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	token := "next-token"
+	var capturedPageSize *int32
+	callCount := 0
+	env.Server.ListClustersFunc = func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+		callCount++
+		capturedPageSize = req.PageSize
+		return &clusterv1.ListClustersResponse{
+			Items:         []*clusterv1.Cluster{{Id: "cluster-1"}},
+			NextPageToken: &token,
+		}, nil
+	}
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "list", "--page-size", "1")
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, callCount)
+	require.NotNil(t, capturedPageSize)
+	assert.Equal(t, int32(1), *capturedPageSize)
+	assert.Contains(t, stdout, "Next page token: next-token")
+}
+
+func TestListClusters_PageTokenFlagSingleRequest(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	var capturedPageToken *string
+	callCount := 0
+	env.Server.ListClustersFunc = func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+		callCount++
+		capturedPageToken = req.PageToken
+		return &clusterv1.ListClustersResponse{
+			Items: []*clusterv1.Cluster{{Id: "cluster-2"}},
+		}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env, "cluster", "list", "--page-token", "my-token")
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, callCount)
+	require.NotNil(t, capturedPageToken)
+	assert.Equal(t, "my-token", *capturedPageToken)
+}
+
+func TestListClusters_NextPageTokenPrintedAsFooter(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	token := "footer-token"
+	env.Server.ListClustersFunc = func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+		return &clusterv1.ListClustersResponse{
+			Items:         []*clusterv1.Cluster{{Id: "cluster-1"}},
+			NextPageToken: &token,
+		}, nil
+	}
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "list", "--page-size", "1")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "Next page token: footer-token")
+}
