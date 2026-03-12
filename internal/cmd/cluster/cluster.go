@@ -23,6 +23,7 @@ func NewCommand(s *state.State) *cobra.Command {
 		newSuspendCommand(s),
 		newUnsuspendCommand(s),
 		newWaitCommand(s),
+		newVersionCommand(s),
 		newPackageCommand(s),
 		newCloudProviderCommand(s),
 		newCloudRegionCommand(s),

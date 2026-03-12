@@ -49,6 +49,13 @@ func packageTierString(tier bookingv1.PackageTier) string {
 	return strings.TrimPrefix(tier.String(), "PACKAGE_TIER_")
 }
 
+func boolToMark(v bool) string {
+	if v {
+		return "yes"
+	}
+	return ""
+}
+
 func formatGiB(v float64) string {
 	return fmt.Sprintf("%.2f GiB", v)
 }
