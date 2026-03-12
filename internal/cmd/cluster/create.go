@@ -22,20 +22,20 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				Short: "Create a new cluster",
 				Args:  cobra.NoArgs,
 			}
-			cmd.Flags().String("name", "", "Cluster name (required)")
+			cmd.Flags().String("name", "", "Cluster name (auto-generated if not provided)")
 			cmd.Flags().String("cloud-provider", "", "Cloud provider ID (required)")
 			cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required)")
 			cmd.Flags().String("version", "", "Qdrant version")
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes")
-			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list')")
+			cmd.Flags().String("package", "", "Booking package name or ID (required, see 'cluster package list')")
 			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
 			_ = cmd.Flags().MarkHidden("wait-poll-interval")
-			_ = cmd.MarkFlagRequired("name")
 			_ = cmd.MarkFlagRequired("cloud-provider")
 			_ = cmd.MarkFlagRequired("cloud-region")
+			_ = cmd.MarkFlagRequired("package")
 			return cmd
 		},
 		Run: func(s *state.State, cmd *cobra.Command, args []string) (*clusterv1.Cluster, error) {
@@ -51,6 +51,15 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			}
 
 			name, _ := cmd.Flags().GetString("name")
+			if name == "" {
+				suggested, err := client.Cluster().SuggestClusterName(ctx, &clusterv1.SuggestClusterNameRequest{
+					AccountId: accountID,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to suggest cluster name: %w", err)
+				}
+				name = suggested.GetName()
+			}
 			cloudProvider, _ := cmd.Flags().GetString("cloud-provider")
 			cloudRegion, _ := cmd.Flags().GetString("cloud-region")
 			version, _ := cmd.Flags().GetString("version")

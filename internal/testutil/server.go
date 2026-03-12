@@ -27,11 +27,15 @@ const bufSize = 1024 * 1024
 type FakeClusterService struct {
 	clusterv1.UnimplementedClusterServiceServer
 
-	ListClustersFunc  func(context.Context, *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error)
-	GetClusterFunc    func(context.Context, *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error)
-	CreateClusterFunc func(context.Context, *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error)
-	UpdateClusterFunc func(context.Context, *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error)
-	DeleteClusterFunc func(context.Context, *clusterv1.DeleteClusterRequest) (*clusterv1.DeleteClusterResponse, error)
+	ListClustersFunc       func(context.Context, *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error)
+	GetClusterFunc         func(context.Context, *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error)
+	CreateClusterFunc      func(context.Context, *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error)
+	UpdateClusterFunc      func(context.Context, *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error)
+	DeleteClusterFunc      func(context.Context, *clusterv1.DeleteClusterRequest) (*clusterv1.DeleteClusterResponse, error)
+	RestartClusterFunc     func(context.Context, *clusterv1.RestartClusterRequest) (*clusterv1.RestartClusterResponse, error)
+	SuspendClusterFunc     func(context.Context, *clusterv1.SuspendClusterRequest) (*clusterv1.SuspendClusterResponse, error)
+	UnsuspendClusterFunc   func(context.Context, *clusterv1.UnsuspendClusterRequest) (*clusterv1.UnsuspendClusterResponse, error)
+	SuggestClusterNameFunc func(context.Context, *clusterv1.SuggestClusterNameRequest) (*clusterv1.SuggestClusterNameResponse, error)
 }
 
 // ListClusters delegates to ListClustersFunc if set.
@@ -72,6 +76,38 @@ func (f *FakeClusterService) DeleteCluster(ctx context.Context, req *clusterv1.D
 		return f.DeleteClusterFunc(ctx, req)
 	}
 	return f.UnimplementedClusterServiceServer.DeleteCluster(ctx, req)
+}
+
+// RestartCluster delegates to RestartClusterFunc if set.
+func (f *FakeClusterService) RestartCluster(ctx context.Context, req *clusterv1.RestartClusterRequest) (*clusterv1.RestartClusterResponse, error) {
+	if f.RestartClusterFunc != nil {
+		return f.RestartClusterFunc(ctx, req)
+	}
+	return f.UnimplementedClusterServiceServer.RestartCluster(ctx, req)
+}
+
+// SuspendCluster delegates to SuspendClusterFunc if set.
+func (f *FakeClusterService) SuspendCluster(ctx context.Context, req *clusterv1.SuspendClusterRequest) (*clusterv1.SuspendClusterResponse, error) {
+	if f.SuspendClusterFunc != nil {
+		return f.SuspendClusterFunc(ctx, req)
+	}
+	return f.UnimplementedClusterServiceServer.SuspendCluster(ctx, req)
+}
+
+// UnsuspendCluster delegates to UnsuspendClusterFunc if set.
+func (f *FakeClusterService) UnsuspendCluster(ctx context.Context, req *clusterv1.UnsuspendClusterRequest) (*clusterv1.UnsuspendClusterResponse, error) {
+	if f.UnsuspendClusterFunc != nil {
+		return f.UnsuspendClusterFunc(ctx, req)
+	}
+	return f.UnimplementedClusterServiceServer.UnsuspendCluster(ctx, req)
+}
+
+// SuggestClusterName delegates to SuggestClusterNameFunc if set.
+func (f *FakeClusterService) SuggestClusterName(ctx context.Context, req *clusterv1.SuggestClusterNameRequest) (*clusterv1.SuggestClusterNameResponse, error) {
+	if f.SuggestClusterNameFunc != nil {
+		return f.SuggestClusterNameFunc(ctx, req)
+	}
+	return f.UnimplementedClusterServiceServer.SuggestClusterName(ctx, req)
 }
 
 // FakeBookingService is a test fake that implements BookingServiceServer.
