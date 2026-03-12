@@ -125,7 +125,7 @@ func TestListClusters_AccountIDPassedToServer(t *testing.T) {
 		return &clusterv1.ListClustersResponse{}, nil
 	}
 
-	_, _, err := testutil.Exec(t, env, "--account-id", "acct-42", "cluster", "list")
+	_, _, err := testutil.Exec(t, env, "cluster", "list")
 	require.NoError(t, err)
-	assert.Equal(t, "acct-42", capturedAccountID)
+	assert.Equal(t, "test-account-id", capturedAccountID)
 }

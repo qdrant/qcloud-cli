@@ -9,40 +9,41 @@ import (
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 )
 
 // Client wraps a gRPC connection to the Qdrant Cloud API.
 type Client struct {
-	conn    *grpc.ClientConn
-	cluster clusterv1.ClusterServiceClient
-	booking bookingv1.BookingServiceClient
+	conn     *grpc.ClientConn
+	cluster  clusterv1.ClusterServiceClient
+	booking  bookingv1.BookingServiceClient
+	platform platformv1.PlatformServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
 func New(ctx context.Context, endpoint, apiKey string) (*Client, error) {
-	conn, err := grpc.NewClient(
-		endpoint,
+	return NewWithDialOptions(endpoint, apiKey,
 		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
-		grpc.WithUnaryInterceptor(authInterceptor(apiKey)),
 	)
+}
+
+// NewWithDialOptions creates a Client with the auth interceptor always applied,
+// plus any additional dial options (e.g. custom transport for testing).
+func NewWithDialOptions(endpoint, apiKey string, opts ...grpc.DialOption) (*Client, error) {
+	all := append([]grpc.DialOption{grpc.WithUnaryInterceptor(authInterceptor(apiKey))}, opts...)
+	conn, err := grpc.NewClient(endpoint, all...)
 	if err != nil {
 		return nil, err
 	}
-
-	return &Client{
-		conn:    conn,
-		cluster: clusterv1.NewClusterServiceClient(conn),
-		booking: bookingv1.NewBookingServiceClient(conn),
-	}, nil
+	return newFromConn(conn), nil
 }
 
-// NewFromConn creates a Client from an existing gRPC connection.
-// This is useful for testing with bufconn or other custom transports.
-func NewFromConn(conn *grpc.ClientConn) *Client {
+func newFromConn(conn *grpc.ClientConn) *Client {
 	return &Client{
-		conn:    conn,
-		cluster: clusterv1.NewClusterServiceClient(conn),
-		booking: bookingv1.NewBookingServiceClient(conn),
+		conn:     conn,
+		cluster:  clusterv1.NewClusterServiceClient(conn),
+		booking:  bookingv1.NewBookingServiceClient(conn),
+		platform: platformv1.NewPlatformServiceClient(conn),
 	}
 }
 
@@ -54,6 +55,11 @@ func (c *Client) Cluster() clusterv1.ClusterServiceClient {
 // Booking returns the BookingService gRPC client.
 func (c *Client) Booking() bookingv1.BookingServiceClient {
 	return c.booking
+}
+
+// Platform returns the PlatformService gRPC client.
+func (c *Client) Platform() platformv1.PlatformServiceClient {
+	return c.platform
 }
 
 // Close closes the underlying gRPC connection.

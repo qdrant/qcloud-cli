@@ -13,10 +13,10 @@ import (
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
-	"github.com/qdrant/qcloud-cli/internal/state/config"
 )
 
 const bufSize = 1024 * 1024
@@ -89,6 +89,31 @@ func (f *FakeBookingService) ListPackages(ctx context.Context, req *bookingv1.Li
 	return f.UnimplementedBookingServiceServer.ListPackages(ctx, req)
 }
 
+// FakePlatformService is a test fake that implements PlatformServiceServer.
+// Set the function fields to control responses per test.
+type FakePlatformService struct {
+	platformv1.UnimplementedPlatformServiceServer
+
+	ListCloudProvidersFunc       func(context.Context, *platformv1.ListCloudProvidersRequest) (*platformv1.ListCloudProvidersResponse, error)
+	ListCloudProviderRegionsFunc func(context.Context, *platformv1.ListCloudProviderRegionsRequest) (*platformv1.ListCloudProviderRegionsResponse, error)
+}
+
+// ListCloudProviders delegates to ListCloudProvidersFunc if set.
+func (f *FakePlatformService) ListCloudProviders(ctx context.Context, req *platformv1.ListCloudProvidersRequest) (*platformv1.ListCloudProvidersResponse, error) {
+	if f.ListCloudProvidersFunc != nil {
+		return f.ListCloudProvidersFunc(ctx, req)
+	}
+	return f.UnimplementedPlatformServiceServer.ListCloudProviders(ctx, req)
+}
+
+// ListCloudProviderRegions delegates to ListCloudProviderRegionsFunc if set.
+func (f *FakePlatformService) ListCloudProviderRegions(ctx context.Context, req *platformv1.ListCloudProviderRegionsRequest) (*platformv1.ListCloudProviderRegionsResponse, error) {
+	if f.ListCloudProviderRegionsFunc != nil {
+		return f.ListCloudProviderRegionsFunc(ctx, req)
+	}
+	return f.UnimplementedPlatformServiceServer.ListCloudProviderRegions(ctx, req)
+}
+
 // RequestCapture is a server-side unary interceptor that records incoming metadata.
 type RequestCapture struct {
 	mu   sync.Mutex
@@ -117,11 +142,12 @@ func (rc *RequestCapture) intercept(
 
 // TestEnv bundles everything a test needs.
 type TestEnv struct {
-	State         *state.State
-	Server        *FakeClusterService
-	BookingServer *FakeBookingService
-	Capture       *RequestCapture
-	Cleanup       func()
+	State          *state.State
+	Server         *FakeClusterService
+	BookingServer  *FakeBookingService
+	PlatformServer *FakePlatformService
+	Capture        *RequestCapture
+	Cleanup        func()
 }
 
 // Option configures a TestEnv.
@@ -146,7 +172,62 @@ func WithAccountID(id string) Option {
 	}
 }
 
-// NewTestEnv creates a test environment with a bufconn-backed gRPC server.
+// newBaseTestEnv sets up the bufconn-backed gRPC server and wires the state,
+// but does not pre-populate any config values. Both public constructors call this.
+func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
+	t.Helper()
+
+	fake := &FakeClusterService{}
+	fakeBooking := &FakeBookingService{}
+	fakePlatform := &FakePlatformService{}
+	capture := &RequestCapture{}
+
+	// Start gRPC server on bufconn.
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer(grpc.UnaryInterceptor(capture.intercept))
+	clusterv1.RegisterClusterServiceServer(srv, fake)
+	bookingv1.RegisterBookingServiceServer(srv, fakeBooking)
+	platformv1.RegisterPlatformServiceServer(srv, fakePlatform)
+
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+
+	// Dial bufconn with auth interceptor (same as production).
+	client, err := qcloudapi.NewWithDialOptions(
+		"passthrough:///bufnet",
+		cfg.apiKey,
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return lis.DialContext(ctx)
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("failed to create test client: %v", err)
+	}
+
+	s := state.New("test")
+	s.SetClient(client)
+
+	return &TestEnv{
+		State:          s,
+		Server:         fake,
+		BookingServer:  fakeBooking,
+		PlatformServer: fakePlatform,
+		Capture:        capture,
+		Cleanup: func() {
+			_ = client.Close()
+			srv.Stop()
+		},
+	}
+}
+
+// NewTestEnv creates a test environment with a bufconn-backed gRPC server and
+// a pre-populated config. account_id and api_key are set via the highest viper
+// priority (Set), so they reliably override any machine environment variables.
+// Use this for testing command behaviour where a valid account ID is needed but
+// its specific source doesn't matter.
+// Defaults: account_id="test-account-id". Override with WithAccountID / WithAPIKey.
 func NewTestEnv(t *testing.T, opts ...Option) *TestEnv {
 	t.Helper()
 
@@ -155,65 +236,21 @@ func NewTestEnv(t *testing.T, opts ...Option) *TestEnv {
 		o(cfg)
 	}
 
-	fake := &FakeClusterService{}
-	fakeBooking := &FakeBookingService{}
-	capture := &RequestCapture{}
+	env := newBaseTestEnv(t, cfg)
+	env.State.Config.SetAccountID(cfg.accountID)
+	env.State.Config.SetAPIKey(cfg.apiKey)
 
-	// Start gRPC server on bufconn.
-	lis := bufconn.Listen(bufSize)
-	srv := grpc.NewServer(grpc.UnaryInterceptor(capture.intercept))
-	clusterv1.RegisterClusterServiceServer(srv, fake)
-	bookingv1.RegisterBookingServiceServer(srv, fakeBooking)
-
-	go func() {
-		_ = srv.Serve(lis)
-	}()
-
-	// Dial bufconn with auth interceptor (same as production).
-	conn, err := grpc.NewClient(
-		"passthrough:///bufnet",
-		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			return lis.DialContext(ctx)
-		}),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(authInterceptor(cfg.apiKey)),
-	)
-	if err != nil {
-		t.Fatalf("failed to dial bufconn: %v", err)
-	}
-
-	client := qcloudapi.NewFromConn(conn)
-
-	s := state.New("test")
-	s.SetClient(client)
-
-	stateCfg := config.New()
-	stateCfg.SetDefault(config.KeyAccountID, cfg.accountID)
-	s.Config = stateCfg
-
-	return &TestEnv{
-		State:         s,
-		Server:        fake,
-		BookingServer: fakeBooking,
-		Capture:       capture,
-		Cleanup: func() {
-			_ = conn.Close()
-			srv.Stop()
-		},
-	}
+	return env
 }
 
-// authInterceptor mirrors the production auth interceptor for test clients.
-func authInterceptor(apiKey string) grpc.UnaryClientInterceptor {
-	return func(
-		ctx context.Context,
-		method string,
-		req, reply any,
-		cc *grpc.ClientConn,
-		invoker grpc.UnaryInvoker,
-		opts ...grpc.CallOption,
-	) error {
-		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "apikey "+apiKey)
-		return invoker(ctx, method, req, reply, cc, opts...)
-	}
+// NewBareTestEnv creates a test environment with a bufconn-backed gRPC server
+// but with no config values pre-populated in viper. Use this when the test
+// itself controls how config is loaded — for example, to verify that account_id
+// is read from a config file, an environment variable, or a CLI flag.
+func NewBareTestEnv(t *testing.T) *TestEnv {
+	t.Helper()
+
+	cfg := &envConfig{}
+	return newBaseTestEnv(t, cfg)
 }
+

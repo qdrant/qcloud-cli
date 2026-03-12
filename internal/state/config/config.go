@@ -130,11 +130,6 @@ func (c *Config) BindPFlag(key string, flag *pflag.Flag) {
 	_ = c.v.BindPFlag(key, flag)
 }
 
-// SetDefault sets a default value for the given key (lowest viper priority).
-func (c *Config) SetDefault(key, value string) {
-	c.v.SetDefault(key, value)
-}
-
 // APIKey returns the management api key from config/env/flags.
 func (c *Config) APIKey() string {
 	return c.v.GetString(KeyAPIKey)
@@ -144,6 +139,21 @@ func (c *Config) APIKey() string {
 func (c *Config) AccountID() string {
 	return c.v.GetString(KeyAccountID)
 }
+
+// SetAPIKey overrides the api key with the highest viper priority.
+// FOR TESTING ONLY: this bypasses the normal config precedence (file → env var → flag)
+// and should not be used in production code paths.
+func (c *Config) SetAPIKey(k string) {
+	c.v.Set(KeyAPIKey, k)
+}
+
+// SetAccountID overrides the account ID with the highest viper priority.
+// FOR TESTING ONLY: this bypasses the normal config precedence (file → env var → flag)
+// and should not be used in production code paths.
+func (c *Config) SetAccountID(id string) {
+	c.v.Set(KeyAccountID, id)
+}
+
 
 // Endpoint returns the API endpoint from config/env/flags.
 func (c *Config) Endpoint() string {
