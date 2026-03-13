@@ -1,3 +1,5 @@
 build/*
 !build/.gitkeep
+dist/*
+!dist/.gitkeep
 bin/
