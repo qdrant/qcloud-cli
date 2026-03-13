@@ -15,7 +15,7 @@ format:
 	$(GOLANGCI_LINT) run --fix
 
 clean:
-	rm -f build/
+	rm -rf build/
 
 bootstrap:
 	@command -v mise > /dev/null 2>&1 || \
