@@ -1,0 +1,28 @@
+name: releaser-pleaser
+
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    types:
+      - edited
+      - labeled
+      - unlabeled
+
+concurrency:
+  group: releaser-pleaser
+  cancel-in-progress: true
+
+jobs:
+  releaser-pleaser:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: releaser-pleaser
+        uses: apricote/releaser-pleaser@v0.8.0
+        with:
+          token: ${{ secrets.RELEASER_PLEASER_TOKEN }}
+          extra-files: |
+            cmd/qcloud/main.go

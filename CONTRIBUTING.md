@@ -24,13 +24,18 @@ make test
 
 ## Building
 
-The cli binary is build in the `./build` directory, this is mostly for building locally.
+The cli binary is built in the `./build` directory, this is mostly for building locally.
 
 ```bash
 make build
 ```
 
-For release for multiple platforms, goreleaser is used in CI.
+## Releasing
+
+The project uses [releaser-pleaser](https://apricote.github.io/releaser-pleaser/introduction.html) to create new releases.
+
+It uses conventional commits to classify changes 
+
 
 ## Conventions
 
