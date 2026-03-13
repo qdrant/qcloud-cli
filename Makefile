@@ -12,7 +12,7 @@ lint:
 	golangci-lint run
 
 format:
-	$(GOLANGCI_LINT) run --fix
+	golangci-lint run --fix
 
 clean:
 	rm -rf build/
