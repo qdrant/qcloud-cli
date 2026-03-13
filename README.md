@@ -77,6 +77,11 @@ qcloud context show
 Pass `--json` to any command for machine-readable output.
 
 
+## Acknowledgements
+
+`qcloud` is inspired by and partially based on [hetznercloud/cli](https://github.com/hetznercloud/cli). Thank you to the Hetzner Cloud team and contributors for building such a well-designed CLI that we could learn from.
+
+
 ## Contributing
 
 If you are interested in contributing follow the instructions in [CONTRIBUTING.md](./CONTRIBUTING.md)
