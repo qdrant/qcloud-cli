@@ -35,7 +35,7 @@ internal/
 | `make test`      | Run all tests                                 |
 | `make lint`      | Run golangci-lint (installs it if missing)    |
 | `make format`    | Run golangci-lint with `--fix`                |
-| `make bootstrap` | Install tool dependencies into `bin/`         |
+| `make bootstrap` | Install tool dependencies via `mise install`  |
 | `make clean`     | Remove build artifacts                        |
 
 To verify your changes, you should run the following makefile targets:

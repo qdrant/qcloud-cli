@@ -5,15 +5,14 @@ This CLI wraps the [qdrant/qdrant-cloud-public-api](https://github.com/qdrant/qd
 
 ## Bootstrapping
 
-The project requires Go 1.26 or later and uses GNU `make` as a wrapper to run tasks for building and testing. Both must be installed before running any other targets.
+Install [mise](https://mise.jdx.dev/installing-mise.html). With it the CLI tools for the project are kept in sync with all contributors.
 
-The `bootstrap` target will download into `./bin` (it's in .gitignore) all the necessary binaries to run the rest of the targets:
+Run 
 ```bash
-make bootstrap
+mise install
 ```
 
-After that, the rest of the targets should be runnable.
-
+All necessary cli tools should be now installed and ready to use.
 
 ## Testing
 
@@ -37,7 +36,9 @@ For release for multiple platforms, goreleaser is used in CI.
 
 ### Command naming
 
-- Multi-word command names must be **kebab-case** (e.g. `version-list`, `cluster-create`). Never use camelCase or snake_case.
+- Command nouns must be in singular (e.g. `cluster` instead of `clusters`).
+- Most action commands should be verbs (e.g. `list`, `describe`, `create`).
+- Multi-word command names must be **kebab-case** (e.g. `cloud-provider`, `cloud-region`). Never use camelCase or snake_case.
 
 ### Subcommand structure
 
