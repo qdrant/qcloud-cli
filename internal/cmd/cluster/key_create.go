@@ -11,6 +11,7 @@ import (
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -99,6 +100,6 @@ func newKeyCreateCommand(s *state.State) *cobra.Command {
 				fmt.Fprintf(out, "  %s\n", k)
 			}
 		},
-		ValidArgsFunction: clusterIDCompletion(s),
+		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 }

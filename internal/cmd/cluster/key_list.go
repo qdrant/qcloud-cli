@@ -9,6 +9,7 @@ import (
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -69,6 +70,6 @@ func newKeyListCommand(s *state.State) *cobra.Command {
 			t.Write(resp.GetItems())
 			return nil
 		},
-		ValidArgsFunction: clusterIDCompletion(s),
+		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 }

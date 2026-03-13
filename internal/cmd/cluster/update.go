@@ -10,6 +10,7 @@ import (
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -70,6 +71,6 @@ func newUpdateCommand(s *state.State) *cobra.Command {
 		PrintResource: func(_ *cobra.Command, out io.Writer, updated *clusterv1.Cluster) {
 			fmt.Fprintf(out, "Cluster %s (%s) updated successfully.\n", updated.GetId(), updated.GetName())
 		},
-		ValidArgsFunction: clusterIDCompletion(s),
+		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 }

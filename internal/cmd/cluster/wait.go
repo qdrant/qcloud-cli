@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -55,6 +56,6 @@ func newWaitCommand(s *state.State) *cobra.Command {
 			}
 			return nil
 		},
-		ValidArgsFunction: clusterIDCompletion(s),
+		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 }
