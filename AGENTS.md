@@ -120,7 +120,7 @@ base.CreateCmd[*foov1.Foo]{
 ```
 
 #### `base.UpdateCmd[T]`
-For updating a resource. Fetches first, then applies changes. Read flags in `Update`, not in `Fetch`.
+For updating a resource. Fetches first, then applies changes.
 ```go
 base.UpdateCmd[*foov1.Foo]{
     BaseCobraCommand: func() *cobra.Command {
