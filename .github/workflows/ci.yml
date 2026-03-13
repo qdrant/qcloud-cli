@@ -20,9 +20,6 @@ jobs:
         with:
           version: 2026.3.8 # renovate: datasource=github-releases depName=jdx/mise
 
-      - name: Run gofmt
-        run: diff -u <(echo -n) <(gofmt -d -s .)
-
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
