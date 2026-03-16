@@ -8,8 +8,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-// backupIDCompletion returns a ValidArgsFunction that completes backup IDs.
-func backupIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+// scheduleIDCompletion returns a ValidArgsFunction that completes backup schedule IDs.
+func scheduleIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
@@ -26,20 +26,16 @@ func backupIDCompletion(s *state.State) func(*cobra.Command, []string, string) (
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		req := &backupv1.ListBackupsRequest{AccountId: accountID}
-		if cmd.Flags().Changed("cluster-id") {
-			clusterID, _ := cmd.Flags().GetString("cluster-id")
-			req.ClusterId = &clusterID
-		}
-
-		resp, err := client.Backup().ListBackups(ctx, req)
+		resp, err := client.Backup().ListBackupSchedules(ctx, &backupv1.ListBackupSchedulesRequest{
+			AccountId: accountID,
+		})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 
 		completions := make([]string, 0, len(resp.GetItems()))
-		for _, b := range resp.GetItems() {
-			completions = append(completions, b.GetId()+"\t"+b.GetName())
+		for _, sched := range resp.GetItems() {
+			completions = append(completions, sched.GetId()+"\tcluster:"+sched.GetClusterId()+" | "+sched.GetSchedule())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
