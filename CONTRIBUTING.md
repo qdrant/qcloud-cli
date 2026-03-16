@@ -32,9 +32,17 @@ make build
 
 ## Releasing
 
-The project uses [releaser-pleaser](https://apricote.github.io/releaser-pleaser/introduction.html) to create new releases.
+The project uses [releaser-pleaser](https://apricote.github.io/releaser-pleaser/introduction.html) to automate releases.
 
-It uses conventional commits to classify changes 
+Releases are driven by [conventional commits](https://www.conventionalcommits.org/). Each commit merged to `main` is classified by its prefix:
+
+- `fix:` patches (e.g. `fix: correct cluster list pagination`)
+- `feat:` minor releases (e.g. `feat: add backup commands`)
+- `feat!:` or `BREAKING CHANGE:` major releases
+
+After merging to `main`, releaser-pleaser opens or updates a "release PR" that bumps the version and updates the changelog. Merging that PR tags the commit and triggers GoReleaser to publish the GitHub release and binaries.
+
+No manual tagging is needed.
 
 
 ## Conventions
