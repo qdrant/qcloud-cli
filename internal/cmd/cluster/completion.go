@@ -128,6 +128,182 @@ func versionCompletion(s *state.State) func(*cobra.Command, []string, string) ([
 	}
 }
 
+// filteredPackages fetches active packages filtered by non-empty cpu/ram/disk/gpu values and the multiAz flag.
+// Returns nil (no completions) if --cloud-provider is not set.
+func filteredPackages(cmd *cobra.Command, s *state.State, cpu, ram, disk, gpu string, multiAz bool) ([]*bookingv1.Package, error) {
+	provider, _ := cmd.Flags().GetString("cloud-provider")
+	if provider == "" {
+		return nil, nil
+	}
+
+	ctx := cmd.Context()
+	client, err := s.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	accountID, err := s.AccountID()
+	if err != nil {
+		return nil, err
+	}
+
+	region, _ := cmd.Flags().GetString("cloud-region")
+	req := &bookingv1.ListPackagesRequest{
+		AccountId:       accountID,
+		CloudProviderId: provider,
+		Statuses:        []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
+	}
+	if region != "" {
+		req.CloudProviderRegionId = &region
+	}
+	if multiAz {
+		req.MultiAz = new(true)
+	}
+
+	resp, err := client.Booking().ListPackages(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*bookingv1.Package
+	for _, p := range resp.GetItems() {
+		rc := p.GetResourceConfiguration()
+		if cpu != "" && rc.GetCpu() != cpu {
+			continue
+		}
+		if ram != "" && rc.GetRam() != ram {
+			continue
+		}
+		if disk != "" && rc.GetDisk() != disk {
+			continue
+		}
+		if gpu != "" && rc.GetGpu() != gpu {
+			continue
+		}
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+// cpuCompletion returns a completion function for the --cpu flag.
+func cpuCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		provider, _ := cmd.Flags().GetString("cloud-provider")
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		ram, _ := cmd.Flags().GetString("ram")
+		disk, _ := cmd.Flags().GetString("disk")
+		gpu, _ := cmd.Flags().GetString("gpu")
+		multiAz, _ := cmd.Flags().GetBool("multi-az")
+		pkgs, err := filteredPackages(cmd, s, "", ram, disk, gpu, multiAz)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		seen := make(map[string]struct{})
+		var completions []string
+		for _, p := range pkgs {
+			v := p.GetResourceConfiguration().GetCpu()
+			if _, ok := seen[v]; !ok {
+				seen[v] = struct{}{}
+				completions = append(completions, v)
+			}
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// ramCompletion returns a completion function for the --ram flag.
+func ramCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		provider, _ := cmd.Flags().GetString("cloud-provider")
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		cpu, _ := cmd.Flags().GetString("cpu")
+		disk, _ := cmd.Flags().GetString("disk")
+		gpu, _ := cmd.Flags().GetString("gpu")
+		multiAz, _ := cmd.Flags().GetBool("multi-az")
+		pkgs, err := filteredPackages(cmd, s, cpu, "", disk, gpu, multiAz)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		seen := make(map[string]struct{})
+		var completions []string
+		for _, p := range pkgs {
+			v := p.GetResourceConfiguration().GetRam()
+			if _, ok := seen[v]; !ok {
+				seen[v] = struct{}{}
+				completions = append(completions, v)
+			}
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// diskCompletion returns a completion function for the --disk flag.
+func diskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		provider, _ := cmd.Flags().GetString("cloud-provider")
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		cpu, _ := cmd.Flags().GetString("cpu")
+		ram, _ := cmd.Flags().GetString("ram")
+		gpu, _ := cmd.Flags().GetString("gpu")
+		multiAz, _ := cmd.Flags().GetBool("multi-az")
+		pkgs, err := filteredPackages(cmd, s, cpu, ram, "", gpu, multiAz)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		seen := make(map[string]struct{})
+		var completions []string
+		for _, p := range pkgs {
+			v := p.GetResourceConfiguration().GetDisk()
+			if _, ok := seen[v]; !ok {
+				seen[v] = struct{}{}
+				completions = append(completions, v)
+			}
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// gpuCompletion returns a completion function for the --gpu flag.
+func gpuCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		provider, _ := cmd.Flags().GetString("cloud-provider")
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		cpu, _ := cmd.Flags().GetString("cpu")
+		ram, _ := cmd.Flags().GetString("ram")
+		disk, _ := cmd.Flags().GetString("disk")
+		multiAz, _ := cmd.Flags().GetBool("multi-az")
+		pkgs, err := filteredPackages(cmd, s, cpu, ram, disk, "", multiAz)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		seen := make(map[string]struct{})
+		var completions []string
+		for _, p := range pkgs {
+			v := p.GetResourceConfiguration().GetGpu()
+			if v == "" {
+				continue
+			}
+			if _, ok := seen[v]; !ok {
+				seen[v] = struct{}{}
+				completions = append(completions, v)
+			}
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
 // packageCompletion returns a completion function for the --package flag.
 func packageCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

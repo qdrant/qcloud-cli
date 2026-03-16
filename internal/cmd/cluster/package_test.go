@@ -24,7 +24,9 @@ func TestListPackages_TableOutput(t *testing.T) {
 					Ram:  "1GiB",
 					Cpu:  "0.5",
 					Disk: "10GiB",
+					Gpu:  new("1000m"),
 				},
+				MultiAz:             true,
 				UnitIntPricePerHour: 5000,
 				Currency:            "USD",
 			},
@@ -39,10 +41,14 @@ func TestListPackages_TableOutput(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "NAME")
 	assert.Contains(t, stdout, "TIER")
+	assert.Contains(t, stdout, "GPU")
+	assert.Contains(t, stdout, "MULTI-AZ")
 	assert.Contains(t, stdout, "PRICE/HR")
 	assert.Contains(t, stdout, "starter")
 	assert.Contains(t, stdout, "STANDARD")
 	assert.Contains(t, stdout, "1GiB")
+	assert.Contains(t, stdout, "1000m")
+	assert.Contains(t, stdout, "yes")
 	assert.Contains(t, stdout, "0.0500 USD")
 }
 
