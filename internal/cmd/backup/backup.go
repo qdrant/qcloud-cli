@@ -22,6 +22,8 @@ func NewCommand(s *state.State) *cobra.Command {
 		newDescribeCommand(s),
 		newCreateCommand(s),
 		newDeleteCommand(s),
+		newRestoreCommand(s),
+		newScheduleCommand(s),
 	)
 	return cmd
 }
@@ -29,4 +31,14 @@ func NewCommand(s *state.State) *cobra.Command {
 // backupStatusString returns a concise status label for a BackupStatus.
 func backupStatusString(s backupv1.BackupStatus) string {
 	return strings.TrimPrefix(s.String(), "BACKUP_STATUS_")
+}
+
+// scheduleStatusString returns a concise status label for a BackupScheduleStatus.
+func scheduleStatusString(s backupv1.BackupScheduleStatus) string {
+	return strings.TrimPrefix(s.String(), "BACKUP_SCHEDULE_STATUS_")
+}
+
+// restoreStatusString returns a concise status label for a BackupRestoreStatus.
+func restoreStatusString(s backupv1.BackupRestoreStatus) string {
+	return strings.TrimPrefix(s.String(), "BACKUP_RESTORE_STATUS_")
 }

@@ -8,28 +8,28 @@ import (
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
-	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-func newDeleteCommand(s *state.State) *cobra.Command {
+func newScheduleDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
-				Use:   "delete <backup-id>",
-				Short: "Delete a backup",
-				Args:  util.ExactArgs(1, "a backup ID"),
+				Use:   "delete <schedule-id>",
+				Short: "Delete a backup schedule",
+				Args:  util.ExactArgs(1, "a schedule ID"),
 			}
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
+			cmd.Flags().Bool("delete-backups", false, "Also delete all backups created by this schedule")
 			return cmd
 		},
-		ValidArgsFunction: completion.BackupIDCompletion(s),
+		ValidArgsFunction: scheduleIDCompletion(s),
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
-			backupID := args[0]
+			scheduleID := args[0]
 
 			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to delete backup %s?", backupID)) {
+			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to delete backup schedule %s?", scheduleID)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
 			}
@@ -45,15 +45,20 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 				return err
 			}
 
-			_, err = client.Backup().DeleteBackup(ctx, &backupv1.DeleteBackupRequest{
-				AccountId: accountID,
-				BackupId:  backupID,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to delete backup: %w", err)
+			deleteBackups, _ := cmd.Flags().GetBool("delete-backups")
+
+			req := &backupv1.DeleteBackupScheduleRequest{
+				AccountId:        accountID,
+				BackupScheduleId: scheduleID,
+				DeleteBackups:    &deleteBackups,
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Backup %s deleted.\n", backupID)
+			_, err = client.Backup().DeleteBackupSchedule(ctx, req)
+			if err != nil {
+				return fmt.Errorf("failed to delete backup schedule: %w", err)
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "Backup schedule %s deleted.\n", scheduleID)
 			return nil
 		},
 	}.CobraCommand(s)

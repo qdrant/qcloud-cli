@@ -9,6 +9,7 @@ import (
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -19,7 +20,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 		Use:               "describe <backup-id>",
 		Short:             "Describe a backup",
 		Args:              util.ExactArgs(1, "a backup ID"),
-		ValidArgsFunction: backupIDCompletion(s),
+		ValidArgsFunction: completion.BackupIDCompletion(s),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*backupv1.Backup, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)

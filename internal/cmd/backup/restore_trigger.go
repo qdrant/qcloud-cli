@@ -13,12 +13,12 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-func newDeleteCommand(s *state.State) *cobra.Command {
+func newRestoreTriggerCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
-				Use:   "delete <backup-id>",
-				Short: "Delete a backup",
+				Use:   "trigger <backup-id>",
+				Short: "Trigger a restore from a backup",
 				Args:  util.ExactArgs(1, "a backup ID"),
 			}
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
@@ -29,7 +29,7 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 			backupID := args[0]
 
 			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to delete backup %s?", backupID)) {
+			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to restore backup %s?", backupID)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
 			}
@@ -45,15 +45,15 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 				return err
 			}
 
-			_, err = client.Backup().DeleteBackup(ctx, &backupv1.DeleteBackupRequest{
+			_, err = client.Backup().RestoreBackup(ctx, &backupv1.RestoreBackupRequest{
 				AccountId: accountID,
 				BackupId:  backupID,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to delete backup: %w", err)
+				return fmt.Errorf("failed to restore backup: %w", err)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Backup %s deleted.\n", backupID)
+			fmt.Fprintf(cmd.OutOrStdout(), "Restore of backup %s started.\n", backupID)
 			return nil
 		},
 	}.CobraCommand(s)
