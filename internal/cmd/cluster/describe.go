@@ -93,6 +93,10 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 						fmt.Fprintf(w, "  CPU:   %s base, %s reserved, %s available\n",
 							formatMillicores(cpu.GetBase()), formatMillicores(cpu.GetReserved()), formatMillicores(cpu.GetAvailable()))
 					}
+					if gpu := res.GetGpu(); gpu != nil {
+						fmt.Fprintf(w, "  GPU:   %s base, %s reserved, %s available\n",
+							formatMillicores(gpu.GetBase()), formatMillicores(gpu.GetReserved()), formatMillicores(gpu.GetAvailable()))
+					}
 				}
 
 				if nodes := st.GetNodes(); len(nodes) > 0 {

@@ -83,6 +83,17 @@ func newPackageListCommand(s *state.State) *cobra.Command {
 				}
 				return ""
 			})
+			t.AddField("GPU", func(p *bookingv1.Package) string {
+				if rc := p.GetResourceConfiguration(); rc != nil {
+					if v := rc.GetGpu(); v != "" {
+						return v
+					}
+				}
+				return "n/a"
+			})
+			t.AddField("MULTI-AZ", func(p *bookingv1.Package) string {
+				return boolToYesNo(p.GetMultiAz())
+			})
 			t.AddField("PRICE/HR", func(p *bookingv1.Package) string {
 				return formatMillicents(p.GetUnitIntPricePerHour(), p.GetCurrency())
 			})

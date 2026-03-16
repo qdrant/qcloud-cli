@@ -1,6 +1,7 @@
 package cluster_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -122,6 +123,99 @@ func TestVersionCompletion(t *testing.T) {
 	assert.Contains(t, stdout, "1.11.0")
 	assert.Contains(t, stdout, "upgrade recommended")
 	assert.NotContains(t, stdout, "1.12.0")
+}
+
+func TestCPUCompletion(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
+			{Id: "pkg-3", Name: "enterprise", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "2GiB", Disk: "200GiB"}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "500m")
+	assert.Contains(t, stdout, "1000m")
+	// Deduplication: 1000m appears twice in packages but once in completions.
+	count := strings.Count(stdout, "1000m")
+	assert.Equal(t, 1, count, "1000m should appear only once")
+}
+
+func TestCPUCompletion_FilteredByRAM(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--ram", "1GiB", "--cpu", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "1000m")
+	assert.NotContains(t, stdout, "500m")
+}
+
+func TestRAMCompletion_FilteredByCPU(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "500m", "--ram", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "512MiB")
+	assert.NotContains(t, stdout, "1GiB")
+}
+
+func TestDiskCompletion_FilteredByCPUAndRAM(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
+			{Id: "pkg-3", Name: "enterprise", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "200GiB"}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "1000m", "--ram", "1GiB", "--disk", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "100GiB")
+	assert.Contains(t, stdout, "200GiB")
+	assert.NotContains(t, stdout, "50GiB")
+}
+
+func TestGPUCompletion(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "gpu-small", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Gpu: new("1000m")}},
+			{Id: "pkg-2", Name: "gpu-large", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "2000m", Gpu: new("2000m")}},
+			{Id: "pkg-3", Name: "cpu-only", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m"}},
+			{Id: "pkg-4", Name: "gpu-dup", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "4000m", Gpu: new("1000m")}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--gpu", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "1000m")
+	assert.Contains(t, stdout, "2000m")
+	// Packages without GPU should not appear.
+	assert.NotContains(t, stdout, "500m")
+	// Deduplication: 1000m appears in two packages but once in completions.
+	count := strings.Count(stdout, "1000m")
+	assert.Equal(t, 1, count, "1000m should appear only once")
 }
 
 func TestVersionCompletion_UnavailableExcluded(t *testing.T) {
