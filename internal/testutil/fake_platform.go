@@ -13,20 +13,25 @@ type FakePlatformService struct {
 
 	ListCloudProvidersFunc       func(context.Context, *platformv1.ListCloudProvidersRequest) (*platformv1.ListCloudProvidersResponse, error)
 	ListCloudProviderRegionsFunc func(context.Context, *platformv1.ListCloudProviderRegionsRequest) (*platformv1.ListCloudProviderRegionsResponse, error)
+
+	ListCloudProvidersCalls       MethodSpy[*platformv1.ListCloudProvidersRequest, *platformv1.ListCloudProvidersResponse]
+	ListCloudProviderRegionsCalls MethodSpy[*platformv1.ListCloudProviderRegionsRequest, *platformv1.ListCloudProviderRegionsResponse]
 }
 
-// ListCloudProviders delegates to ListCloudProvidersFunc if set.
+// ListCloudProviders delegates to ListCloudProvidersFunc if set, otherwise dispatches via ListCloudProvidersCalls.
 func (f *FakePlatformService) ListCloudProviders(ctx context.Context, req *platformv1.ListCloudProvidersRequest) (*platformv1.ListCloudProvidersResponse, error) {
+	f.ListCloudProvidersCalls.record(req)
 	if f.ListCloudProvidersFunc != nil {
 		return f.ListCloudProvidersFunc(ctx, req)
 	}
-	return f.UnimplementedPlatformServiceServer.ListCloudProviders(ctx, req)
+	return f.ListCloudProvidersCalls.dispatch(ctx, req, f.UnimplementedPlatformServiceServer.ListCloudProviders)
 }
 
-// ListCloudProviderRegions delegates to ListCloudProviderRegionsFunc if set.
+// ListCloudProviderRegions delegates to ListCloudProviderRegionsFunc if set, otherwise dispatches via ListCloudProviderRegionsCalls.
 func (f *FakePlatformService) ListCloudProviderRegions(ctx context.Context, req *platformv1.ListCloudProviderRegionsRequest) (*platformv1.ListCloudProviderRegionsResponse, error) {
+	f.ListCloudProviderRegionsCalls.record(req)
 	if f.ListCloudProviderRegionsFunc != nil {
 		return f.ListCloudProviderRegionsFunc(ctx, req)
 	}
-	return f.UnimplementedPlatformServiceServer.ListCloudProviderRegions(ctx, req)
+	return f.ListCloudProviderRegionsCalls.dispatch(ctx, req, f.UnimplementedPlatformServiceServer.ListCloudProviderRegions)
 }

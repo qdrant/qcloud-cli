@@ -141,6 +141,15 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	s := state.New(cfg.version)
 	s.SetClient(client)
 
+	var once sync.Once
+	cleanup := func() {
+		once.Do(func() {
+			_ = client.Close()
+			srv.Stop()
+		})
+	}
+	t.Cleanup(cleanup)
+
 	return &TestEnv{
 		State:                s,
 		Server:               fake,
@@ -149,10 +158,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		DatabaseApiKeyServer: fakeDatabaseApiKey,
 		BackupServer:         fakeBackup,
 		Capture:              capture,
-		Cleanup: func() {
-			_ = client.Close()
-			srv.Stop()
-		},
+		Cleanup:              cleanup,
 	}
 }
 

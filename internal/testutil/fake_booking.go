@@ -12,12 +12,15 @@ type FakeBookingService struct {
 	bookingv1.UnimplementedBookingServiceServer
 
 	ListPackagesFunc func(context.Context, *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error)
+
+	ListPackagesCalls MethodSpy[*bookingv1.ListPackagesRequest, *bookingv1.ListPackagesResponse]
 }
 
-// ListPackages delegates to ListPackagesFunc if set.
+// ListPackages delegates to ListPackagesFunc if set, otherwise dispatches via ListPackagesCalls.
 func (f *FakeBookingService) ListPackages(ctx context.Context, req *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
+	f.ListPackagesCalls.record(req)
 	if f.ListPackagesFunc != nil {
 		return f.ListPackagesFunc(ctx, req)
 	}
-	return f.UnimplementedBookingServiceServer.ListPackages(ctx, req)
+	return f.ListPackagesCalls.dispatch(ctx, req, f.UnimplementedBookingServiceServer.ListPackages)
 }
