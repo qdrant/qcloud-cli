@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -16,11 +15,9 @@ import (
 
 func TestScheduleList_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.ListBackupSchedulesFunc = func(_ context.Context, req *backupv1.ListBackupSchedulesRequest) (*backupv1.ListBackupSchedulesResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetAccountId())
-		return &backupv1.ListBackupSchedulesResponse{
+	env.BackupServer.ListBackupSchedulesCalls.Returns(
+		&backupv1.ListBackupSchedulesResponse{
 			Items: []*backupv1.BackupSchedule{
 				{
 					Id:        "schedule-1",
@@ -30,11 +27,14 @@ func TestScheduleList_TableOutput(t *testing.T) {
 					CreatedAt: timestamppb.Now(),
 				},
 			},
-		}, nil
-	}
+		},
+		nil,
+	)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "list")
 	require.NoError(t, err)
+	req, _ := env.BackupServer.ListBackupSchedulesCalls.Last()
+	assert.Equal(t, "test-account-id", req.GetAccountId())
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "CLUSTER")
 	assert.Contains(t, stdout, "SCHEDULE")
@@ -48,15 +48,15 @@ func TestScheduleList_TableOutput(t *testing.T) {
 
 func TestScheduleList_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.ListBackupSchedulesFunc = func(_ context.Context, _ *backupv1.ListBackupSchedulesRequest) (*backupv1.ListBackupSchedulesResponse, error) {
-		return &backupv1.ListBackupSchedulesResponse{
+	env.BackupServer.ListBackupSchedulesCalls.Returns(
+		&backupv1.ListBackupSchedulesResponse{
 			Items: []*backupv1.BackupSchedule{
 				{Id: "schedule-json", Schedule: "0 3 * * *"},
 			},
-		}, nil
-	}
+		},
+		nil,
+	)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "list", "--json")
 	require.NoError(t, err)
@@ -75,11 +75,8 @@ func TestScheduleList_JSONOutput(t *testing.T) {
 
 func TestScheduleList_EmptyResponse(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.ListBackupSchedulesFunc = func(_ context.Context, _ *backupv1.ListBackupSchedulesRequest) (*backupv1.ListBackupSchedulesResponse, error) {
-		return &backupv1.ListBackupSchedulesResponse{}, nil
-	}
+	env.BackupServer.ListBackupSchedulesCalls.Returns(&backupv1.ListBackupSchedulesResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "list")
 	require.NoError(t, err)
@@ -89,15 +86,11 @@ func TestScheduleList_EmptyResponse(t *testing.T) {
 
 func TestScheduleList_ClusterIDFilter(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var capturedClusterID string
-	env.BackupServer.ListBackupSchedulesFunc = func(_ context.Context, req *backupv1.ListBackupSchedulesRequest) (*backupv1.ListBackupSchedulesResponse, error) {
-		capturedClusterID = req.GetClusterId()
-		return &backupv1.ListBackupSchedulesResponse{}, nil
-	}
+	env.BackupServer.ListBackupSchedulesCalls.Returns(&backupv1.ListBackupSchedulesResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "list", "--cluster-id=my-cluster")
 	require.NoError(t, err)
-	assert.Equal(t, "my-cluster", capturedClusterID)
+	req, _ := env.BackupServer.ListBackupSchedulesCalls.Last()
+	assert.Equal(t, "my-cluster", req.GetClusterId())
 }

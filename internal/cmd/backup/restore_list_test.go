@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -16,11 +15,9 @@ import (
 
 func TestRestoreList_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.ListBackupRestoresFunc = func(_ context.Context, req *backupv1.ListBackupRestoresRequest) (*backupv1.ListBackupRestoresResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetAccountId())
-		return &backupv1.ListBackupRestoresResponse{
+	env.BackupServer.ListBackupRestoresCalls.Returns(
+		&backupv1.ListBackupRestoresResponse{
 			Items: []*backupv1.BackupRestore{
 				{
 					Id:        "restore-1",
@@ -30,11 +27,14 @@ func TestRestoreList_TableOutput(t *testing.T) {
 					CreatedAt: timestamppb.Now(),
 				},
 			},
-		}, nil
-	}
+		},
+		nil,
+	)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "restore", "list")
 	require.NoError(t, err)
+	req, _ := env.BackupServer.ListBackupRestoresCalls.Last()
+	assert.Equal(t, "test-account-id", req.GetAccountId())
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "BACKUP")
 	assert.Contains(t, stdout, "CLUSTER")
@@ -46,15 +46,15 @@ func TestRestoreList_TableOutput(t *testing.T) {
 
 func TestRestoreList_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.ListBackupRestoresFunc = func(_ context.Context, _ *backupv1.ListBackupRestoresRequest) (*backupv1.ListBackupRestoresResponse, error) {
-		return &backupv1.ListBackupRestoresResponse{
+	env.BackupServer.ListBackupRestoresCalls.Returns(
+		&backupv1.ListBackupRestoresResponse{
 			Items: []*backupv1.BackupRestore{
 				{Id: "restore-json", BackupId: "backup-123"},
 			},
-		}, nil
-	}
+		},
+		nil,
+	)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "restore", "list", "--json")
 	require.NoError(t, err)
@@ -73,11 +73,8 @@ func TestRestoreList_JSONOutput(t *testing.T) {
 
 func TestRestoreList_EmptyResponse(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.ListBackupRestoresFunc = func(_ context.Context, _ *backupv1.ListBackupRestoresRequest) (*backupv1.ListBackupRestoresResponse, error) {
-		return &backupv1.ListBackupRestoresResponse{}, nil
-	}
+	env.BackupServer.ListBackupRestoresCalls.Returns(&backupv1.ListBackupRestoresResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "restore", "list")
 	require.NoError(t, err)
@@ -87,11 +84,8 @@ func TestRestoreList_EmptyResponse(t *testing.T) {
 
 func TestRestoreList_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.ListBackupRestoresFunc = func(_ context.Context, _ *backupv1.ListBackupRestoresRequest) (*backupv1.ListBackupRestoresResponse, error) {
-		return nil, assert.AnError
-	}
+	env.BackupServer.ListBackupRestoresCalls.Returns(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "backup", "restore", "list")
 	require.Error(t, err)
@@ -99,15 +93,11 @@ func TestRestoreList_APIError(t *testing.T) {
 
 func TestRestoreList_ClusterIDFilter(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var capturedClusterID string
-	env.BackupServer.ListBackupRestoresFunc = func(_ context.Context, req *backupv1.ListBackupRestoresRequest) (*backupv1.ListBackupRestoresResponse, error) {
-		capturedClusterID = req.GetClusterId()
-		return &backupv1.ListBackupRestoresResponse{}, nil
-	}
+	env.BackupServer.ListBackupRestoresCalls.Returns(&backupv1.ListBackupRestoresResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env, "backup", "restore", "list", "--cluster-id=my-cluster")
 	require.NoError(t, err)
-	assert.Equal(t, "my-cluster", capturedClusterID)
+	req, _ := env.BackupServer.ListBackupRestoresCalls.Last()
+	assert.Equal(t, "my-cluster", req.GetClusterId())
 }

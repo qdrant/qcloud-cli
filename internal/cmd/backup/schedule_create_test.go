@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -15,53 +14,55 @@ import (
 
 func TestScheduleCreate_Success(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.CreateBackupScheduleFunc = func(_ context.Context, req *backupv1.CreateBackupScheduleRequest) (*backupv1.CreateBackupScheduleResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetBackupSchedule().GetAccountId())
-		assert.Equal(t, "cluster-abc", req.GetBackupSchedule().GetClusterId())
-		assert.Equal(t, "0 2 * * *", req.GetBackupSchedule().GetSchedule())
-		return &backupv1.CreateBackupScheduleResponse{
+	env.BackupServer.CreateBackupScheduleCalls.Returns(
+		&backupv1.CreateBackupScheduleResponse{
 			BackupSchedule: &backupv1.BackupSchedule{Id: "schedule-new", ClusterId: "cluster-abc"},
-		}, nil
-	}
+		},
+		nil,
+	)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
 		"--cluster-id=cluster-abc", "--schedule=0 2 * * *", "--retention-days=30")
 	require.NoError(t, err)
+	req, _ := env.BackupServer.CreateBackupScheduleCalls.Last()
+	assert.Equal(t, "test-account-id", req.GetBackupSchedule().GetAccountId())
+	assert.Equal(t, "cluster-abc", req.GetBackupSchedule().GetClusterId())
+	assert.Equal(t, "0 2 * * *", req.GetBackupSchedule().GetSchedule())
 	assert.Contains(t, stdout, "schedule-new")
 	assert.Contains(t, stdout, "cluster-abc")
 }
 
 func TestScheduleCreate_WithRetention(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var capturedRetentionDays int64
-	env.BackupServer.CreateBackupScheduleFunc = func(_ context.Context, req *backupv1.CreateBackupScheduleRequest) (*backupv1.CreateBackupScheduleResponse, error) {
-		if req.GetBackupSchedule().GetRetentionPeriod() != nil {
-			capturedRetentionDays = int64(req.GetBackupSchedule().GetRetentionPeriod().AsDuration().Hours()) / 24
-		}
-		return &backupv1.CreateBackupScheduleResponse{
+	env.BackupServer.CreateBackupScheduleCalls.Returns(
+		&backupv1.CreateBackupScheduleResponse{
 			BackupSchedule: &backupv1.BackupSchedule{Id: "schedule-ret", ClusterId: "cluster-abc"},
-		}, nil
-	}
+		},
+		nil,
+	)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
 		"--cluster-id=cluster-abc", "--schedule=0 2 * * *", "--retention-days=30")
 	require.NoError(t, err)
-	assert.Equal(t, int64(30), capturedRetentionDays)
+	req, _ := env.BackupServer.CreateBackupScheduleCalls.Last()
+	var retentionDays int64
+	if req.GetBackupSchedule().GetRetentionPeriod() != nil {
+		retentionDays = int64(req.GetBackupSchedule().GetRetentionPeriod().AsDuration().Hours()) / 24
+	}
+	assert.Equal(t, int64(30), retentionDays)
 }
 
 func TestScheduleCreate_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.CreateBackupScheduleFunc = func(_ context.Context, _ *backupv1.CreateBackupScheduleRequest) (*backupv1.CreateBackupScheduleResponse, error) {
-		return &backupv1.CreateBackupScheduleResponse{
+	env.BackupServer.CreateBackupScheduleCalls.Returns(
+		&backupv1.CreateBackupScheduleResponse{
 			BackupSchedule: &backupv1.BackupSchedule{Id: "schedule-json", Schedule: "0 5 * * *"},
-		}, nil
-	}
+		},
+		nil,
+	)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
 		"--cluster-id=cluster-abc", "--schedule=0 5 * * *", "--retention-days=30", "--json")
@@ -77,7 +78,6 @@ func TestScheduleCreate_JSONOutput(t *testing.T) {
 
 func TestScheduleCreate_InvalidRetention(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
 		"--cluster-id=cluster-abc", "--schedule=0 2 * * *", "--retention-days=0")
@@ -86,7 +86,6 @@ func TestScheduleCreate_InvalidRetention(t *testing.T) {
 
 func TestScheduleCreate_MissingFlags(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create", "--cluster-id=cluster-abc")
 	require.Error(t, err)
@@ -94,7 +93,6 @@ func TestScheduleCreate_MissingFlags(t *testing.T) {
 
 func TestScheduleCreate_MissingClusterID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
 		"--schedule=0 2 * * *", "--retention-days=30")
@@ -103,7 +101,6 @@ func TestScheduleCreate_MissingClusterID(t *testing.T) {
 
 func TestScheduleCreate_MissingRetentionDays(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
 		"--cluster-id=cluster-abc", "--schedule=0 2 * * *")

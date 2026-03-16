@@ -28,6 +28,13 @@ func (m *MethodSpy[Req, Resp]) OnCall(i int, fn func(context.Context, Req) (Resp
 	return m
 }
 
+// Returns sets a fixed response returned for every call (shorthand for Always with a constant return).
+func (m *MethodSpy[Req, Resp]) Returns(resp Resp, err error) *MethodSpy[Req, Resp] {
+	return m.Always(func(_ context.Context, _ Req) (Resp, error) {
+		return resp, err
+	})
+}
+
 // Always sets a fallback handler invoked for every call that has no matching OnCall entry.
 // If neither OnCall nor Always is set the method falls back to the gRPC Unimplemented default.
 func (m *MethodSpy[Req, Resp]) Always(fn func(context.Context, Req) (Resp, error)) *MethodSpy[Req, Resp] {
