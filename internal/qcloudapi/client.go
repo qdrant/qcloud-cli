@@ -9,6 +9,7 @@ import (
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
+	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 )
@@ -20,6 +21,7 @@ type Client struct {
 	booking        bookingv1.BookingServiceClient
 	platform       platformv1.PlatformServiceClient
 	databaseApiKey clusterauthv2.DatabaseApiKeyServiceClient
+	backup         backupv1.BackupServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -48,6 +50,7 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 		booking:        bookingv1.NewBookingServiceClient(conn),
 		platform:       platformv1.NewPlatformServiceClient(conn),
 		databaseApiKey: clusterauthv2.NewDatabaseApiKeyServiceClient(conn),
+		backup:         backupv1.NewBackupServiceClient(conn),
 	}
 }
 
@@ -69,6 +72,11 @@ func (c *Client) Platform() platformv1.PlatformServiceClient {
 // DatabaseApiKey returns the DatabaseApiKeyService gRPC client.
 func (c *Client) DatabaseApiKey() clusterauthv2.DatabaseApiKeyServiceClient {
 	return c.databaseApiKey
+}
+
+// Backup returns the BackupService gRPC client.
+func (c *Client) Backup() backupv1.BackupServiceClient {
+	return c.backup
 }
 
 // Close closes the underlying gRPC connection.

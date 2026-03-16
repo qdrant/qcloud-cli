@@ -13,6 +13,7 @@ import (
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
+	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 
@@ -55,6 +56,7 @@ type TestEnv struct {
 	BookingServer        *FakeBookingService
 	PlatformServer       *FakePlatformService
 	DatabaseApiKeyServer *FakeDatabaseApiKeyService
+	BackupServer         *FakeBackupService
 	Capture              *RequestCapture
 	Cleanup              func()
 }
@@ -96,6 +98,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fakeBooking := &FakeBookingService{}
 	fakePlatform := &FakePlatformService{}
 	fakeDatabaseApiKey := &FakeDatabaseApiKeyService{}
+	fakeBackup := &FakeBackupService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -105,6 +108,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	bookingv1.RegisterBookingServiceServer(srv, fakeBooking)
 	platformv1.RegisterPlatformServiceServer(srv, fakePlatform)
 	clusterauthv2.RegisterDatabaseApiKeyServiceServer(srv, fakeDatabaseApiKey)
+	backupv1.RegisterBackupServiceServer(srv, fakeBackup)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -143,6 +147,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		BookingServer:        fakeBooking,
 		PlatformServer:       fakePlatform,
 		DatabaseApiKeyServer: fakeDatabaseApiKey,
+		BackupServer:         fakeBackup,
 		Capture:              capture,
 		Cleanup: func() {
 			_ = client.Close()

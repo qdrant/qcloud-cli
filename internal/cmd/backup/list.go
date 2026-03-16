@@ -1,0 +1,73 @@
+package backup
+
+import (
+	"fmt"
+	"io"
+
+	"github.com/spf13/cobra"
+
+	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
+
+	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/state"
+)
+
+func newListCommand(s *state.State) *cobra.Command {
+	cmd := base.ListCmd[*backupv1.ListBackupsResponse]{
+		Use:   "list",
+		Short: "List backups",
+		Fetch: func(s *state.State, cmd *cobra.Command) (*backupv1.ListBackupsResponse, error) {
+			ctx := cmd.Context()
+			client, err := s.Client(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			accountID, err := s.AccountID()
+			if err != nil {
+				return nil, err
+			}
+
+			req := &backupv1.ListBackupsRequest{AccountId: accountID}
+			if cmd.Flags().Changed("cluster-id") {
+				clusterID, _ := cmd.Flags().GetString("cluster-id")
+				req.ClusterId = &clusterID
+			}
+
+			resp, err := client.Backup().ListBackups(ctx, req)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list backups: %w", err)
+			}
+			return resp, nil
+		},
+		PrintText: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupsResponse) error {
+			t := output.NewTable[*backupv1.Backup](w)
+			t.AddField("ID", func(v *backupv1.Backup) string {
+				return v.GetId()
+			})
+			t.AddField("NAME", func(v *backupv1.Backup) string {
+				return v.GetName()
+			})
+			t.AddField("CLUSTER", func(v *backupv1.Backup) string {
+				return v.GetClusterId()
+			})
+			t.AddField("STATUS", func(v *backupv1.Backup) string {
+				return backupStatusString(v.GetStatus())
+			})
+			t.AddField("CREATED", func(v *backupv1.Backup) string {
+				if v.GetCreatedAt() != nil {
+					return output.HumanTime(v.GetCreatedAt().AsTime())
+				}
+				return ""
+			})
+			t.Write(resp.GetItems())
+			return nil
+		},
+	}.CobraCommand(s)
+
+	cmd.Flags().String("cluster-id", "", "Filter by cluster ID")
+	_ = cmd.RegisterFlagCompletionFunc("cluster-id", completion.ClusterIDCompletion(s))
+	return cmd
+}
