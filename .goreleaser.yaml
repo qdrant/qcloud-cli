@@ -38,9 +38,4 @@ snapshot:
   version_template: "{{ .Tag }}-next"
 
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
+  disable: true

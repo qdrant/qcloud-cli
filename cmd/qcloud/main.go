@@ -9,7 +9,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-var version = "dev"
+var version = "dev" // x-releaser-pleaser-version
 
 func main() {
 	ctx := context.Background()

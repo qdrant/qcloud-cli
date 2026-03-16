@@ -24,13 +24,26 @@ make test
 
 ## Building
 
-The cli binary is build in the `./build` directory, this is mostly for building locally.
+The cli binary is built in the `./build` directory, this is mostly for building locally.
 
 ```bash
 make build
 ```
 
-For release for multiple platforms, goreleaser is used in CI.
+## Releasing
+
+The project uses [releaser-pleaser](https://apricote.github.io/releaser-pleaser/introduction.html) to automate releases.
+
+Releases are driven by [conventional commits](https://www.conventionalcommits.org/). Each commit merged to `main` is classified by its prefix:
+
+- `fix:` patches (e.g. `fix: correct cluster list pagination`)
+- `feat:` minor releases (e.g. `feat: add backup commands`)
+- `feat!:` or `BREAKING CHANGE:` major releases
+
+After merging to `main`, releaser-pleaser opens or updates a "release PR" that bumps the version and updates the changelog. Merging that PR tags the commit and triggers GoReleaser to publish the GitHub release and binaries.
+
+No manual tagging is needed.
+
 
 ## Conventions
 
