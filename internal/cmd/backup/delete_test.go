@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,29 +13,24 @@ import (
 
 func TestBackupDelete_WithForce(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var capturedBackupID string
-	env.BackupServer.DeleteBackupFunc = func(_ context.Context, req *backupv1.DeleteBackupRequest) (*backupv1.DeleteBackupResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetAccountId())
-		capturedBackupID = req.GetBackupId()
-		return &backupv1.DeleteBackupResponse{}, nil
-	}
+	env.BackupServer.DeleteBackupCalls.Returns(&backupv1.DeleteBackupResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "delete", "backup-abc", "--force")
 	require.NoError(t, err)
-	assert.Equal(t, "backup-abc", capturedBackupID)
+
+	req, ok := env.BackupServer.DeleteBackupCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "test-account-id", req.GetAccountId())
+	assert.Equal(t, "backup-abc", req.GetBackupId())
 	assert.Contains(t, stdout, "backup-abc")
 	assert.Contains(t, stdout, "deleted")
 }
 
 func TestBackupDelete_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.DeleteBackupFunc = func(_ context.Context, _ *backupv1.DeleteBackupRequest) (*backupv1.DeleteBackupResponse, error) {
-		return nil, assert.AnError
-	}
+	env.BackupServer.DeleteBackupCalls.Returns(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "backup", "delete", "backup-abc", "--force")
 	require.Error(t, err)

@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,26 +13,23 @@ import (
 
 func TestListPackages_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
-		return &bookingv1.ListPackagesResponse{
-			Items: []*bookingv1.Package{
-				{
-					Id:   "pkg-123",
-					Name: "starter",
-					Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD,
-					ResourceConfiguration: &bookingv1.ResourceConfiguration{
-						Ram:  "1GiB",
-						Cpu:  "0.5",
-						Disk: "10GiB",
-					},
-					UnitIntPricePerHour: 5000,
-					Currency:            "USD",
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{
+				Id:   "pkg-123",
+				Name: "starter",
+				Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD,
+				ResourceConfiguration: &bookingv1.ResourceConfiguration{
+					Ram:  "1GiB",
+					Cpu:  "0.5",
+					Disk: "10GiB",
 				},
+				UnitIntPricePerHour: 5000,
+				Currency:            "USD",
 			},
-		}, nil
-	}
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env,
 		"cluster", "package", "list",
@@ -52,19 +48,16 @@ func TestListPackages_TableOutput(t *testing.T) {
 
 func TestListPackages_FreePackage(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
-		return &bookingv1.ListPackagesResponse{
-			Items: []*bookingv1.Package{
-				{
-					Id:                  "pkg-free",
-					Name:                "free",
-					UnitIntPricePerHour: 0,
-				},
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{
+				Id:                  "pkg-free",
+				Name:                "free",
+				UnitIntPricePerHour: 0,
 			},
-		}, nil
-	}
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env,
 		"cluster", "package", "list",

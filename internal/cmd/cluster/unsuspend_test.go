@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,25 +13,22 @@ import (
 
 func TestUnsuspend(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
-	t.Cleanup(env.Cleanup)
 
-	var capturedReq *clusterv1.UnsuspendClusterRequest
-	env.Server.UnsuspendClusterFunc = func(_ context.Context, req *clusterv1.UnsuspendClusterRequest) (*clusterv1.UnsuspendClusterResponse, error) {
-		capturedReq = req
-		return &clusterv1.UnsuspendClusterResponse{}, nil
-	}
+	env.Server.UnsuspendClusterCalls.Returns(&clusterv1.UnsuspendClusterResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "unsuspend", "cluster-123")
 	require.NoError(t, err)
-	assert.Equal(t, "test-account-id", capturedReq.GetAccountId())
-	assert.Equal(t, "cluster-123", capturedReq.GetClusterId())
+
+	req, ok := env.Server.UnsuspendClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "test-account-id", req.GetAccountId())
+	assert.Equal(t, "cluster-123", req.GetClusterId())
 	assert.Contains(t, stdout, "cluster-123")
 	assert.Contains(t, stdout, "unsuspending")
 }
 
 func TestUnsuspend_MissingArgs(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "cluster", "unsuspend")
 	require.Error(t, err)

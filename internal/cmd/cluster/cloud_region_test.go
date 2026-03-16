@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,6 @@ import (
 
 func TestListCloudRegions_RequiresCloudProvider(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "cluster", "cloud-region", "list")
 	require.Error(t, err)
@@ -23,18 +21,13 @@ func TestListCloudRegions_RequiresCloudProvider(t *testing.T) {
 
 func TestListCloudRegions_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
-	t.Cleanup(env.Cleanup)
 
-	env.PlatformServer.ListCloudProviderRegionsFunc = func(_ context.Context, req *platformv1.ListCloudProviderRegionsRequest) (*platformv1.ListCloudProviderRegionsResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetAccountId())
-		assert.Equal(t, "aws", req.GetCloudProviderId())
-		return &platformv1.ListCloudProviderRegionsResponse{
-			Items: []*platformv1.CloudProviderRegion{
-				{Id: "us-east-1", Name: "US East (N. Virginia)", Provider: "aws", Available: true},
-				{Id: "eu-west-1", Name: "Europe (Ireland)", Provider: "aws", Available: false},
-			},
-		}, nil
-	}
+	env.PlatformServer.ListCloudProviderRegionsCalls.Returns(&platformv1.ListCloudProviderRegionsResponse{
+		Items: []*platformv1.CloudProviderRegion{
+			{Id: "us-east-1", Name: "US East (N. Virginia)", Provider: "aws", Available: true},
+			{Id: "eu-west-1", Name: "Europe (Ireland)", Provider: "aws", Available: false},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "cloud-region", "list", "--cloud-provider", "aws")
 	require.NoError(t, err)
@@ -48,4 +41,9 @@ func TestListCloudRegions_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "Europe (Ireland)")
 	assert.Contains(t, stdout, "true")
 	assert.Contains(t, stdout, "false")
+
+	req, ok := env.PlatformServer.ListCloudProviderRegionsCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "test-account-id", req.GetAccountId())
+	assert.Equal(t, "aws", req.GetCloudProviderId())
 }
