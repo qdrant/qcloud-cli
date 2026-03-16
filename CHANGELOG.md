@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.4.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.4.0)
+
+### Features
+
+- add support for gpu and multi-az (#13)
+
+### Bug Fixes
+
+- clarify quick start commands for creating a cluster and hint the user to create a key (#15)
+
 ## [v0.3.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.3.1)
 
 ### Bug Fixes
