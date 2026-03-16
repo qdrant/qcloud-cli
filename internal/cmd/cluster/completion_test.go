@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,16 +20,13 @@ import (
 // completion logic without a real shell.
 func TestClusterIDCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.ListClustersFunc = func(_ context.Context, _ *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
-		return &clusterv1.ListClustersResponse{
-			Items: []*clusterv1.Cluster{
-				{Id: "cluster-abc", Name: "my-cluster"},
-				{Id: "cluster-xyz", Name: "other-cluster"},
-			},
-		}, nil
-	}
+	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{
+		Items: []*clusterv1.Cluster{
+			{Id: "cluster-abc", Name: "my-cluster"},
+			{Id: "cluster-xyz", Name: "other-cluster"},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "describe", "")
 	require.NoError(t, err)
@@ -41,16 +37,13 @@ func TestClusterIDCompletion(t *testing.T) {
 
 func TestCloudProviderCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.PlatformServer.ListCloudProvidersFunc = func(_ context.Context, _ *platformv1.ListCloudProvidersRequest) (*platformv1.ListCloudProvidersResponse, error) {
-		return &platformv1.ListCloudProvidersResponse{
-			Items: []*platformv1.CloudProvider{
-				{Id: "aws", Name: "Amazon Web Services"},
-				{Id: "gcp", Name: "Google Cloud"},
-			},
-		}, nil
-	}
+	env.PlatformServer.ListCloudProvidersCalls.Returns(&platformv1.ListCloudProvidersResponse{
+		Items: []*platformv1.CloudProvider{
+			{Id: "aws", Name: "Amazon Web Services"},
+			{Id: "gcp", Name: "Google Cloud"},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "list", "--cloud-provider", "")
 	require.NoError(t, err)
@@ -61,15 +54,12 @@ func TestCloudProviderCompletion(t *testing.T) {
 
 func TestCloudRegionCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.PlatformServer.ListCloudProviderRegionsFunc = func(_ context.Context, req *platformv1.ListCloudProviderRegionsRequest) (*platformv1.ListCloudProviderRegionsResponse, error) {
-		return &platformv1.ListCloudProviderRegionsResponse{
-			Items: []*platformv1.CloudProviderRegion{
-				{Id: "us-east-1", Name: "US East (N. Virginia)"},
-			},
-		}, nil
-	}
+	env.PlatformServer.ListCloudProviderRegionsCalls.Returns(&platformv1.ListCloudProviderRegionsResponse{
+		Items: []*platformv1.CloudProviderRegion{
+			{Id: "us-east-1", Name: "US East (N. Virginia)"},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "list", "--cloud-provider", "aws", "--cloud-region", "")
 	require.NoError(t, err)
@@ -79,7 +69,6 @@ func TestCloudRegionCompletion(t *testing.T) {
 
 func TestCloudRegionCompletion_NoProvider(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "list", "--cloud-region", "")
 	require.NoError(t, err)
@@ -89,16 +78,13 @@ func TestCloudRegionCompletion_NoProvider(t *testing.T) {
 
 func TestPackageCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
-		return &bookingv1.ListPackagesResponse{
-			Items: []*bookingv1.Package{
-				{Id: "pkg-uuid-1", Name: "startup-4"},
-				{Id: "pkg-uuid-2", Name: "business-8"},
-			},
-		}, nil
-	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-uuid-1", Name: "startup-4"},
+			{Id: "pkg-uuid-2", Name: "business-8"},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cloud-region", "us-east-1", "--package", "")
 	require.NoError(t, err)
@@ -108,7 +94,6 @@ func TestPackageCompletion(t *testing.T) {
 
 func TestPackageCompletion_NoProvider(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--package", "")
 	require.NoError(t, err)
@@ -117,19 +102,16 @@ func TestPackageCompletion_NoProvider(t *testing.T) {
 
 func TestVersionCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	remarks := "upgrade recommended"
-	env.Server.ListQdrantReleasesFunc = func(_ context.Context, _ *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error) {
-		return &clusterv1.ListQdrantReleasesResponse{
-			Items: []*clusterv1.QdrantRelease{
-				{Version: "1.14.0", Default: true},
-				{Version: "1.13.0", EndOfLife: true},
-				{Version: "1.12.0", Unavailable: true},
-				{Version: "1.11.0", Remarks: &remarks},
-			},
-		}, nil
-	}
+	env.Server.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
+		Items: []*clusterv1.QdrantRelease{
+			{Version: "1.14.0", Default: true},
+			{Version: "1.13.0", EndOfLife: true},
+			{Version: "1.12.0", Unavailable: true},
+			{Version: "1.11.0", Remarks: &remarks},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cloud-region", "us-east-1", "--version", "")
 	require.NoError(t, err)
@@ -144,16 +126,13 @@ func TestVersionCompletion(t *testing.T) {
 
 func TestVersionCompletion_UnavailableExcluded(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.ListQdrantReleasesFunc = func(_ context.Context, _ *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error) {
-		return &clusterv1.ListQdrantReleasesResponse{
-			Items: []*clusterv1.QdrantRelease{
-				{Version: "1.14.0"},
-				{Version: "1.13.0", Unavailable: true},
-			},
-		}, nil
-	}
+	env.Server.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
+		Items: []*clusterv1.QdrantRelease{
+			{Version: "1.14.0"},
+			{Version: "1.13.0", Unavailable: true},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cloud-region", "us-east-1", "--version", "")
 	require.NoError(t, err)

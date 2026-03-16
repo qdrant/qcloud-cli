@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -17,25 +16,19 @@ import (
 
 func TestKeyList_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
-	t.Cleanup(env.Cleanup)
 
 	expires := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
-
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysFunc = func(_ context.Context, req *clusterauthv2.ListDatabaseApiKeysRequest) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetAccountId())
-		assert.Equal(t, "cluster-123", req.GetClusterId())
-		return &clusterauthv2.ListDatabaseApiKeysResponse{
-			Items: []*clusterauthv2.DatabaseApiKey{
-				{
-					Id:        "key-abc",
-					Name:      "my-key",
-					Postfix:   "xyz",
-					CreatedAt: timestamppb.New(time.Now().Add(-1 * time.Hour)),
-					ExpiresAt: timestamppb.New(expires),
-				},
+	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{
+		Items: []*clusterauthv2.DatabaseApiKey{
+			{
+				Id:        "key-abc",
+				Name:      "my-key",
+				Postfix:   "xyz",
+				CreatedAt: timestamppb.New(time.Now().Add(-1 * time.Hour)),
+				ExpiresAt: timestamppb.New(expires),
 			},
-		}, nil
-	}
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "key", "list", "cluster-123")
 	require.NoError(t, err)
@@ -49,19 +42,21 @@ func TestKeyList_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "xyz")
 	assert.Contains(t, stdout, "ago")
 	assert.Contains(t, stdout, "2027-01-01")
+
+	req, ok := env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "test-account-id", req.GetAccountId())
+	assert.Equal(t, "cluster-123", req.GetClusterId())
 }
 
 func TestKeyList_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysFunc = func(_ context.Context, _ *clusterauthv2.ListDatabaseApiKeysRequest) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
-		return &clusterauthv2.ListDatabaseApiKeysResponse{
-			Items: []*clusterauthv2.DatabaseApiKey{
-				{Id: "key-json", Name: "json-key"},
-			},
-		}, nil
-	}
+	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{
+		Items: []*clusterauthv2.DatabaseApiKey{
+			{Id: "key-json", Name: "json-key"},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "key", "list", "cluster-123", "--json")
 	require.NoError(t, err)
@@ -80,11 +75,8 @@ func TestKeyList_JSONOutput(t *testing.T) {
 
 func TestKeyList_EmptyResponse(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysFunc = func(_ context.Context, _ *clusterauthv2.ListDatabaseApiKeysRequest) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
-		return &clusterauthv2.ListDatabaseApiKeysResponse{}, nil
-	}
+	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "key", "list", "cluster-123")
 	require.NoError(t, err)
@@ -94,15 +86,13 @@ func TestKeyList_EmptyResponse(t *testing.T) {
 
 func TestKeyList_ClusterIDPassedToServer(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var capturedClusterID string
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysFunc = func(_ context.Context, req *clusterauthv2.ListDatabaseApiKeysRequest) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
-		capturedClusterID = req.GetClusterId()
-		return &clusterauthv2.ListDatabaseApiKeysResponse{}, nil
-	}
+	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env, "cluster", "key", "list", "my-cluster-id")
 	require.NoError(t, err)
-	assert.Equal(t, "my-cluster-id", capturedClusterID)
+
+	req, ok := env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "my-cluster-id", req.GetClusterId())
 }

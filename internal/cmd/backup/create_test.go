@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -15,50 +14,47 @@ import (
 
 func TestBackupCreate_Success(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.CreateBackupFunc = func(_ context.Context, req *backupv1.CreateBackupRequest) (*backupv1.CreateBackupResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetBackup().GetAccountId())
-		assert.Equal(t, "cluster-abc", req.GetBackup().GetClusterId())
-		return &backupv1.CreateBackupResponse{
-			Backup: &backupv1.Backup{Id: "backup-new", ClusterId: "cluster-abc"},
-		}, nil
-	}
+	env.BackupServer.CreateBackupCalls.Returns(&backupv1.CreateBackupResponse{
+		Backup: &backupv1.Backup{Id: "backup-new", ClusterId: "cluster-abc"},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "create", "--cluster-id=cluster-abc", "--retention-days=7")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "backup-new")
 	assert.Contains(t, stdout, "cluster-abc")
+
+	req, ok := env.BackupServer.CreateBackupCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "test-account-id", req.GetBackup().GetAccountId())
+	assert.Equal(t, "cluster-abc", req.GetBackup().GetClusterId())
 }
 
 func TestBackupCreate_WithRetention(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var capturedRetention int64
-	env.BackupServer.CreateBackupFunc = func(_ context.Context, req *backupv1.CreateBackupRequest) (*backupv1.CreateBackupResponse, error) {
-		if req.GetBackup().GetRetentionPeriod() != nil {
-			capturedRetention = int64(req.GetBackup().GetRetentionPeriod().AsDuration().Hours()) / 24
-		}
-		return &backupv1.CreateBackupResponse{
-			Backup: &backupv1.Backup{Id: "backup-ret", ClusterId: "cluster-abc"},
-		}, nil
-	}
+	env.BackupServer.CreateBackupCalls.Returns(&backupv1.CreateBackupResponse{
+		Backup: &backupv1.Backup{Id: "backup-ret", ClusterId: "cluster-abc"},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env, "backup", "create", "--cluster-id=cluster-abc", "--retention-days=7")
 	require.NoError(t, err)
+
+	req, ok := env.BackupServer.CreateBackupCalls.Last()
+	require.True(t, ok)
+	var capturedRetention int64
+	if req.GetBackup().GetRetentionPeriod() != nil {
+		capturedRetention = int64(req.GetBackup().GetRetentionPeriod().AsDuration().Hours()) / 24
+	}
 	assert.Equal(t, int64(7), capturedRetention)
 }
 
 func TestBackupCreate_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.CreateBackupFunc = func(_ context.Context, _ *backupv1.CreateBackupRequest) (*backupv1.CreateBackupResponse, error) {
-		return &backupv1.CreateBackupResponse{
-			Backup: &backupv1.Backup{Id: "backup-json", ClusterId: "cluster-123"},
-		}, nil
-	}
+	env.BackupServer.CreateBackupCalls.Returns(&backupv1.CreateBackupResponse{
+		Backup: &backupv1.Backup{Id: "backup-json", ClusterId: "cluster-123"},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "create", "--cluster-id=cluster-123", "--retention-days=7", "--json")
 	require.NoError(t, err)
@@ -73,7 +69,6 @@ func TestBackupCreate_JSONOutput(t *testing.T) {
 
 func TestBackupCreate_InvalidRetention(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "backup", "create", "--cluster-id=cluster-abc", "--retention-days=0")
 	require.Error(t, err)
@@ -81,7 +76,6 @@ func TestBackupCreate_InvalidRetention(t *testing.T) {
 
 func TestBackupCreate_MissingClusterID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	_, _, err := testutil.Exec(t, env, "backup", "create")
 	require.Error(t, err)
@@ -89,11 +83,8 @@ func TestBackupCreate_MissingClusterID(t *testing.T) {
 
 func TestBackupCreate_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.CreateBackupFunc = func(_ context.Context, _ *backupv1.CreateBackupRequest) (*backupv1.CreateBackupResponse, error) {
-		return nil, assert.AnError
-	}
+	env.BackupServer.CreateBackupCalls.Returns(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "backup", "create", "--cluster-id=cluster-abc", "--retention-days=7")
 	require.Error(t, err)

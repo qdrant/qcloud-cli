@@ -2,7 +2,6 @@ package cluster_test
 
 import (
 	"context"
-	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,18 +15,10 @@ import (
 
 func TestCreateCluster_WithLabels(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var capturedLabels map[string]string
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
-		capturedLabels = make(map[string]string)
-		for _, kv := range req.GetCluster().GetLabels() {
-			capturedLabels[kv.GetKey()] = kv.GetValue()
-		}
-		return &clusterv1.CreateClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: "cluster-labeled"},
-		}, nil
-	}
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-labeled"},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -39,30 +30,32 @@ func TestCreateCluster_WithLabels(t *testing.T) {
 		"--label", "team=platform",
 	)
 	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	capturedLabels := make(map[string]string)
+	for _, kv := range req.GetCluster().GetLabels() {
+		capturedLabels[kv.GetKey()] = kv.GetValue()
+	}
 	assert.Equal(t, map[string]string{"env": "prod", "team": "platform"}, capturedLabels)
 }
 
 func TestCreateCluster_NoWait(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var getCallCount int32
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+	env.Server.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
 		return &clusterv1.CreateClusterResponse{
 			Cluster: &clusterv1.Cluster{
 				Id:   "cluster-abc",
 				Name: req.GetCluster().GetName(),
 			},
 		}, nil
-	}
-	env.Server.GetClusterFunc = func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
-		atomic.AddInt32(&getCallCount, 1)
-		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{
-				State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
-			},
-		}, nil
-	}
+	})
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -73,43 +66,48 @@ func TestCreateCluster_NoWait(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "cluster-abc")
-	assert.EqualValues(t, 0, atomic.LoadInt32(&getCallCount), "GetCluster should not be called without --wait")
+	assert.Equal(t, 0, env.Server.GetClusterCalls.Count(), "GetCluster should not be called without --wait")
 }
 
 func TestCreateCluster_WaitSuccess(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+	env.Server.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
 		return &clusterv1.CreateClusterResponse{
 			Cluster: &clusterv1.Cluster{
 				Id:   "cluster-xyz",
 				Name: req.GetCluster().GetName(),
 			},
 		}, nil
-	}
-
-	var callCount int32
-	env.Server.GetClusterFunc = func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
-		n := atomic.AddInt32(&callCount, 1)
-		if n < 3 {
+	})
+	env.Server.GetClusterCalls.
+		OnCall(0, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 			return &clusterv1.GetClusterResponse{
 				Cluster: &clusterv1.Cluster{
 					Id:    "cluster-xyz",
 					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
 				},
 			}, nil
-		}
-		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{
-				Id: "cluster-xyz",
-				State: &clusterv1.ClusterState{
-					Phase:    clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
-					Endpoint: &clusterv1.ClusterEndpoint{Url: "https://xyz.aws.cloud.qdrant.io"},
+		}).
+		OnCall(1, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:    "cluster-xyz",
+					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
 				},
-			},
-		}, nil
-	}
+			}, nil
+		}).
+		Always(func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id: "cluster-xyz",
+					State: &clusterv1.ClusterState{
+						Phase:    clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+						Endpoint: &clusterv1.ClusterEndpoint{Url: "https://xyz.aws.cloud.qdrant.io"},
+					},
+				},
+			}, nil
+		})
 
 	stdout, stderr, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -130,24 +128,19 @@ func TestCreateCluster_WaitSuccess(t *testing.T) {
 
 func TestCreateCluster_WaitFailure(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
-		return &clusterv1.CreateClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: "cluster-fail"},
-		}, nil
-	}
-	env.Server.GetClusterFunc = func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
-		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{
-				Id: "cluster-fail",
-				State: &clusterv1.ClusterState{
-					Phase:  clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_CREATE,
-					Reason: "quota exceeded",
-				},
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-fail"},
+	}, nil)
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id: "cluster-fail",
+			State: &clusterv1.ClusterState{
+				Phase:  clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_CREATE,
+				Reason: "quota exceeded",
 			},
-		}, nil
-	}
+		},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -166,21 +159,16 @@ func TestCreateCluster_WaitFailure(t *testing.T) {
 
 func TestCreateCluster_WaitTimeout(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
-		return &clusterv1.CreateClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: "cluster-slow"},
-		}, nil
-	}
-	env.Server.GetClusterFunc = func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
-		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{
-				Id:    "cluster-slow",
-				State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
-			},
-		}, nil
-	}
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-slow"},
+	}, nil)
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id:    "cluster-slow",
+			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
+		},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -197,21 +185,11 @@ func TestCreateCluster_WaitTimeout(t *testing.T) {
 
 func TestCreateCluster_PackageByUUID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var listCallCount int32
-	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
-		atomic.AddInt32(&listCallCount, 1)
-		return &bookingv1.ListPackagesResponse{}, nil
-	}
-
-	var capturedPackageID string
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
-		capturedPackageID = req.GetCluster().GetConfiguration().GetPackageId()
-		return &clusterv1.CreateClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: "cluster-pkg-uuid"},
-		}, nil
-	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{}, nil)
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-pkg-uuid"},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -221,29 +199,24 @@ func TestCreateCluster_PackageByUUID(t *testing.T) {
 		"--package", "550e8400-e29b-41d4-a716-446655440000",
 	)
 	require.NoError(t, err)
-	assert.EqualValues(t, 0, atomic.LoadInt32(&listCallCount), "ListPackages should not be called for UUID input")
-	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", capturedPackageID)
+	assert.Equal(t, 0, env.BookingServer.ListPackagesCalls.Count(), "ListPackages should not be called for UUID input")
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", req.GetCluster().GetConfiguration().GetPackageId())
 }
 
 func TestCreateCluster_PackageByName(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
-		return &bookingv1.ListPackagesResponse{
-			Items: []*bookingv1.Package{
-				{Id: "pkg-uuid-123", Name: "starter"},
-			},
-		}, nil
-	}
-
-	var capturedPackageID string
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
-		capturedPackageID = req.GetCluster().GetConfiguration().GetPackageId()
-		return &clusterv1.CreateClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: "cluster-named-pkg"},
-		}, nil
-	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-uuid-123", Name: "starter"},
+		},
+	}, nil)
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-named-pkg"},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -253,16 +226,16 @@ func TestCreateCluster_PackageByName(t *testing.T) {
 		"--package", "starter",
 	)
 	require.NoError(t, err)
-	assert.Equal(t, "pkg-uuid-123", capturedPackageID)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "pkg-uuid-123", req.GetCluster().GetConfiguration().GetPackageId())
 }
 
 func TestCreateCluster_PackageNameNotFound(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BookingServer.ListPackagesFunc = func(_ context.Context, _ *bookingv1.ListPackagesRequest) (*bookingv1.ListPackagesResponse, error) {
-		return &bookingv1.ListPackagesResponse{}, nil
-	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -277,19 +250,11 @@ func TestCreateCluster_PackageNameNotFound(t *testing.T) {
 
 func TestCreateCluster_AutoGeneratedName(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.SuggestClusterNameFunc = func(_ context.Context, _ *clusterv1.SuggestClusterNameRequest) (*clusterv1.SuggestClusterNameResponse, error) {
-		return &clusterv1.SuggestClusterNameResponse{Name: "eager-pelican"}, nil
-	}
-
-	var capturedName string
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
-		capturedName = req.GetCluster().GetName()
-		return &clusterv1.CreateClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: "cluster-auto", Name: capturedName},
-		}, nil
-	}
+	env.Server.SuggestClusterNameCalls.Returns(&clusterv1.SuggestClusterNameResponse{Name: "eager-pelican"}, nil)
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-auto", Name: "eager-pelican"},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -298,24 +263,21 @@ func TestCreateCluster_AutoGeneratedName(t *testing.T) {
 		"--package", "00000000-0000-0000-0000-000000000001",
 	)
 	require.NoError(t, err)
-	assert.Equal(t, "eager-pelican", capturedName)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "eager-pelican", req.GetCluster().GetName())
 }
 
 func TestCreateCluster_ExplicitNameSkipsSuggest(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var suggestCalled bool
-	env.Server.SuggestClusterNameFunc = func(_ context.Context, _ *clusterv1.SuggestClusterNameRequest) (*clusterv1.SuggestClusterNameResponse, error) {
-		suggestCalled = true
-		return &clusterv1.SuggestClusterNameResponse{Name: "should-not-use"}, nil
-	}
-
-	env.Server.CreateClusterFunc = func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+	env.Server.SuggestClusterNameCalls.Returns(&clusterv1.SuggestClusterNameResponse{Name: "should-not-use"}, nil)
+	env.Server.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
 		return &clusterv1.CreateClusterResponse{
 			Cluster: &clusterv1.Cluster{Id: "cluster-named", Name: req.GetCluster().GetName()},
 		}, nil
-	}
+	})
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
@@ -325,5 +287,5 @@ func TestCreateCluster_ExplicitNameSkipsSuggest(t *testing.T) {
 		"--package", "00000000-0000-0000-0000-000000000001",
 	)
 	require.NoError(t, err)
-	assert.False(t, suggestCalled, "SuggestClusterName should not be called when --name is provided")
+	assert.Equal(t, 0, env.Server.SuggestClusterNameCalls.Count(), "SuggestClusterName should not be called when --name is provided")
 }

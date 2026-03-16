@@ -2,7 +2,6 @@ package cluster_test
 
 import (
 	"context"
-	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,30 +14,36 @@ import (
 
 func TestWaitCluster_Success(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	var callCount int32
-	env.Server.GetClusterFunc = func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
-		n := atomic.AddInt32(&callCount, 1)
-		if n < 3 {
+	env.Server.GetClusterCalls.
+		OnCall(0, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 			return &clusterv1.GetClusterResponse{
 				Cluster: &clusterv1.Cluster{
 					Id:    "cluster-abc",
 					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
 				},
 			}, nil
-		}
-		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{
-				Id:   "cluster-abc",
-				Name: "my-cluster",
-				State: &clusterv1.ClusterState{
-					Phase:    clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
-					Endpoint: &clusterv1.ClusterEndpoint{Url: "https://abc.aws.cloud.qdrant.io"},
+		}).
+		OnCall(1, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:    "cluster-abc",
+					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
 				},
-			},
-		}, nil
-	}
+			}, nil
+		}).
+		Always(func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:   "cluster-abc",
+					Name: "my-cluster",
+					State: &clusterv1.ClusterState{
+						Phase:    clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+						Endpoint: &clusterv1.ClusterEndpoint{Url: "https://abc.aws.cloud.qdrant.io"},
+					},
+				},
+			}, nil
+		})
 
 	stdout, stderr, err := testutil.Exec(t, env,
 		"cluster", "wait", "cluster-abc",
@@ -53,19 +58,16 @@ func TestWaitCluster_Success(t *testing.T) {
 
 func TestWaitCluster_Failure(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.GetClusterFunc = func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
-		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{
-				Id: "cluster-fail",
-				State: &clusterv1.ClusterState{
-					Phase:  clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_CREATE,
-					Reason: "quota exceeded",
-				},
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id: "cluster-fail",
+			State: &clusterv1.ClusterState{
+				Phase:  clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_CREATE,
+				Reason: "quota exceeded",
 			},
-		}, nil
-	}
+		},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "wait", "cluster-fail",
@@ -79,16 +81,13 @@ func TestWaitCluster_Failure(t *testing.T) {
 
 func TestWaitCluster_Timeout(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.Server.GetClusterFunc = func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
-		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{
-				Id:    "cluster-slow",
-				State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
-			},
-		}, nil
-	}
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id:    "cluster-slow",
+			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
+		},
+	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "wait", "cluster-slow",

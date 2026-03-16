@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,19 +13,16 @@ import (
 
 func TestListVersions_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	remarks := "upgrade recommended"
-	env.Server.ListQdrantReleasesFunc = func(_ context.Context, _ *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error) {
-		return &clusterv1.ListQdrantReleasesResponse{
-			Items: []*clusterv1.QdrantRelease{
-				{Version: "1.14.0", Default: true},
-				{Version: "1.13.0", EndOfLife: true},
-				{Version: "1.12.0", Unavailable: true},
-				{Version: "1.11.0", Remarks: &remarks},
-			},
-		}, nil
-	}
+	env.Server.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
+		Items: []*clusterv1.QdrantRelease{
+			{Version: "1.14.0", Default: true},
+			{Version: "1.13.0", EndOfLife: true},
+			{Version: "1.12.0", Unavailable: true},
+			{Version: "1.11.0", Remarks: &remarks},
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "version", "list")
 	require.NoError(t, err)

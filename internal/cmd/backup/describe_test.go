@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -16,21 +15,16 @@ import (
 
 func TestBackupDescribe_TextOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.GetBackupFunc = func(_ context.Context, req *backupv1.GetBackupRequest) (*backupv1.GetBackupResponse, error) {
-		assert.Equal(t, "test-account-id", req.GetAccountId())
-		assert.Equal(t, "backup-abc", req.GetBackupId())
-		return &backupv1.GetBackupResponse{
-			Backup: &backupv1.Backup{
-				Id:        "backup-abc",
-				Name:      "my-backup",
-				ClusterId: "cluster-123",
-				Status:    backupv1.BackupStatus_BACKUP_STATUS_SUCCEEDED,
-				CreatedAt: timestamppb.Now(),
-			},
-		}, nil
-	}
+	env.BackupServer.GetBackupCalls.Returns(&backupv1.GetBackupResponse{
+		Backup: &backupv1.Backup{
+			Id:        "backup-abc",
+			Name:      "my-backup",
+			ClusterId: "cluster-123",
+			Status:    backupv1.BackupStatus_BACKUP_STATUS_SUCCEEDED,
+			CreatedAt: timestamppb.Now(),
+		},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "describe", "backup-abc")
 	require.NoError(t, err)
@@ -38,17 +32,19 @@ func TestBackupDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "my-backup")
 	assert.Contains(t, stdout, "cluster-123")
 	assert.Contains(t, stdout, "SUCCEEDED")
+
+	req, ok := env.BackupServer.GetBackupCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "test-account-id", req.GetAccountId())
+	assert.Equal(t, "backup-abc", req.GetBackupId())
 }
 
 func TestBackupDescribe_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.GetBackupFunc = func(_ context.Context, _ *backupv1.GetBackupRequest) (*backupv1.GetBackupResponse, error) {
-		return &backupv1.GetBackupResponse{
-			Backup: &backupv1.Backup{Id: "backup-json", ClusterId: "cluster-xyz"},
-		}, nil
-	}
+	env.BackupServer.GetBackupCalls.Returns(&backupv1.GetBackupResponse{
+		Backup: &backupv1.Backup{Id: "backup-json", ClusterId: "cluster-xyz"},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "describe", "backup-json", "--json")
 	require.NoError(t, err)
@@ -64,11 +60,8 @@ func TestBackupDescribe_JSONOutput(t *testing.T) {
 
 func TestBackupDescribe_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	t.Cleanup(env.Cleanup)
 
-	env.BackupServer.GetBackupFunc = func(_ context.Context, _ *backupv1.GetBackupRequest) (*backupv1.GetBackupResponse, error) {
-		return nil, assert.AnError
-	}
+	env.BackupServer.GetBackupCalls.Returns(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "backup", "describe", "backup-abc")
 	require.Error(t, err)
