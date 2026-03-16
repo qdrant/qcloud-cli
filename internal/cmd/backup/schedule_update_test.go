@@ -87,6 +87,32 @@ func TestScheduleUpdate_InvalidRetention(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestScheduleUpdate_WithRetention(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	env.BackupServer.GetBackupScheduleFunc = func(_ context.Context, _ *backupv1.GetBackupScheduleRequest) (*backupv1.GetBackupScheduleResponse, error) {
+		return &backupv1.GetBackupScheduleResponse{
+			BackupSchedule: &backupv1.BackupSchedule{Id: "schedule-1", Schedule: "0 2 * * *"},
+		}, nil
+	}
+
+	var capturedRetentionDays int64
+	env.BackupServer.UpdateBackupScheduleFunc = func(_ context.Context, req *backupv1.UpdateBackupScheduleRequest) (*backupv1.UpdateBackupScheduleResponse, error) {
+		if req.GetBackupSchedule().GetRetentionPeriod() != nil {
+			capturedRetentionDays = int64(req.GetBackupSchedule().GetRetentionPeriod().AsDuration().Hours()) / 24
+		}
+		return &backupv1.UpdateBackupScheduleResponse{
+			BackupSchedule: &backupv1.BackupSchedule{Id: "schedule-1"},
+		}, nil
+	}
+
+	_, _, err := testutil.Exec(t, env, "backup", "schedule", "update", "schedule-1",
+		"--cluster-id=cluster-abc", "--retention-days=14")
+	require.NoError(t, err)
+	assert.Equal(t, int64(14), capturedRetentionDays)
+}
+
 func TestScheduleUpdate_MissingClusterID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	t.Cleanup(env.Cleanup)

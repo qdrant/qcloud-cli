@@ -39,6 +39,7 @@ func TestScheduleList_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "CLUSTER")
 	assert.Contains(t, stdout, "SCHEDULE")
 	assert.Contains(t, stdout, "STATUS")
+	assert.Contains(t, stdout, "NEXT RUN")
 	assert.Contains(t, stdout, "schedule-1")
 	assert.Contains(t, stdout, "cluster-abc")
 	assert.Contains(t, stdout, "0 2 * * *")

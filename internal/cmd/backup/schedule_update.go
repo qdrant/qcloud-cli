@@ -22,7 +22,10 @@ func newScheduleUpdateCommand(s *state.State) *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <schedule-id>",
 				Short: "Update a backup schedule",
-				Args:  util.ExactArgs(1, "a schedule ID"),
+				Long: `Update a backup schedule.
+
+The --cluster-id flag is required because the API requires the cluster ID to look up a schedule by ID.`,
+				Args: util.ExactArgs(1, "a schedule ID"),
 			}
 			cmd.Flags().String("cluster-id", "", "Cluster ID (required)")
 			cmd.Flags().String("schedule", "", "New cron schedule expression in UTC, e.g. '0 2 * * *'")

@@ -26,8 +26,21 @@ func TestRestoreTrigger_WithForce(t *testing.T) {
 	stdout, _, err := testutil.Exec(t, env, "backup", "restore", "trigger", "backup-abc", "--force")
 	require.NoError(t, err)
 	assert.Equal(t, "backup-abc", capturedBackupID)
-	assert.Contains(t, stdout, "backup-abc")
-	assert.Contains(t, stdout, "started")
+	assert.Contains(t, stdout, "Restore of backup backup-abc started.")
+	assert.Contains(t, stdout, "Run 'qcloud backup restore list' to track progress.")
+}
+
+func TestRestoreTrigger_Aborted(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	env.BackupServer.RestoreBackupFunc = func(_ context.Context, _ *backupv1.RestoreBackupRequest) (*backupv1.RestoreBackupResponse, error) {
+		panic("RestoreBackup must not be called when aborted")
+	}
+
+	stdout, _, err := testutil.Exec(t, env, "backup", "restore", "trigger", "backup-abc")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Aborted.")
 }
 
 func TestRestoreTrigger_APIError(t *testing.T) {

@@ -38,6 +38,7 @@ func TestScheduleDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "schedule-1")
 	assert.Contains(t, stdout, "cluster-abc")
 	assert.Contains(t, stdout, "0 2 * * *")
+	assert.Contains(t, stdout, "Next Run:")
 	assert.Contains(t, stdout, "ACTIVE")
 }
 

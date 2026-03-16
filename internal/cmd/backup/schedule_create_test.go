@@ -91,3 +91,21 @@ func TestScheduleCreate_MissingFlags(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create", "--cluster-id=cluster-abc")
 	require.Error(t, err)
 }
+
+func TestScheduleCreate_MissingClusterID(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
+		"--schedule=0 2 * * *", "--retention-days=30")
+	require.Error(t, err)
+}
+
+func TestScheduleCreate_MissingRetentionDays(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	_, _, err := testutil.Exec(t, env, "backup", "schedule", "create",
+		"--cluster-id=cluster-abc", "--schedule=0 2 * * *")
+	require.Error(t, err)
+}

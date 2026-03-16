@@ -54,6 +54,7 @@ func newRestoreTriggerCommand(s *state.State) *cobra.Command {
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "Restore of backup %s started.\n", backupID)
+			fmt.Fprintln(cmd.OutOrStdout(), "Run 'qcloud backup restore list' to track progress.")
 			return nil
 		},
 	}.CobraCommand(s)

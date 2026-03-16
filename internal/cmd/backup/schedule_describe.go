@@ -27,8 +27,11 @@ func nextScheduleRun(cronExpr string) (time.Time, bool) {
 
 func newScheduleDescribeCommand(s *state.State) *cobra.Command {
 	cmd := base.DescribeCmd[*backupv1.BackupSchedule]{
-		Use:               "describe <schedule-id>",
-		Short:             "Describe a backup schedule",
+		Use:   "describe <schedule-id>",
+		Short: "Describe a backup schedule",
+		Long: `Describe a backup schedule.
+
+The --cluster-id flag is required because the API requires the cluster ID to look up a schedule by ID.`,
 		Args:              util.ExactArgs(1, "a schedule ID"),
 		ValidArgsFunction: scheduleIDCompletion(s),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*backupv1.BackupSchedule, error) {
