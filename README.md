@@ -22,6 +22,8 @@
 
 ## Quick Start
 
+Before using `qcloud`, create a management API key and note your account ID from the [Qdrant Cloud UI](https://cloud.qdrant.io).
+
 ```sh
 # 1. Create a context with your credentials
 qcloud context set my-cloud \
@@ -32,21 +34,27 @@ qcloud context set my-cloud \
 qcloud cluster cloud-provider list
 qcloud cluster cloud-region list --cloud-provider aws
 
-# 3. List available packages
-qcloud cluster package list --cloud-provider aws --cloud-region us-east-1
-
-# 4. Create a cluster (waits until healthy)
+# 3. Create a cluster by specifying resources (waits until healthy)
+#    Use --cpu, --ram, --disk (and optionally --gpu / --multi-az) to select
+#    a matching package automatically.
 qcloud cluster create \
   --cloud-provider aws \
   --cloud-region us-east-1 \
-  --package <PACKAGE_ID> \
+  --cpu 2000m \
+  --ram 8GiB \
+  --disk 50GiB \
   --name my-cluster \
   --wait
 
-# 5. Describe your new cluster
+#    Alternatively, pick a package explicitly with --package:
+#      qcloud cluster package list --cloud-provider aws --cloud-region us-east-1
+#      qcloud cluster create --cloud-provider aws --cloud-region us-east-1 \
+#        --package <PACKAGE_ID> --name my-cluster --wait
+
+# 4. Describe your new cluster
 qcloud cluster describe <CLUSTER_ID>
 
-# 6. Create an API key for it
+# 5. Create an API key for it
 qcloud cluster key create <CLUSTER_ID> --name my-key
 ```
 
