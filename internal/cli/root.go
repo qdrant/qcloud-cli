@@ -8,6 +8,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/backup"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cluster"
 	cmdcontext "github.com/qdrant/qcloud-cli/internal/cmd/context"
+	"github.com/qdrant/qcloud-cli/internal/cmd/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/cmd/version"
 	"github.com/qdrant/qcloud-cli/internal/state"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
@@ -57,6 +58,7 @@ func NewRootCommand(s *state.State) *cobra.Command {
 	cmd.AddCommand(cluster.NewCommand(s))
 	cmd.AddCommand(cmdcontext.NewCommand(s))
 	cmd.AddCommand(backup.NewCommand(s))
+	cmd.AddCommand(selfupgrade.NewCommand(s))
 
 	return cmd
 }
