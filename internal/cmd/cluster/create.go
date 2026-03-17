@@ -28,8 +28,8 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().String("version", "", "Qdrant version (default latest)")
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes (default 1)")
 			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list')")
-			cmd.Flags().String("cpu", "", "CPU to select a package (e.g. \"1000m\"); must match a value from 'cluster package list'")
-			cmd.Flags().String("ram", "", "RAM to select a package (e.g. \"1GiB\"); must match a value from 'cluster package list'")
+			cmd.Flags().String("cpu", "", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
+			cmd.Flags().String("ram", "", "RAM in GiB to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
 			cmd.Flags().String("disk", "", "Disk size to select a package (e.g. \"100GiB\"); must match a value from 'cluster package list'")
 			cmd.Flags().String("gpu", "", "GPU resource to select a package (e.g. \"1000m\"); must match a value from 'cluster package list'")
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
@@ -75,6 +75,19 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			gpu, _ := cmd.Flags().GetString("gpu")
 			multiAz, _ := cmd.Flags().GetBool("multi-az")
 			labelMap, _ := cmd.Flags().GetStringToString("label")
+
+			if cpu != "" {
+				cpu, err = normalizeCPU(cpu)
+				if err != nil {
+					return nil, fmt.Errorf("invalid --cpu value: %w", err)
+				}
+			}
+			if ram != "" {
+				ram, err = normalizeRAM(ram)
+				if err != nil {
+					return nil, fmt.Errorf("invalid --ram value: %w", err)
+				}
+			}
 
 			if packageValue == "" && cpu == "" && ram == "" && disk == "" && gpu == "" {
 				return nil, fmt.Errorf("either --package or at least one of --cpu, --ram, --disk, --gpu is required")
