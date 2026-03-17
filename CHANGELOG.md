@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.4.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.4.1)
+
+### Bug Fixes
+
+- normalize resources to allow users to set cpu and ram in an easier (#16)
+- package matching now uses cpu and ram (#18)
+
 ## [v0.4.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.4.0)
 
 ### Features
