@@ -195,29 +195,6 @@ func TestDiskCompletion_FilteredByCPUAndRAM(t *testing.T) {
 	assert.NotContains(t, stdout, "50GiB")
 }
 
-func TestGPUCompletion(t *testing.T) {
-	env := testutil.NewTestEnv(t)
-
-	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
-		Items: []*bookingv1.Package{
-			{Id: "pkg-1", Name: "gpu-small", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Gpu: new("1000m")}},
-			{Id: "pkg-2", Name: "gpu-large", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "2000m", Gpu: new("2000m")}},
-			{Id: "pkg-3", Name: "cpu-only", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m"}},
-			{Id: "pkg-4", Name: "gpu-dup", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "4000m", Gpu: new("1000m")}},
-		},
-	}, nil)
-
-	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--gpu", "")
-	require.NoError(t, err)
-	assert.Contains(t, stdout, "1000m")
-	assert.Contains(t, stdout, "2000m")
-	// Packages without GPU should not appear.
-	assert.NotContains(t, stdout, "500m")
-	// Deduplication: 1000m appears in two packages but once in completions.
-	count := strings.Count(stdout, "1000m")
-	assert.Equal(t, 1, count, "1000m should appear only once")
-}
-
 func TestVersionCompletion_UnavailableExcluded(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 

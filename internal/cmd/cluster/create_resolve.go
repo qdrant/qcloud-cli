@@ -8,6 +8,21 @@ import (
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 )
 
+// resolvePackageByID fetches a single package by its UUID.
+func resolvePackageByID(ctx context.Context, booking bookingv1.BookingServiceClient,
+	accountID, cloudProvider, cloudRegion, id string) (*bookingv1.Package, error) {
+	resp, err := booking.GetPackage(ctx, &bookingv1.GetPackageRequest{
+		AccountId:             accountID,
+		CloudProviderId:       cloudProvider,
+		CloudProviderRegionId: &cloudRegion,
+		Id:                    id,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get package %s: %w", id, err)
+	}
+	return resp.GetPackage(), nil
+}
+
 // resolvePackageByName lists active packages and returns the first matching by name.
 func resolvePackageByName(ctx context.Context, booking bookingv1.BookingServiceClient,
 	accountID, cloudProvider, cloudRegion, name string) (*bookingv1.Package, error) {
@@ -32,7 +47,7 @@ func resolvePackageByName(ctx context.Context, booking bookingv1.BookingServiceC
 // all non-empty resource dimensions (cpu, ram, disk, gpu) and the multiAz flag.
 // Returns an error if zero or more than one package matches.
 func resolvePackageByResources(ctx context.Context, booking bookingv1.BookingServiceClient,
-	accountID, cloudProvider, cloudRegion, cpu, ram, disk, gpu string, multiAz bool) (*bookingv1.Package, error) {
+	accountID, cloudProvider, cloudRegion, cpu, ram string, multiAz bool) (*bookingv1.Package, error) {
 	req := &bookingv1.ListPackagesRequest{
 		AccountId:             accountID,
 		CloudProviderId:       cloudProvider,
@@ -55,24 +70,18 @@ func resolvePackageByResources(ctx context.Context, booking bookingv1.BookingSer
 		if ram != "" && rc.GetRam() != ram {
 			continue
 		}
-		if disk != "" && rc.GetDisk() != disk {
-			continue
-		}
-		if gpu != "" && rc.GetGpu() != gpu {
-			continue
-		}
 		matches = append(matches, p)
 	}
 	switch len(matches) {
 	case 1:
 		return matches[0], nil
 	case 0:
-		return nil, fmt.Errorf("no package found matching cpu=%q ram=%q disk=%q gpu=%q", cpu, ram, disk, gpu)
+		return nil, fmt.Errorf("no package found matching cpu=%q ram=%q", cpu, ram)
 	default:
 		names := make([]string, len(matches))
 		for i, p := range matches {
 			names[i] = p.GetName()
 		}
-		return nil, fmt.Errorf("multiple packages match cpu=%q ram=%q disk=%q gpu=%q: %s", cpu, ram, disk, gpu, strings.Join(names, ", "))
+		return nil, fmt.Errorf("multiple packages match cpu=%q ram=%q: %s", cpu, ram, strings.Join(names, ", "))
 	}
 }

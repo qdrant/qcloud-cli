@@ -37,6 +37,41 @@ func TestNormalizeCPU(t *testing.T) {
 	}
 }
 
+func TestParseDiskGiB(t *testing.T) {
+	tests := []struct {
+		input   string
+		want    uint32
+		wantErr bool
+	}{
+		{"100GiB", 100, false},
+		{"100Gi", 100, false},
+		{"100G", 100, false},
+		{"100", 100, false},
+		{"1TiB", 1024, false},
+		{"1Ti", 1024, false},
+		{"1T", 1024, false},
+		{"2TiB", 2048, false},
+		{"bad", 0, true},
+		{"100X", 0, true},
+	}
+	for _, tt := range tests {
+		got, err := parseDiskGiB(tt.input)
+		if tt.wantErr {
+			if err == nil {
+				t.Errorf("parseDiskGiB(%q): expected error, got %d", tt.input, got)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("parseDiskGiB(%q): unexpected error: %v", tt.input, err)
+			continue
+		}
+		if got != tt.want {
+			t.Errorf("parseDiskGiB(%q) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
 func TestNormalizeRAM(t *testing.T) {
 	tests := []struct {
 		input   string
