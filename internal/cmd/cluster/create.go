@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
@@ -30,8 +31,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list')")
 			cmd.Flags().String("cpu", "", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
 			cmd.Flags().String("ram", "", "RAM in GiB to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
-			cmd.Flags().String("disk", "", "Disk size to select a package (e.g. \"100GiB\"); must match a value from 'cluster package list'")
-			cmd.Flags().String("gpu", "", "GPU resource to select a package (e.g. \"1000m\"); must match a value from 'cluster package list'")
+			cmd.Flags().String("disk", "", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
 			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
@@ -72,7 +72,6 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cpu, _ := cmd.Flags().GetString("cpu")
 			ram, _ := cmd.Flags().GetString("ram")
 			disk, _ := cmd.Flags().GetString("disk")
-			gpu, _ := cmd.Flags().GetString("gpu")
 			multiAz, _ := cmd.Flags().GetBool("multi-az")
 			labelMap, _ := cmd.Flags().GetStringToString("label")
 
@@ -89,23 +88,31 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				}
 			}
 
-			if packageValue == "" && cpu == "" && ram == "" && disk == "" && gpu == "" {
-				return nil, fmt.Errorf("either --package or at least one of --cpu, --ram, --disk, --gpu is required")
+			if packageValue == "" && cpu == "" && ram == "" {
+				return nil, fmt.Errorf("either --package or --cpu and --ram are required")
 			}
 
+			var pkg *bookingv1.Package
 			var packageID string
+
 			if packageValue != "" {
 				if isUUID(packageValue) {
 					packageID = packageValue
+					if disk != "" {
+						pkg, err = resolvePackageByID(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, packageValue)
+						if err != nil {
+							return nil, err
+						}
+					}
 				} else {
-					pkg, err := resolvePackageByName(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, packageValue)
+					pkg, err = resolvePackageByName(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, packageValue)
 					if err != nil {
 						return nil, err
 					}
 					packageID = pkg.GetId()
 				}
 			} else {
-				pkg, err := resolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, cpu, ram, disk, gpu, multiAz)
+				pkg, err = resolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, cpu, ram, multiAz)
 				if err != nil {
 					return nil, err
 				}
@@ -129,6 +136,20 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			}
 			for k, v := range labelMap {
 				cluster.Labels = append(cluster.Labels, &commonv1.KeyValue{Key: k, Value: v})
+			}
+
+			if disk != "" && pkg != nil {
+				requestedGiB, err := parseDiskGiB(disk)
+				if err != nil {
+					return nil, fmt.Errorf("invalid --disk value: %w", err)
+				}
+				if pkgDiskStr := pkg.GetResourceConfiguration().GetDisk(); pkgDiskStr != "" {
+					if pkgGiB, err := parseDiskGiB(pkgDiskStr); err == nil && requestedGiB > pkgGiB {
+						cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
+							Disk: requestedGiB - pkgGiB,
+						}
+					}
+				}
 			}
 
 			resp, err := client.Cluster().CreateCluster(ctx, &clusterv1.CreateClusterRequest{
@@ -165,6 +186,5 @@ func newCreateCommand(s *state.State) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("cpu", cpuCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("ram", ramCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
 	return cmd
 }

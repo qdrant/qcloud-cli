@@ -303,6 +303,7 @@ func TestCreateCluster_PackageByResources(t *testing.T) {
 	req, ok := env.Server.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "pkg-res-1", req.GetCluster().GetConfiguration().GetPackageId())
+	assert.Nil(t, req.GetCluster().GetConfiguration().GetAdditionalResources(), "no additional disk expected when requested == package disk")
 }
 
 func TestCreateCluster_PackageByResourcesPartial(t *testing.T) {
@@ -411,48 +412,70 @@ func TestCreateCluster_NoPackageOrResources(t *testing.T) {
 	assert.Contains(t, err.Error(), "--package")
 }
 
-func TestCreateCluster_PackageByGPU(t *testing.T) {
+func TestCreateCluster_AdditionalDisk(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
-		Items: []*bookingv1.Package{
-			{
-				Id:   "pkg-gpu",
-				Name: "gpu-starter",
-				ResourceConfiguration: &bookingv1.ResourceConfiguration{
-					Cpu:  "2000m",
-					Ram:  "4GiB",
-					Disk: "100GiB",
-					Gpu:  new("1000m"),
-				},
-			},
-			{
-				Id:   "pkg-no-gpu",
-				Name: "cpu-starter",
-				ResourceConfiguration: &bookingv1.ResourceConfiguration{
-					Cpu:  "2000m",
-					Ram:  "4GiB",
-					Disk: "100GiB",
-				},
+	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{
+		Package: &bookingv1.Package{
+			Id:   "pkg-100gib",
+			Name: "starter",
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{
+				Cpu:  "1000m",
+				Ram:  "1GiB",
+				Disk: "100GiB",
 			},
 		},
 	}, nil)
 	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
-		Cluster: &clusterv1.Cluster{Id: "cluster-gpu"},
+		Cluster: &clusterv1.Cluster{Id: "cluster-extra-disk"},
 	}, nil)
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "create",
-		"--name", "gpu-cluster",
+		"--name", "my-cluster",
 		"--cloud-provider", "aws",
 		"--cloud-region", "us-east-1",
-		"--gpu", "1000m",
+		"--package", "550e8400-e29b-41d4-a716-446655440000",
+		"--disk", "200GiB",
 	)
 	require.NoError(t, err)
 
 	req, ok := env.Server.CreateClusterCalls.Last()
 	require.True(t, ok)
-	assert.Equal(t, "pkg-gpu", req.GetCluster().GetConfiguration().GetPackageId())
+	assert.Equal(t, uint32(100), req.GetCluster().GetConfiguration().GetAdditionalResources().GetDisk())
+}
+
+func TestCreateCluster_DiskEqualToPackage(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{
+		Package: &bookingv1.Package{
+			Id:   "pkg-100gib",
+			Name: "starter",
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{
+				Cpu:  "1000m",
+				Ram:  "1GiB",
+				Disk: "100GiB",
+			},
+		},
+	}, nil)
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-same-disk"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "550e8400-e29b-41d4-a716-446655440000",
+		"--disk", "100GiB",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Nil(t, req.GetCluster().GetConfiguration().GetAdditionalResources(), "no additional disk when requested == package disk")
 }
 
 func TestCreateCluster_PackageByMultiAZ(t *testing.T) {
