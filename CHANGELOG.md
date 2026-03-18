@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.5.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.5.0)
+
+### Features
+
+- add self-uprade command to autoinstall releases (this won't work until the repo is public) (#20)
+
 ## [v0.4.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.4.1)
 
 ### Bug Fixes
