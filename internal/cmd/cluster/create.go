@@ -32,6 +32,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().String("cpu", "", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
 			cmd.Flags().String("ram", "", "RAM in GiB to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
 			cmd.Flags().String("disk", "", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
+			cmd.Flags().String("gpu", "", "Number of GPUs to select a package (e.g. \"1\", \"2\", or \"1000m\")")
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
 			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
@@ -72,11 +73,12 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cpu, _ := cmd.Flags().GetString("cpu")
 			ram, _ := cmd.Flags().GetString("ram")
 			disk, _ := cmd.Flags().GetString("disk")
+			gpu, _ := cmd.Flags().GetString("gpu")
 			multiAz, _ := cmd.Flags().GetBool("multi-az")
 			labelMap, _ := cmd.Flags().GetStringToString("label")
 
 			if cpu != "" {
-				cpu, err = normalizeCPU(cpu)
+				cpu, err = normalizeMillicores(cpu)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --cpu value: %w", err)
 				}
@@ -85,6 +87,12 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				ram, err = normalizeRAM(ram)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --ram value: %w", err)
+				}
+			}
+			if gpu != "" {
+				gpu, err = normalizeMillicores(gpu)
+				if err != nil {
+					return nil, fmt.Errorf("invalid --gpu value: %w", err)
 				}
 			}
 
@@ -112,7 +120,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 					packageID = pkg.GetId()
 				}
 			} else {
-				pkg, err = resolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, cpu, ram, multiAz)
+				pkg, err = resolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, cpu, ram, gpu, multiAz)
 				if err != nil {
 					return nil, err
 				}
@@ -186,5 +194,6 @@ func newCreateCommand(s *state.State) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("cpu", cpuCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("ram", ramCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
 	return cmd
 }

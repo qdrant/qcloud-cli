@@ -130,9 +130,9 @@ func TestCPUCompletion(t *testing.T) {
 
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
 		Items: []*bookingv1.Package{
-			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
-			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
-			{Id: "pkg-3", Name: "enterprise", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "2GiB", Disk: "200GiB"}},
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "1Gi", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "2Gi", Disk: "100GiB"}},
+			{Id: "pkg-3", Name: "enterprise", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "200GiB"}},
 		},
 	}, nil)
 
@@ -150,12 +150,12 @@ func TestCPUCompletion_FilteredByRAM(t *testing.T) {
 
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
 		Items: []*bookingv1.Package{
-			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
-			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "2Gi", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "100GiB"}},
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--ram", "1GiB", "--cpu", "")
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--ram", "4GiB", "--cpu", "")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "1000m")
 	assert.NotContains(t, stdout, "500m")
@@ -166,15 +166,15 @@ func TestRAMCompletion_FilteredByCPU(t *testing.T) {
 
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
 		Items: []*bookingv1.Package{
-			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
-			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "2Gi", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "100GiB"}},
 		},
 	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "500m", "--ram", "")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "512MiB")
-	assert.NotContains(t, stdout, "1GiB")
+	assert.Contains(t, stdout, "2GiB")
+	assert.NotContains(t, stdout, "4GiB")
 }
 
 func TestDiskCompletion_FilteredByCPUAndRAM(t *testing.T) {
@@ -182,17 +182,105 @@ func TestDiskCompletion_FilteredByCPUAndRAM(t *testing.T) {
 
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
 		Items: []*bookingv1.Package{
-			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "512MiB", Disk: "50GiB"}},
-			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "100GiB"}},
-			{Id: "pkg-3", Name: "enterprise", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "1GiB", Disk: "200GiB"}},
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "2Gi", Disk: "50GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "100GiB"}},
+			{Id: "pkg-3", Name: "enterprise", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "200GiB"}},
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "1000m", "--ram", "1GiB", "--disk", "")
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "1000m", "--ram", "4GiB", "--disk", "")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "100GiB")
 	assert.Contains(t, stdout, "200GiB")
 	assert.NotContains(t, stdout, "50GiB")
+}
+
+func TestGPUCompletion(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	gpu1 := "1000m"
+	gpu2 := "2000m"
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-gpu-1", Name: "gpu-starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "4000m", Ram: "16GiB", Disk: "100GiB", Gpu: &gpu1}},
+			{Id: "pkg-gpu-2", Name: "gpu-pro", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "8000m", Ram: "32GiB", Disk: "200GiB", Gpu: &gpu2}},
+			{Id: "pkg-gpu-3", Name: "gpu-starter-dup", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "4000m", Ram: "16GiB", Disk: "200GiB", Gpu: &gpu1}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--gpu", "")
+	require.NoError(t, err)
+	// Should return integer counts, not millicores.
+	assert.Contains(t, stdout, "1")
+	assert.Contains(t, stdout, "2")
+	assert.NotContains(t, stdout, "1000m")
+	assert.NotContains(t, stdout, "2000m")
+	// Deduplication: "1" appears in two packages but once in completions.
+	lines := strings.Split(stdout, "\n")
+	count := 0
+	for _, l := range lines {
+		if l == "1" {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "GPU count 1 should appear only once")
+}
+
+func TestGPUCompletion_NoProvider(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--gpu", "")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "1")
+}
+
+func TestRAMCompletion_APIFormatMismatch(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	// API returns "4Gi" but filter uses "4GiB" -- numeric comparison should still match.
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "100GiB"}},
+			{Id: "pkg-2", Name: "business", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "2000m", Ram: "8Gi", Disk: "200GiB"}},
+		},
+	}, nil)
+
+	// Filter by ram=4GiB should match the API's "4Gi" via numeric parsing.
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--ram", "4GiB", "--cpu", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "1000m")
+	assert.NotContains(t, stdout, "2000m")
+}
+
+func TestCPUCompletion_NormalizedOutput(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	// API returns "1" for CPU -- completion should normalize to "1000m".
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1", Ram: "4Gi", Disk: "100GiB"}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "1000m")
+}
+
+func TestRAMCompletion_NormalizedOutput(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	// API returns "4Gi" -- completion should normalize to "4GiB".
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "100GiB"}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--ram", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "4GiB")
+	assert.NotContains(t, stdout, "4Gi\n")
 }
 
 func TestVersionCompletion_UnavailableExcluded(t *testing.T) {

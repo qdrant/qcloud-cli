@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 )
@@ -58,4 +60,14 @@ func formatMillicents(mc int32, currency string) string {
 		return "free"
 	}
 	return fmt.Sprintf("%.4f %s", float64(mc)/100_000.0, currency)
+}
+
+// gpuFlagToMillicores reads the --gpu string flag and normalizes it to a millicore string.
+// Returns ("", nil) when the flag is empty or unset.
+func gpuFlagToMillicores(cmd *cobra.Command) (string, error) {
+	gpu, _ := cmd.Flags().GetString("gpu")
+	if gpu == "" {
+		return "", nil
+	}
+	return normalizeMillicores(gpu)
 }

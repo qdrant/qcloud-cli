@@ -128,9 +128,18 @@ func versionCompletion(s *state.State) func(*cobra.Command, []string, string) ([
 	}
 }
 
-// filteredPackages fetches active packages filtered by non-empty cpu/ram values and the multiAz flag.
+// packageFilter holds the parameters for filtering packages.
+type packageFilter struct {
+	CPU        string
+	RAM        string
+	GPU        string
+	IncludeGPU bool
+	MultiAz    bool
+}
+
+// filteredPackages fetches active packages matching the given filter.
 // Returns nil (no completions) if --cloud-provider is not set.
-func filteredPackages(cmd *cobra.Command, s *state.State, cpu, ram string, multiAz bool) ([]*bookingv1.Package, error) {
+func filteredPackages(cmd *cobra.Command, s *state.State, f packageFilter) ([]*bookingv1.Package, error) {
 	provider, _ := cmd.Flags().GetString("cloud-provider")
 	if provider == "" {
 		return nil, nil
@@ -152,11 +161,12 @@ func filteredPackages(cmd *cobra.Command, s *state.State, cpu, ram string, multi
 		AccountId:       accountID,
 		CloudProviderId: provider,
 		Statuses:        []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
+		Gpu:             &f.IncludeGPU,
 	}
 	if region != "" {
 		req.CloudProviderRegionId = &region
 	}
-	if multiAz {
+	if f.MultiAz {
 		req.MultiAz = new(true)
 	}
 
@@ -165,14 +175,37 @@ func filteredPackages(cmd *cobra.Command, s *state.State, cpu, ram string, multi
 		return nil, err
 	}
 
+	var wantCPU, wantRAM, wantGPU int64
+	if f.CPU != "" {
+		wantCPU, _ = parseCPUMillicores(f.CPU)
+	}
+	if f.RAM != "" {
+		wantRAM, _ = parseRAMGiB(f.RAM)
+	}
+	if f.GPU != "" {
+		wantGPU, _ = parseGPUMillicores(f.GPU)
+	}
+
 	var result []*bookingv1.Package
 	for _, p := range resp.GetItems() {
 		rc := p.GetResourceConfiguration()
-		if cpu != "" && rc.GetCpu() != cpu {
-			continue
+		if f.CPU != "" {
+			pkgCPU, _ := parseCPUMillicores(rc.GetCpu())
+			if pkgCPU != wantCPU {
+				continue
+			}
 		}
-		if ram != "" && rc.GetRam() != ram {
-			continue
+		if f.RAM != "" {
+			pkgRAM, _ := parseRAMGiB(rc.GetRam())
+			if pkgRAM != wantRAM {
+				continue
+			}
+		}
+		if f.GPU != "" {
+			pkgGPU, _ := parseGPUMillicores(rc.GetGpu())
+			if pkgGPU != wantGPU {
+				continue
+			}
 		}
 		result = append(result, p)
 	}
@@ -187,8 +220,19 @@ func cpuCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		ram, _ := cmd.Flags().GetString("ram")
+		gpu, err := gpuFlagToMillicores(cmd)
+		if err != nil {
+			cobra.CompErrorln(err.Error())
+			return nil, cobra.ShellCompDirectiveError
+		}
 		multiAz, _ := cmd.Flags().GetBool("multi-az")
-		pkgs, err := filteredPackages(cmd, s, "", ram, multiAz)
+		filter := packageFilter{
+			RAM:        ram,
+			GPU:        gpu,
+			IncludeGPU: gpu != "",
+			MultiAz:    multiAz,
+		}
+		pkgs, err := filteredPackages(cmd, s, filter)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -196,7 +240,11 @@ func cpuCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 		seen := make(map[string]struct{})
 		var completions []string
 		for _, p := range pkgs {
-			v := p.GetResourceConfiguration().GetCpu()
+			v, err := normalizeMillicores(p.GetResourceConfiguration().GetCpu())
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("package %s: %v", p.GetName(), err))
+				continue
+			}
 			if _, ok := seen[v]; !ok {
 				seen[v] = struct{}{}
 				completions = append(completions, v)
@@ -214,8 +262,19 @@ func ramCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		cpu, _ := cmd.Flags().GetString("cpu")
+		gpu, err := gpuFlagToMillicores(cmd)
+		if err != nil {
+			cobra.CompErrorln(err.Error())
+			return nil, cobra.ShellCompDirectiveError
+		}
 		multiAz, _ := cmd.Flags().GetBool("multi-az")
-		pkgs, err := filteredPackages(cmd, s, cpu, "", multiAz)
+		filter := packageFilter{
+			CPU:        cpu,
+			GPU:        gpu,
+			IncludeGPU: gpu != "",
+			MultiAz:    multiAz,
+		}
+		pkgs, err := filteredPackages(cmd, s, filter)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -223,7 +282,11 @@ func ramCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 		seen := make(map[string]struct{})
 		var completions []string
 		for _, p := range pkgs {
-			v := p.GetResourceConfiguration().GetRam()
+			v, err := normalizeRAM(p.GetResourceConfiguration().GetRam())
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("package %s: %v", p.GetName(), err))
+				continue
+			}
 			if _, ok := seen[v]; !ok {
 				seen[v] = struct{}{}
 				completions = append(completions, v)
@@ -242,8 +305,20 @@ func diskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 		}
 		cpu, _ := cmd.Flags().GetString("cpu")
 		ram, _ := cmd.Flags().GetString("ram")
+		gpu, err := gpuFlagToMillicores(cmd)
+		if err != nil {
+			cobra.CompErrorln(err.Error())
+			return nil, cobra.ShellCompDirectiveError
+		}
 		multiAz, _ := cmd.Flags().GetBool("multi-az")
-		pkgs, err := filteredPackages(cmd, s, cpu, ram, multiAz)
+		filter := packageFilter{
+			CPU:        cpu,
+			RAM:        ram,
+			GPU:        gpu,
+			IncludeGPU: gpu != "",
+			MultiAz:    multiAz,
+		}
+		pkgs, err := filteredPackages(cmd, s, filter)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -255,6 +330,49 @@ func diskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 			if _, ok := seen[v]; !ok {
 				seen[v] = struct{}{}
 				completions = append(completions, v)
+			}
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// gpuCompletion returns a completion function for the --gpu flag.
+func gpuCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		provider, _ := cmd.Flags().GetString("cloud-provider")
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		cpu, _ := cmd.Flags().GetString("cpu")
+		ram, _ := cmd.Flags().GetString("ram")
+		multiAz, _ := cmd.Flags().GetBool("multi-az")
+		filter := packageFilter{
+			CPU:        cpu,
+			RAM:        ram,
+			IncludeGPU: true,
+			MultiAz:    multiAz,
+		}
+		pkgs, err := filteredPackages(cmd, s, filter)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		seen := make(map[string]struct{})
+		var completions []string
+		for _, p := range pkgs {
+			v := p.GetResourceConfiguration().GetGpu()
+			if v == "" {
+				continue
+			}
+			// Convert millicores (e.g. "1000m") to integer GPUs (e.g. "1")
+			// to match the --gpu flag's Int type.
+			intVal := gpuMillicoresToCount(v)
+			if intVal == "" {
+				continue
+			}
+			if _, ok := seen[intVal]; !ok {
+				seen[intVal] = struct{}{}
+				completions = append(completions, intVal)
 			}
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
