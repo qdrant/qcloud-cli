@@ -8,7 +8,7 @@ import (
 )
 
 // ReleaseInfo wraps a go-selfupdate Release.
-// VersionStr is used as a fallback when Release is nil (e.g. in test stubs).
+// version is used as a fallback when Release is nil (e.g. in test stubs).
 type ReleaseInfo struct {
 	Release    *goselfupdate.Release
 	version string
