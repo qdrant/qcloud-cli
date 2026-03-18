@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.6.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.6.1)
+
+### Bug Fixes
+
+- package upgrade simplification (#24)
+
 ## [v0.6.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.6.0)
 
 ### Features
