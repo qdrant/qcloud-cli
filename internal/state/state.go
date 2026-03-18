@@ -13,8 +13,7 @@ import (
 // Updater checks for and applies CLI updates.
 type Updater interface {
 	DetectLatest(ctx context.Context) (*selfupgrade.ReleaseInfo, bool, error)
-	DetectVersion(ctx context.Context, version string) (*selfupgrade.ReleaseInfo, bool, error)
-	UpdateTo(ctx context.Context, version string, execPath string) error
+	UpdateSelf(ctx context.Context, currentVersion string) (*selfupgrade.ReleaseInfo, error)
 }
 
 // State holds shared dependencies for all commands.
