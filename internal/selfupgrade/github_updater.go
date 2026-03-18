@@ -10,7 +10,7 @@ import (
 // ReleaseInfo wraps a go-selfupdate Release.
 // version is used as a fallback when Release is nil (e.g. in test stubs).
 type ReleaseInfo struct {
-	Release    *goselfupdate.Release
+	Release *goselfupdate.Release
 	version string
 }
 
@@ -19,7 +19,7 @@ func NewReleaseInfo(version string) *ReleaseInfo {
 	return &ReleaseInfo{version: version}
 }
 
-// NewReleaseInfo creates a ReleaseInfo with only a version string, for use in tests.
+// NewReleaseInfoFromSelfUpdate creates a ReleaseInfo from a selfupdate.Release object.
 func NewReleaseInfoFromSelfUpdate(rel *goselfupdate.Release) *ReleaseInfo {
 	return &ReleaseInfo{version: rel.Version(), Release: rel}
 }
