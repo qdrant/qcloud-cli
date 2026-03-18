@@ -7,9 +7,37 @@ import (
 	goselfupdate "github.com/creativeprojects/go-selfupdate"
 )
 
-// ReleaseInfo contains version information about a release.
+// ReleaseInfo wraps a go-selfupdate Release.
+// version is used as a fallback when Release is nil (e.g. in test stubs).
 type ReleaseInfo struct {
-	Version string
+	Release *goselfupdate.Release
+	version string
+}
+
+// NewReleaseInfo creates a ReleaseInfo with only a version string, for use in tests.
+func NewReleaseInfo(version string) *ReleaseInfo {
+	return &ReleaseInfo{version: version}
+}
+
+// NewReleaseInfoFromSelfUpdate creates a ReleaseInfo from a selfupdate.Release object.
+func NewReleaseInfoFromSelfUpdate(rel *goselfupdate.Release) *ReleaseInfo {
+	return &ReleaseInfo{version: rel.Version(), Release: rel}
+}
+
+// Version returns the release version string.
+func (r *ReleaseInfo) Version() string {
+	if r.Release != nil {
+		return r.Release.Version()
+	}
+	return r.version
+}
+
+// Equal reports whether this release's version equals the given version string.
+func (r *ReleaseInfo) Equal(version string) bool {
+	if r.Release != nil {
+		return r.Release.Equal(version)
+	}
+	return r.version == version
 }
 
 var repository = goselfupdate.NewRepositorySlug("qdrant", "qcloud-cli")
@@ -40,30 +68,14 @@ func (g *GithubUpdater) DetectLatest(ctx context.Context) (*ReleaseInfo, bool, e
 	if err != nil || !found {
 		return nil, found, err
 	}
-
-	return &ReleaseInfo{Version: rel.Version()}, true, nil
+	return NewReleaseInfoFromSelfUpdate(rel), true, nil
 }
 
-// DetectVersion finds a specific release by version string.
-func (g *GithubUpdater) DetectVersion(ctx context.Context, version string) (*ReleaseInfo, bool, error) {
-	rel, found, err := g.updater.DetectVersion(ctx, repository, version)
-	if err != nil || !found {
-		return nil, found, err
-	}
-
-	return &ReleaseInfo{Version: rel.Version()}, true, nil
-}
-
-// UpdateTo downloads and replaces the binary at execPath with the given version.
-func (g *GithubUpdater) UpdateTo(ctx context.Context, version string, execPath string) error {
-	rel, found, err := g.updater.DetectVersion(ctx, repository, version)
+// UpdateSelf downloads and replaces the running binary with the latest release.
+func (g *GithubUpdater) UpdateSelf(ctx context.Context, currentVersion string) (*ReleaseInfo, error) {
+	rel, err := g.updater.UpdateSelf(ctx, currentVersion, repository)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	if !found {
-		return fmt.Errorf("version %s not found", version)
-	}
-
-	return g.updater.UpdateTo(ctx, rel, execPath)
+	return NewReleaseInfoFromSelfUpdate(rel), nil
 }

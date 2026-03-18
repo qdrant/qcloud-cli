@@ -3,7 +3,6 @@ module github.com/qdrant/qcloud-cli
 go 1.26.0
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/creativeprojects/go-selfupdate v1.5.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/jedib0t/go-pretty/v6 v6.7.8
@@ -22,6 +21,7 @@ require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20251209175733-2a1774d88802.1 // indirect
 	code.gitea.io/sdk/gitea v0.22.1 // indirect
 	github.com/42wim/httpsig v1.2.3 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
