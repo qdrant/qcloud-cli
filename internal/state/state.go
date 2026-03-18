@@ -6,8 +6,16 @@ import (
 	"log/slog"
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
+	"github.com/qdrant/qcloud-cli/internal/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
 )
+
+// Updater checks for and applies CLI updates.
+type Updater interface {
+	DetectLatest(ctx context.Context) (*selfupgrade.ReleaseInfo, bool, error)
+	DetectVersion(ctx context.Context, version string) (*selfupgrade.ReleaseInfo, bool, error)
+	UpdateTo(ctx context.Context, version string, execPath string) error
+}
 
 // State holds shared dependencies for all commands.
 type State struct {
@@ -15,6 +23,7 @@ type State struct {
 	Config  *config.Config
 	Logger  *slog.Logger
 	client  *qcloudapi.Client
+	updater Updater
 }
 
 // New creates a new State with the given version string.
@@ -49,6 +58,26 @@ func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 // SetClient injects a pre-built client, bypassing lazy creation.
 func (s *State) SetClient(c *qcloudapi.Client) {
 	s.client = c
+}
+
+// Updater returns the CLI updater, creating it lazily on first call.
+func (s *State) Updater() (Updater, error) {
+	if s.updater != nil {
+		return s.updater, nil
+	}
+
+	u, err := selfupgrade.NewGitHubUpdater()
+	if err != nil {
+		return nil, err
+	}
+
+	s.updater = u
+	return s.updater, nil
+}
+
+// SetUpdater injects an Updater implementation.
+func (s *State) SetUpdater(u Updater) {
+	s.updater = u
 }
 
 // AccountID returns the configured account ID or an error.
