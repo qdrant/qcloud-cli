@@ -9,6 +9,7 @@ import (
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -106,5 +107,8 @@ func newPackageListCommand(s *state.State) *cobra.Command {
 	cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required)")
 	_ = cmd.MarkFlagRequired("cloud-provider")
 	_ = cmd.MarkFlagRequired("cloud-region")
+
+	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", completion.CloudProviderCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cloud-region", completion.CloudRegionCompletion(s))
 	return cmd
 }
