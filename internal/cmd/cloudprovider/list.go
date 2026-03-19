@@ -1,4 +1,4 @@
-package cluster
+package cloudprovider
 
 import (
 	"fmt"
@@ -14,17 +14,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-func newCloudProviderCommand(s *state.State) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "cloud-provider",
-		Short: "Manage cloud providers",
-		Args:  cobra.NoArgs,
-	}
-	cmd.AddCommand(newCloudProviderListCommand(s))
-	return cmd
-}
-
-func newCloudProviderListCommand(s *state.State) *cobra.Command {
+func newListCommand(s *state.State) *cobra.Command {
 	return base.ListCmd[*platformv1.ListCloudProvidersResponse]{
 		Use:   "list",
 		Short: "List available cloud providers",

@@ -25,8 +25,6 @@ func NewCommand(s *state.State) *cobra.Command {
 		newWaitCommand(s),
 		newVersionCommand(s),
 		newPackageCommand(s),
-		newCloudProviderCommand(s),
-		newCloudRegionCommand(s),
 		newKeyCommand(s),
 	)
 	return cmd

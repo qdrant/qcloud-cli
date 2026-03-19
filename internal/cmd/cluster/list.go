@@ -9,6 +9,7 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -150,8 +151,8 @@ Use --cloud-provider and --cloud-region to filter results server-side:
 	cmd.Flags().String("cloud-provider", "", "Filter by cloud provider ID")
 	cmd.Flags().String("cloud-region", "", "Filter by cloud provider region ID")
 
-	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", cloudProviderCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("cloud-region", cloudRegionCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", completion.CloudProviderCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cloud-region", completion.CloudRegionCompletion(s))
 
 	return cmd
 }
