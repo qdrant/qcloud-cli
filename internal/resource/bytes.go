@@ -6,12 +6,24 @@ import (
 	"strings"
 )
 
-// Convenience constants (binary SI).
+// Binary SI size constants.
 const (
 	KiB ByteQuantity = 1024
 	MiB              = 1024 * KiB
 	GiB              = 1024 * MiB
 	TiB              = 1024 * GiB
+	PiB              = 1024 * TiB
+	EiB              = 1024 * PiB
+)
+
+// Unit suffix constants for use with FormatByteQuantity.
+const (
+	UnitKiB = "KiB"
+	UnitMiB = "MiB"
+	UnitGiB = "GiB"
+	UnitTiB = "TiB"
+	UnitPiB = "PiB"
+	UnitEiB = "EiB"
 )
 
 // ByteQuantity stores a memory quantity as int64 bytes (the smallest unit).
@@ -19,13 +31,19 @@ const (
 type ByteQuantity int64
 
 // ParseByteQuantity parses a byte quantity string.
-// Accepts T/Ti/TiB, G/Gi/GiB, M/Mi/MiB, K/Ki/KiB, or bare integer (treated as GiB).
+// Accepts E/Ei/EiB, P/Pi/PiB, T/Ti/TiB, G/Gi/GiB, M/Mi/MiB, K/Ki/KiB, or bare integer (treated as GiB).
 func ParseByteQuantity(s string) (ByteQuantity, error) {
 	// Match longest suffix first.
 	suffixes := []struct {
 		suffix string
 		mult   ByteQuantity
 	}{
+		{"EiB", EiB},
+		{"Ei", EiB},
+		{"E", EiB},
+		{"PiB", PiB},
+		{"Pi", PiB},
+		{"P", PiB},
 		{"TiB", TiB},
 		{"Ti", TiB},
 		{"T", TiB},
@@ -72,16 +90,7 @@ func (b ByteQuantity) String() string {
 	if b == 0 {
 		return ""
 	}
-	units := []struct {
-		mult   ByteQuantity
-		suffix string
-	}{
-		{TiB, "TiB"},
-		{GiB, "GiB"},
-		{MiB, "MiB"},
-		{KiB, "KiB"},
-	}
-	for _, u := range units {
+	for _, u := range unitTable {
 		if b%u.mult == 0 {
 			return fmt.Sprintf("%d%s", int64(b/u.mult), u.suffix)
 		}
@@ -99,20 +108,28 @@ func (b ByteQuantity) GiB() int64 {
 	return int64(b) / int64(GiB)
 }
 
-// FormatByteQuantity formats b in the given binary SI unit.
-// unit: "Ki"/"KiB", "Mi"/"MiB", "Gi"/"GiB", "Ti"/"TiB", "" for plain bytes.
-// Example: FormatByteQuantity(8*GiB, "GiB") → "8GiB".
+// FormatByteQuantity formats b in the given binary SI unit (use the UnitXiB constants).
+// "" formats as plain bytes.
+// Example: FormatByteQuantity(8*GiB, UnitGiB) → "8GiB".
 func FormatByteQuantity(b ByteQuantity, unit string) string {
-	switch unit {
-	case "Ti", "TiB":
-		return fmt.Sprintf("%dTiB", int64(b/TiB))
-	case "Gi", "GiB":
-		return fmt.Sprintf("%dGiB", int64(b/GiB))
-	case "Mi", "MiB":
-		return fmt.Sprintf("%dMiB", int64(b/MiB))
-	case "Ki", "KiB":
-		return fmt.Sprintf("%dKiB", int64(b/KiB))
-	default:
-		return fmt.Sprintf("%d", int64(b))
+	for _, u := range unitTable {
+		if unit == u.suffix {
+			return fmt.Sprintf("%d%s", int64(b/u.mult), u.suffix)
+		}
 	}
+	return fmt.Sprintf("%d", int64(b))
+}
+
+// unitTable lists all binary SI units from largest to smallest.
+// Used by String() and FormatByteQuantity().
+var unitTable = []struct {
+	mult   ByteQuantity
+	suffix string
+}{
+	{EiB, UnitEiB},
+	{PiB, UnitPiB},
+	{TiB, UnitTiB},
+	{GiB, UnitGiB},
+	{MiB, UnitMiB},
+	{KiB, UnitKiB},
 }

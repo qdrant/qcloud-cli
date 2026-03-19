@@ -12,6 +12,8 @@ func TestConstants(t *testing.T) {
 	assert.Equal(t, MiB, ByteQuantity(1024*1024))
 	assert.Equal(t, GiB, ByteQuantity(1024*1024*1024))
 	assert.Equal(t, TiB, ByteQuantity(1024*1024*1024*1024))
+	assert.Equal(t, PiB, ByteQuantity(1024*1024*1024*1024*1024))
+	assert.Equal(t, EiB, ByteQuantity(1024*1024*1024*1024*1024*1024))
 }
 
 func TestParseByteQuantity(t *testing.T) {
@@ -30,6 +32,12 @@ func TestParseByteQuantity(t *testing.T) {
 		{"1TiB", 1 * TiB, false},
 		{"1Ti", 1 * TiB, false},
 		{"1T", 1 * TiB, false},
+		{"2PiB", 2 * PiB, false},
+		{"2Pi", 2 * PiB, false},
+		{"2P", 2 * PiB, false},
+		{"1EiB", 1 * EiB, false},
+		{"1Ei", 1 * EiB, false},
+		{"1E", 1 * EiB, false},
 		{"4KiB", 4 * KiB, false},
 		{"4Ki", 4 * KiB, false},
 		{"4K", 4 * KiB, false},
@@ -57,6 +65,7 @@ func TestByteQuantity_Set(t *testing.T) {
 	}{
 		{"8GiB", 8 * GiB, false},
 		{"512MiB", 512 * MiB, false},
+		{"1PiB", 1 * PiB, false},
 		{"bad", 0, true},
 	}
 	for _, tt := range tests {
@@ -84,6 +93,8 @@ func TestByteQuantity_String(t *testing.T) {
 		{1 * TiB, "1TiB"},
 		{512 * MiB, "512MiB"},
 		{4 * KiB, "4KiB"},
+		{2 * PiB, "2PiB"},
+		{1 * EiB, "1EiB"},
 		{1500, "1500"},
 	}
 	for _, tt := range tests {
@@ -103,11 +114,12 @@ func TestFormatByteQuantity(t *testing.T) {
 		unit string
 		want string
 	}{
-		{8 * GiB, "GiB", "8GiB"},
-		{8 * GiB, "Gi", "8GiB"},
-		{512 * MiB, "MiB", "512MiB"},
-		{1 * TiB, "TiB", "1TiB"},
-		{4 * KiB, "KiB", "4KiB"},
+		{8 * GiB, UnitGiB, "8GiB"},
+		{512 * MiB, UnitMiB, "512MiB"},
+		{1 * TiB, UnitTiB, "1TiB"},
+		{4 * KiB, UnitKiB, "4KiB"},
+		{2 * PiB, UnitPiB, "2PiB"},
+		{1 * EiB, UnitEiB, "1EiB"},
 		{8 * GiB, "", "8589934592"},
 	}
 	for _, tt := range tests {

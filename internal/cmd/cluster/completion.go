@@ -205,7 +205,7 @@ func ramCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 			}
 			if _, ok := seen[v]; !ok {
 				seen[v] = struct{}{}
-				completions = append(completions, resource.FormatByteQuantity(v, "GiB"))
+				completions = append(completions, resource.FormatByteQuantity(v, resource.UnitGiB))
 			}
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
