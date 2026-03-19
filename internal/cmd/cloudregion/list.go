@@ -1,4 +1,4 @@
-package cluster
+package cloudregion
 
 import (
 	"fmt"
@@ -10,21 +10,12 @@ import (
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-func newCloudRegionCommand(s *state.State) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "cloud-region",
-		Short: "Manage cloud regions",
-		Args:  cobra.NoArgs,
-	}
-	cmd.AddCommand(newCloudRegionListCommand(s))
-	return cmd
-}
-
-func newCloudRegionListCommand(s *state.State) *cobra.Command {
+func newListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*platformv1.ListCloudProviderRegionsResponse]{
 		Use:   "list",
 		Short: "List available cloud regions for a cloud provider",
@@ -73,5 +64,6 @@ func newCloudRegionListCommand(s *state.State) *cobra.Command {
 
 	cmd.Flags().String("cloud-provider", "", "Cloud provider ID (required)")
 	_ = cmd.MarkFlagRequired("cloud-provider")
+	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", completion.CloudProviderCompletion(s))
 	return cmd
 }

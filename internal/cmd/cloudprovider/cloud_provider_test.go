@@ -1,4 +1,4 @@
-package cluster_test
+package cloudprovider_test
 
 import (
 	"testing"
@@ -21,7 +21,7 @@ func TestListCloudProviders_TableOutput(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cloud-provider", "list")
+	stdout, _, err := testutil.Exec(t, env, "cloud-provider", "list")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "NAME")

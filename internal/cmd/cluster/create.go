@@ -12,6 +12,7 @@ import (
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -187,8 +188,8 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			}
 		},
 	}.CobraCommand(s)
-	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", cloudProviderCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("cloud-region", cloudRegionCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", completion.CloudProviderCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cloud-region", completion.CloudRegionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("package", packageCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("version", versionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("cpu", cpuCompletion(s))

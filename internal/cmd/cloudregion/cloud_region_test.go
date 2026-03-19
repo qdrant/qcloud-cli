@@ -1,4 +1,4 @@
-package cluster_test
+package cloudregion_test
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ import (
 func TestListCloudRegions_RequiresCloudProvider(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	_, _, err := testutil.Exec(t, env, "cluster", "cloud-region", "list")
+	_, _, err := testutil.Exec(t, env, "cloud-region", "list")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cloud-provider")
 }
@@ -29,7 +29,7 @@ func TestListCloudRegions_TableOutput(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cloud-region", "list", "--cloud-provider", "aws")
+	stdout, _, err := testutil.Exec(t, env, "cloud-region", "list", "--cloud-provider", "aws")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "NAME")
