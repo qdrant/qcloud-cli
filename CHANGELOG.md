@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.7.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.7.1)
+
+### Bug Fixes
+
+- add command completion for cloud-provider and cloud-region flags for packages (#30)
+- parse resources into a full struct so that maintaining resource quantities is easier (#32)
+
 ## [v0.7.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.7.0)
 
 ### Features
