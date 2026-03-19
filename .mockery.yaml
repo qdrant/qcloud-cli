@@ -1,0 +1,50 @@
+template: testify
+include-auto-generated: true
+packages:
+  github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1:
+    config:
+      dir: internal/testutil/mocks
+      pkgname: mocks
+      filename: mock_ClusterServiceServer.go
+    interfaces:
+      ClusterServiceServer: {}
+
+  github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1:
+    config:
+      dir: internal/testutil/mocks
+      pkgname: mocks
+      filename: mock_BackupServiceServer.go
+    interfaces:
+      BackupServiceServer: {}
+
+  github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1:
+    config:
+      dir: internal/testutil/mocks
+      pkgname: mocks
+      filename: mock_BookingServiceServer.go
+    interfaces:
+      BookingServiceServer: {}
+
+  github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1:
+    config:
+      dir: internal/testutil/mocks
+      pkgname: mocks
+      filename: mock_PlatformServiceServer.go
+    interfaces:
+      PlatformServiceServer: {}
+
+  github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2:
+    config:
+      dir: internal/testutil/mocks
+      pkgname: mocks
+      filename: mock_DatabaseApiKeyServiceServer.go
+    interfaces:
+      DatabaseApiKeyServiceServer: {}
+
+  github.com/qdrant/qcloud-cli/internal/state:
+    config:
+      dir: internal/testutil/mocks
+      pkgname: mocks
+      filename: mock_Updater.go
+    interfaces:
+      Updater: {}
