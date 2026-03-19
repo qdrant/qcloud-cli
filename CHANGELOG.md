@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.7.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.7.0)
+
+### Features
+
+- move cloud-provider and cloud-region subcommands as root commands (#27)
+
 ## [v0.6.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.6.1)
 
 ### Bug Fixes
