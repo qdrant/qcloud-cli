@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
+
+	"github.com/qdrant/qcloud-cli/internal/resource"
 )
 
 // resolvePackageByID fetches a single package by its UUID.
@@ -52,12 +54,14 @@ func resolvePackageByName(
 }
 
 // resolvePackageByResources lists active packages and returns the unique one matching
-// all non-empty resource dimensions (cpu, ram, disk, gpu) and the multiAz flag.
+// all non-zero resource dimensions (cpu, ram, gpu) and the multiAz flag.
 // Returns an error if zero or more than one package matches.
 func resolvePackageByResources(
 	ctx context.Context,
 	booking bookingv1.BookingServiceClient,
-	accountID, cloudProvider, cloudRegion, cpu, ram, gpu string,
+	accountID, cloudProvider, cloudRegion string,
+	cpu, gpu resource.Millicores,
+	ram resource.ByteQuantity,
 	multiAz bool,
 ) (*bookingv1.Package, error) {
 	req := &bookingv1.ListPackagesRequest{
@@ -70,7 +74,7 @@ func resolvePackageByResources(
 		req.MultiAz = new(true)
 	}
 
-	if gpu != "" {
+	if gpu != 0 {
 		req.Gpu = new(true)
 	} else {
 		req.Gpu = new(false)
@@ -81,35 +85,24 @@ func resolvePackageByResources(
 		return nil, fmt.Errorf("failed to list packages: %w", err)
 	}
 
-	var wantCPU, wantRAM, wantGPU int64
-	if cpu != "" {
-		wantCPU, _ = parseCPUMillicores(cpu)
-	}
-	if ram != "" {
-		wantRAM, _ = parseRAMGiB(ram)
-	}
-	if gpu != "" {
-		wantGPU, _ = parseGPUMillicores(gpu)
-	}
-
 	var matches []*bookingv1.Package
 	for _, p := range resp.GetItems() {
 		rc := p.GetResourceConfiguration()
-		if cpu != "" {
-			pkgCPU, _ := parseCPUMillicores(rc.GetCpu())
-			if pkgCPU != wantCPU {
+		if cpu != 0 {
+			pkgCPU, _ := resource.ParseMillicores(rc.GetCpu())
+			if pkgCPU != cpu {
 				continue
 			}
 		}
-		if ram != "" {
-			pkgRAM, _ := parseRAMGiB(rc.GetRam())
-			if pkgRAM != wantRAM {
+		if ram != 0 {
+			pkgRAM, _ := resource.ParseByteQuantity(rc.GetRam())
+			if pkgRAM != ram {
 				continue
 			}
 		}
-		if gpu != "" {
-			pkgGPU, _ := parseGPUMillicores(rc.GetGpu())
-			if pkgGPU != wantGPU {
+		if gpu != 0 {
+			pkgGPU, _ := resource.ParseMillicores(rc.GetGpu())
+			if pkgGPU != gpu {
 				continue
 			}
 		}
@@ -117,14 +110,14 @@ func resolvePackageByResources(
 	}
 
 	var filterDesc []string
-	if cpu != "" {
-		filterDesc = append(filterDesc, fmt.Sprintf("cpu=%q", cpu))
+	if cpu != 0 {
+		filterDesc = append(filterDesc, fmt.Sprintf("cpu=%q", cpu.String()))
 	}
-	if ram != "" {
-		filterDesc = append(filterDesc, fmt.Sprintf("ram=%q", ram))
+	if ram != 0 {
+		filterDesc = append(filterDesc, fmt.Sprintf("ram=%q", ram.String()))
 	}
-	if gpu != "" {
-		filterDesc = append(filterDesc, fmt.Sprintf("gpu=%q", gpu))
+	if gpu != 0 {
+		filterDesc = append(filterDesc, fmt.Sprintf("gpu=%q", gpu.String()))
 	}
 	desc := strings.Join(filterDesc, " ")
 
