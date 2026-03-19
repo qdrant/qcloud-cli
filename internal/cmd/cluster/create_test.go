@@ -16,7 +16,7 @@ import (
 func TestCreateCluster_WithLabels(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-labeled"},
 	}, nil)
 
@@ -31,7 +31,7 @@ func TestCreateCluster_WithLabels(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	capturedLabels := make(map[string]string)
 	for _, kv := range req.GetCluster().GetLabels() {
@@ -43,7 +43,7 @@ func TestCreateCluster_WithLabels(t *testing.T) {
 func TestCreateCluster_NoWait(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+	env.ClusterServer.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
 		return &clusterv1.CreateClusterResponse{
 			Cluster: &clusterv1.Cluster{
 				Id:   "cluster-abc",
@@ -51,7 +51,7 @@ func TestCreateCluster_NoWait(t *testing.T) {
 			},
 		}, nil
 	})
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
 		},
@@ -66,13 +66,13 @@ func TestCreateCluster_NoWait(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "cluster-abc")
-	assert.Equal(t, 0, env.Server.GetClusterCalls.Count(), "GetCluster should not be called without --wait")
+	assert.Equal(t, 0, env.ClusterServer.GetClusterCalls.Count(), "GetCluster should not be called without --wait")
 }
 
 func TestCreateCluster_WaitSuccess(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+	env.ClusterServer.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
 		return &clusterv1.CreateClusterResponse{
 			Cluster: &clusterv1.Cluster{
 				Id:   "cluster-xyz",
@@ -80,7 +80,7 @@ func TestCreateCluster_WaitSuccess(t *testing.T) {
 			},
 		}, nil
 	})
-	env.Server.GetClusterCalls.
+	env.ClusterServer.GetClusterCalls.
 		OnCall(0, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 			return &clusterv1.GetClusterResponse{
 				Cluster: &clusterv1.Cluster{
@@ -129,10 +129,10 @@ func TestCreateCluster_WaitSuccess(t *testing.T) {
 func TestCreateCluster_WaitFailure(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-fail"},
 	}, nil)
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			Id: "cluster-fail",
 			State: &clusterv1.ClusterState{
@@ -160,10 +160,10 @@ func TestCreateCluster_WaitFailure(t *testing.T) {
 func TestCreateCluster_WaitTimeout(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-slow"},
 	}, nil)
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			Id:    "cluster-slow",
 			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
@@ -187,7 +187,7 @@ func TestCreateCluster_PackageByUUID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-pkg-uuid"},
 	}, nil)
 
@@ -201,7 +201,7 @@ func TestCreateCluster_PackageByUUID(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, env.BookingServer.ListPackagesCalls.Count(), "ListPackages should not be called for UUID input")
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", req.GetCluster().GetConfiguration().GetPackageId())
 }
@@ -214,7 +214,7 @@ func TestCreateCluster_PackageByName(t *testing.T) {
 			{Id: "pkg-uuid-123", Name: "starter"},
 		},
 	}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-named-pkg"},
 	}, nil)
 
@@ -227,7 +227,7 @@ func TestCreateCluster_PackageByName(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "pkg-uuid-123", req.GetCluster().GetConfiguration().GetPackageId())
 }
@@ -251,8 +251,8 @@ func TestCreateCluster_PackageNameNotFound(t *testing.T) {
 func TestCreateCluster_AutoGeneratedName(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.SuggestClusterNameCalls.Returns(&clusterv1.SuggestClusterNameResponse{Name: "eager-pelican"}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.SuggestClusterNameCalls.Returns(&clusterv1.SuggestClusterNameResponse{Name: "eager-pelican"}, nil)
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-auto", Name: "eager-pelican"},
 	}, nil)
 
@@ -264,7 +264,7 @@ func TestCreateCluster_AutoGeneratedName(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "eager-pelican", req.GetCluster().GetName())
 }
@@ -286,7 +286,7 @@ func TestCreateCluster_PackageByResources(t *testing.T) {
 			},
 		},
 	}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-by-resources"},
 	}, nil)
 
@@ -301,7 +301,7 @@ func TestCreateCluster_PackageByResources(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "pkg-res-1", req.GetCluster().GetConfiguration().GetPackageId())
 	assert.Nil(t, req.GetCluster().GetConfiguration().GetAdditionalResources(), "no additional disk expected when requested == package disk")
@@ -323,7 +323,7 @@ func TestCreateCluster_PackageByResourcesPartial(t *testing.T) {
 			},
 		},
 	}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-cpu-only"},
 	}, nil)
 
@@ -336,7 +336,7 @@ func TestCreateCluster_PackageByResourcesPartial(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "pkg-cpu-only", req.GetCluster().GetConfiguration().GetPackageId())
 }
@@ -427,7 +427,7 @@ func TestCreateCluster_AdditionalDisk(t *testing.T) {
 			},
 		},
 	}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-extra-disk"},
 	}, nil)
 
@@ -441,7 +441,7 @@ func TestCreateCluster_AdditionalDisk(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, uint32(100), req.GetCluster().GetConfiguration().GetAdditionalResources().GetDisk())
 }
@@ -460,7 +460,7 @@ func TestCreateCluster_DiskEqualToPackage(t *testing.T) {
 			},
 		},
 	}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-same-disk"},
 	}, nil)
 
@@ -474,7 +474,7 @@ func TestCreateCluster_DiskEqualToPackage(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Nil(t, req.GetCluster().GetConfiguration().GetAdditionalResources(), "no additional disk when requested == package disk")
 }
@@ -494,7 +494,7 @@ func TestCreateCluster_PackageByMultiAZ(t *testing.T) {
 			},
 		},
 	}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-multiaz"},
 	}, nil)
 
@@ -508,7 +508,7 @@ func TestCreateCluster_PackageByMultiAZ(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, ok := env.Server.CreateClusterCalls.Last()
+	req, ok := env.ClusterServer.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "pkg-multiaz", req.GetCluster().GetConfiguration().GetPackageId())
 }
@@ -554,7 +554,7 @@ func TestCreateCluster_PackageByResourcesWithGPU(t *testing.T) {
 					},
 				},
 			}, nil)
-			env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+			env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 				Cluster: &clusterv1.Cluster{Id: "cluster-gpu"},
 			}, nil)
 
@@ -569,7 +569,7 @@ func TestCreateCluster_PackageByResourcesWithGPU(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			req, ok := env.Server.CreateClusterCalls.Last()
+			req, ok := env.ClusterServer.CreateClusterCalls.Last()
 			require.True(t, ok)
 			assert.Equal(t, "pkg-gpu-1", req.GetCluster().GetConfiguration().GetPackageId())
 
@@ -597,7 +597,7 @@ func TestCreateCluster_NoGPUExcludesGPUPackages(t *testing.T) {
 			},
 		},
 	}, nil)
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+	env.ClusterServer.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
 		Cluster: &clusterv1.Cluster{Id: "cluster-no-gpu"},
 	}, nil)
 
@@ -620,8 +620,8 @@ func TestCreateCluster_NoGPUExcludesGPUPackages(t *testing.T) {
 func TestCreateCluster_ExplicitNameSkipsSuggest(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.SuggestClusterNameCalls.Returns(&clusterv1.SuggestClusterNameResponse{Name: "should-not-use"}, nil)
-	env.Server.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
+	env.ClusterServer.SuggestClusterNameCalls.Returns(&clusterv1.SuggestClusterNameResponse{Name: "should-not-use"}, nil)
+	env.ClusterServer.CreateClusterCalls.Always(func(_ context.Context, req *clusterv1.CreateClusterRequest) (*clusterv1.CreateClusterResponse, error) {
 		return &clusterv1.CreateClusterResponse{
 			Cluster: &clusterv1.Cluster{Id: "cluster-named", Name: req.GetCluster().GetName()},
 		}, nil
@@ -635,5 +635,5 @@ func TestCreateCluster_ExplicitNameSkipsSuggest(t *testing.T) {
 		"--package", "00000000-0000-0000-0000-000000000001",
 	)
 	require.NoError(t, err)
-	assert.Equal(t, 0, env.Server.SuggestClusterNameCalls.Count(), "SuggestClusterName should not be called when --name is provided")
+	assert.Equal(t, 0, env.ClusterServer.SuggestClusterNameCalls.Count(), "SuggestClusterName should not be called when --name is provided")
 }

@@ -15,7 +15,7 @@ func TestListVersions_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	remarks := "upgrade recommended"
-	env.Server.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
+	env.ClusterServer.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
 		Items: []*clusterv1.QdrantRelease{
 			{Version: "1.14.0", Default: true},
 			{Version: "1.13.0", EndOfLife: true},

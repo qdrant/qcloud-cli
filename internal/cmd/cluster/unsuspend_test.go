@@ -14,12 +14,12 @@ import (
 func TestUnsuspend(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
 
-	env.Server.UnsuspendClusterCalls.Returns(&clusterv1.UnsuspendClusterResponse{}, nil)
+	env.ClusterServer.UnsuspendClusterCalls.Returns(&clusterv1.UnsuspendClusterResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "unsuspend", "cluster-123")
 	require.NoError(t, err)
 
-	req, ok := env.Server.UnsuspendClusterCalls.Last()
+	req, ok := env.ClusterServer.UnsuspendClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "test-account-id", req.GetAccountId())
 	assert.Equal(t, "cluster-123", req.GetClusterId())

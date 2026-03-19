@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
@@ -14,7 +15,7 @@ import (
 func TestListPackages_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+	env.BookingServer.EXPECT().ListPackages(mock.Anything, mock.Anything).Return(&bookingv1.ListPackagesResponse{
 		Items: []*bookingv1.Package{
 			{
 				Id:   "pkg-123",
@@ -55,7 +56,7 @@ func TestListPackages_TableOutput(t *testing.T) {
 func TestListPackages_FreePackage(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+	env.BookingServer.EXPECT().ListPackages(mock.Anything, mock.Anything).Return(&bookingv1.ListPackagesResponse{
 		Items: []*bookingv1.Package{
 			{
 				Id:                  "pkg-free",

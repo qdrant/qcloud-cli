@@ -16,12 +16,12 @@ import (
 func TestUpdateCluster_SetLabels(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+	env.ClusterServer.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 		return &clusterv1.GetClusterResponse{
 			Cluster: &clusterv1.Cluster{Id: req.GetClusterId(), Name: "my-cluster"},
 		}, nil
 	})
-	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+	env.ClusterServer.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
 		return &clusterv1.UpdateClusterResponse{
 			Cluster: req.GetCluster(),
 		}, nil
@@ -36,7 +36,7 @@ func TestUpdateCluster_SetLabels(t *testing.T) {
 	assert.Contains(t, stdout, "cluster-abc")
 	assert.Contains(t, stdout, "updated successfully")
 
-	req, ok := env.Server.UpdateClusterCalls.Last()
+	req, ok := env.ClusterServer.UpdateClusterCalls.Last()
 	require.True(t, ok)
 	capturedLabels := make(map[string]string)
 	for _, kv := range req.GetCluster().GetLabels() {
@@ -48,12 +48,12 @@ func TestUpdateCluster_SetLabels(t *testing.T) {
 func TestUpdateCluster_ClearLabels(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+	env.ClusterServer.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 		return &clusterv1.GetClusterResponse{
 			Cluster: &clusterv1.Cluster{Id: req.GetClusterId(), Name: "my-cluster"},
 		}, nil
 	})
-	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+	env.ClusterServer.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
 		return &clusterv1.UpdateClusterResponse{
 			Cluster: req.GetCluster(),
 		}, nil
@@ -62,7 +62,7 @@ func TestUpdateCluster_ClearLabels(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "cluster", "update", "cluster-abc")
 	require.NoError(t, err)
 
-	req, ok := env.Server.UpdateClusterCalls.Last()
+	req, ok := env.ClusterServer.UpdateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Empty(t, req.GetCluster().GetLabels())
 }
@@ -70,12 +70,12 @@ func TestUpdateCluster_ClearLabels(t *testing.T) {
 func TestUpdateCluster_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+	env.ClusterServer.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 		return &clusterv1.GetClusterResponse{
 			Cluster: &clusterv1.Cluster{Id: req.GetClusterId()},
 		}, nil
 	})
-	env.Server.UpdateClusterCalls.Returns(nil, fmt.Errorf("internal server error"))
+	env.ClusterServer.UpdateClusterCalls.Returns(nil, fmt.Errorf("internal server error"))
 
 	_, _, err := testutil.Exec(t, env, "cluster", "update", "cluster-abc")
 	require.Error(t, err)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -18,7 +19,11 @@ func TestKeyList_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
 
 	expires := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{
+	env.DatabaseApiKeyServer.EXPECT().ListDatabaseApiKeys(mock.Anything, mock.MatchedBy(func(req *clusterauthv2.ListDatabaseApiKeysRequest) bool {
+		assert.Equal(t, "test-account-id", req.GetAccountId())
+		assert.Equal(t, "cluster-123", req.GetClusterId())
+		return true
+	})).Return(&clusterauthv2.ListDatabaseApiKeysResponse{
 		Items: []*clusterauthv2.DatabaseApiKey{
 			{
 				Id:        "key-abc",
@@ -42,21 +47,17 @@ func TestKeyList_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "xyz")
 	assert.Contains(t, stdout, "ago")
 	assert.Contains(t, stdout, "2027-01-01")
-
-	req, ok := env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "test-account-id", req.GetAccountId())
-	assert.Equal(t, "cluster-123", req.GetClusterId())
 }
 
 func TestKeyList_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{
-		Items: []*clusterauthv2.DatabaseApiKey{
-			{Id: "key-json", Name: "json-key"},
-		},
-	}, nil)
+	env.DatabaseApiKeyServer.EXPECT().ListDatabaseApiKeys(mock.Anything, mock.Anything).
+		Return(&clusterauthv2.ListDatabaseApiKeysResponse{
+			Items: []*clusterauthv2.DatabaseApiKey{
+				{Id: "key-json", Name: "json-key"},
+			},
+		}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "key", "list", "cluster-123", "--json")
 	require.NoError(t, err)
@@ -76,7 +77,8 @@ func TestKeyList_JSONOutput(t *testing.T) {
 func TestKeyList_EmptyResponse(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{}, nil)
+	env.DatabaseApiKeyServer.EXPECT().ListDatabaseApiKeys(mock.Anything, mock.Anything).
+		Return(&clusterauthv2.ListDatabaseApiKeysResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "key", "list", "cluster-123")
 	require.NoError(t, err)
@@ -87,12 +89,11 @@ func TestKeyList_EmptyResponse(t *testing.T) {
 func TestKeyList_ClusterIDPassedToServer(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Returns(&clusterauthv2.ListDatabaseApiKeysResponse{}, nil)
+	env.DatabaseApiKeyServer.EXPECT().ListDatabaseApiKeys(mock.Anything, mock.MatchedBy(func(req *clusterauthv2.ListDatabaseApiKeysRequest) bool {
+		assert.Equal(t, "my-cluster-id", req.GetClusterId())
+		return true
+	})).Return(&clusterauthv2.ListDatabaseApiKeysResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env, "cluster", "key", "list", "my-cluster-id")
 	require.NoError(t, err)
-
-	req, ok := env.DatabaseApiKeyServer.ListDatabaseApiKeysCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "my-cluster-id", req.GetClusterId())
 }

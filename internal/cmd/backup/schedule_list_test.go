@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -16,7 +17,10 @@ import (
 func TestScheduleList_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupSchedulesCalls.Returns(
+	env.BackupServer.EXPECT().ListBackupSchedules(mock.Anything, mock.MatchedBy(func(req *backupv1.ListBackupSchedulesRequest) bool {
+		assert.Equal(t, "test-account-id", req.GetAccountId())
+		return true
+	})).Return(
 		&backupv1.ListBackupSchedulesResponse{
 			Items: []*backupv1.BackupSchedule{
 				{
@@ -33,8 +37,6 @@ func TestScheduleList_TableOutput(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "list")
 	require.NoError(t, err)
-	req, _ := env.BackupServer.ListBackupSchedulesCalls.Last()
-	assert.Equal(t, "test-account-id", req.GetAccountId())
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "CLUSTER")
 	assert.Contains(t, stdout, "SCHEDULE")
@@ -49,7 +51,7 @@ func TestScheduleList_TableOutput(t *testing.T) {
 func TestScheduleList_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupSchedulesCalls.Returns(
+	env.BackupServer.EXPECT().ListBackupSchedules(mock.Anything, mock.Anything).Return(
 		&backupv1.ListBackupSchedulesResponse{
 			Items: []*backupv1.BackupSchedule{
 				{Id: "schedule-json", Schedule: "0 3 * * *"},
@@ -76,7 +78,7 @@ func TestScheduleList_JSONOutput(t *testing.T) {
 func TestScheduleList_EmptyResponse(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupSchedulesCalls.Returns(&backupv1.ListBackupSchedulesResponse{}, nil)
+	env.BackupServer.EXPECT().ListBackupSchedules(mock.Anything, mock.Anything).Return(&backupv1.ListBackupSchedulesResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "list")
 	require.NoError(t, err)
@@ -87,10 +89,11 @@ func TestScheduleList_EmptyResponse(t *testing.T) {
 func TestScheduleList_ClusterIDFilter(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupSchedulesCalls.Returns(&backupv1.ListBackupSchedulesResponse{}, nil)
+	env.BackupServer.EXPECT().ListBackupSchedules(mock.Anything, mock.MatchedBy(func(req *backupv1.ListBackupSchedulesRequest) bool {
+		assert.Equal(t, "my-cluster", req.GetClusterId())
+		return true
+	})).Return(&backupv1.ListBackupSchedulesResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "list", "--cluster-id=my-cluster")
 	require.NoError(t, err)
-	req, _ := env.BackupServer.ListBackupSchedulesCalls.Last()
-	assert.Equal(t, "my-cluster", req.GetClusterId())
 }

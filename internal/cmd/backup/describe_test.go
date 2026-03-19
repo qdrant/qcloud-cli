@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -16,7 +17,11 @@ import (
 func TestBackupDescribe_TextOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.GetBackupCalls.Returns(&backupv1.GetBackupResponse{
+	env.BackupServer.EXPECT().GetBackup(mock.Anything, mock.MatchedBy(func(req *backupv1.GetBackupRequest) bool {
+		assert.Equal(t, "test-account-id", req.GetAccountId())
+		assert.Equal(t, "backup-abc", req.GetBackupId())
+		return true
+	})).Return(&backupv1.GetBackupResponse{
 		Backup: &backupv1.Backup{
 			Id:        "backup-abc",
 			Name:      "my-backup",
@@ -32,17 +37,12 @@ func TestBackupDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "my-backup")
 	assert.Contains(t, stdout, "cluster-123")
 	assert.Contains(t, stdout, "SUCCEEDED")
-
-	req, ok := env.BackupServer.GetBackupCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "test-account-id", req.GetAccountId())
-	assert.Equal(t, "backup-abc", req.GetBackupId())
 }
 
 func TestBackupDescribe_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.GetBackupCalls.Returns(&backupv1.GetBackupResponse{
+	env.BackupServer.EXPECT().GetBackup(mock.Anything, mock.Anything).Return(&backupv1.GetBackupResponse{
 		Backup: &backupv1.Backup{Id: "backup-json", ClusterId: "cluster-xyz"},
 	}, nil)
 
@@ -61,7 +61,7 @@ func TestBackupDescribe_JSONOutput(t *testing.T) {
 func TestBackupDescribe_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.GetBackupCalls.Returns(nil, assert.AnError)
+	env.BackupServer.EXPECT().GetBackup(mock.Anything, mock.Anything).Return(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "backup", "describe", "backup-abc")
 	require.Error(t, err)

@@ -14,12 +14,12 @@ import (
 func TestSuspend_WithForce(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
 
-	env.Server.SuspendClusterCalls.Returns(&clusterv1.SuspendClusterResponse{}, nil)
+	env.ClusterServer.SuspendClusterCalls.Returns(&clusterv1.SuspendClusterResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "suspend", "cluster-123", "--force")
 	require.NoError(t, err)
 
-	req, ok := env.Server.SuspendClusterCalls.Last()
+	req, ok := env.ClusterServer.SuspendClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "test-account-id", req.GetAccountId())
 	assert.Equal(t, "cluster-123", req.GetClusterId())

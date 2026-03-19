@@ -1,9 +1,11 @@
 package cloudregion_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
@@ -22,12 +24,15 @@ func TestListCloudRegions_RequiresCloudProvider(t *testing.T) {
 func TestListCloudRegions_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
 
-	env.PlatformServer.ListCloudProviderRegionsCalls.Returns(&platformv1.ListCloudProviderRegionsResponse{
-		Items: []*platformv1.CloudProviderRegion{
-			{Id: "us-east-1", Name: "US East (N. Virginia)", Provider: "aws", Available: true},
-			{Id: "eu-west-1", Name: "Europe (Ireland)", Provider: "aws", Available: false},
-		},
-	}, nil)
+	var capturedReq *platformv1.ListCloudProviderRegionsRequest
+	env.PlatformServer.EXPECT().ListCloudProviderRegions(mock.Anything, mock.Anything).
+		Run(func(_ context.Context, req *platformv1.ListCloudProviderRegionsRequest) { capturedReq = req }).
+		Return(&platformv1.ListCloudProviderRegionsResponse{
+			Items: []*platformv1.CloudProviderRegion{
+				{Id: "us-east-1", Name: "US East (N. Virginia)", Provider: "aws", Available: true},
+				{Id: "eu-west-1", Name: "Europe (Ireland)", Provider: "aws", Available: false},
+			},
+		}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cloud-region", "list", "--cloud-provider", "aws")
 	require.NoError(t, err)
@@ -42,8 +47,7 @@ func TestListCloudRegions_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "true")
 	assert.Contains(t, stdout, "false")
 
-	req, ok := env.PlatformServer.ListCloudProviderRegionsCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "test-account-id", req.GetAccountId())
-	assert.Equal(t, "aws", req.GetCloudProviderId())
+	require.NotNil(t, capturedReq)
+	assert.Equal(t, "test-account-id", capturedReq.GetAccountId())
+	assert.Equal(t, "aws", capturedReq.GetCloudProviderId())
 }

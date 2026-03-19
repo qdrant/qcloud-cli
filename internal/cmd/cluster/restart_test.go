@@ -15,14 +15,14 @@ import (
 func TestRestart_WithForce(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAccountID("test-account-id"))
 
-	env.Server.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
+	env.ClusterServer.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "cluster", "restart", "cluster-123", "--force")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "cluster-123")
 	assert.Contains(t, stdout, "restarting")
 
-	req, ok := env.Server.RestartClusterCalls.Last()
+	req, ok := env.ClusterServer.RestartClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "test-account-id", req.GetAccountId())
 	assert.Equal(t, "cluster-123", req.GetClusterId())
@@ -38,8 +38,8 @@ func TestRestart_MissingArgs(t *testing.T) {
 func TestRestart_NoWait(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_UPDATING},
 		},
@@ -48,14 +48,14 @@ func TestRestart_NoWait(t *testing.T) {
 	stdout, _, err := testutil.Exec(t, env, "cluster", "restart", "cluster-123", "--force")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "restarting")
-	assert.Equal(t, 0, env.Server.GetClusterCalls.Count(), "GetCluster should not be called without --wait")
+	assert.Equal(t, 0, env.ClusterServer.GetClusterCalls.Count(), "GetCluster should not be called without --wait")
 }
 
 func TestRestart_WaitSuccess(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
-	env.Server.GetClusterCalls.
+	env.ClusterServer.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
+	env.ClusterServer.GetClusterCalls.
 		OnCall(0, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 			return &clusterv1.GetClusterResponse{
 				Cluster: &clusterv1.Cluster{
@@ -101,8 +101,8 @@ func TestRestart_WaitSuccess(t *testing.T) {
 func TestRestart_WaitFailure(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			Id: "cluster-123",
 			State: &clusterv1.ClusterState{
@@ -126,8 +126,8 @@ func TestRestart_WaitFailure(t *testing.T) {
 func TestRestart_WaitTimeout(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.RestartClusterCalls.Returns(&clusterv1.RestartClusterResponse{}, nil)
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			Id:    "cluster-123",
 			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_UPDATING},

@@ -22,7 +22,7 @@ import (
 func TestClusterIDCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{
+	env.ClusterServer.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{
 		Items: []*clusterv1.Cluster{
 			{Id: "cluster-abc", Name: "my-cluster"},
 			{Id: "cluster-xyz", Name: "other-cluster"},
@@ -105,7 +105,7 @@ func TestVersionCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	remarks := "upgrade recommended"
-	env.Server.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
+	env.ClusterServer.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
 		Items: []*clusterv1.QdrantRelease{
 			{Version: "1.14.0", Default: true},
 			{Version: "1.13.0", EndOfLife: true},
@@ -318,7 +318,7 @@ func TestRAMCompletion_NormalizedOutput(t *testing.T) {
 func TestVersionCompletion_UnavailableExcluded(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
+	env.ClusterServer.ListQdrantReleasesCalls.Returns(&clusterv1.ListQdrantReleasesResponse{
 		Items: []*clusterv1.QdrantRelease{
 			{Version: "1.14.0"},
 			{Version: "1.13.0", Unavailable: true},

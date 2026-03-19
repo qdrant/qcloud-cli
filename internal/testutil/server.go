@@ -8,7 +8,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
@@ -19,45 +18,67 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
+	"github.com/qdrant/qcloud-cli/internal/testutil/mocks"
 )
 
 const bufSize = 1024 * 1024
 
-// RequestCapture is a server-side unary interceptor that records incoming metadata.
-type RequestCapture struct {
-	mu   sync.Mutex
-	last metadata.MD
+// gRPC server interfaces contain an unexported mustEmbedUnimplemented* method
+// that can only be satisfied from outside the package by embedding the
+// corresponding Unimplemented* struct. The helper structs below wrap each
+// Unimplemented* at depth 2 so that the mock's methods at depth 1 win via
+// Go's promotion rules, while the package-qualified mustEmbed method is still
+// included in the proxy's method set.
+
+type clusterUnimplHelper struct {
+	clusterv1.UnimplementedClusterServiceServer
+}
+type backupUnimplHelper struct {
+	backupv1.UnimplementedBackupServiceServer
+}
+type bookingUnimplHelper struct {
+	bookingv1.UnimplementedBookingServiceServer
+}
+type platformUnimplHelper struct {
+	platformv1.UnimplementedPlatformServiceServer
+}
+type dbKeyUnimplHelper struct {
+	clusterauthv2.UnimplementedDatabaseApiKeyServiceServer
 }
 
-// Last returns the metadata from the most recent request.
-func (rc *RequestCapture) Last() metadata.MD {
-	rc.mu.Lock()
-	defer rc.mu.Unlock()
-	return rc.last
+type clusterProxy struct {
+	clusterUnimplHelper
+	*mocks.MockClusterServiceServer
 }
 
-func (rc *RequestCapture) intercept(
-	ctx context.Context,
-	req any,
-	_ *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (any, error) {
-	md, _ := metadata.FromIncomingContext(ctx)
-	rc.mu.Lock()
-	rc.last = md
-	rc.mu.Unlock()
-	return handler(ctx, req)
+type backupProxy struct {
+	backupUnimplHelper
+	*mocks.MockBackupServiceServer
+}
+
+type bookingProxy struct {
+	bookingUnimplHelper
+	*mocks.MockBookingServiceServer
+}
+
+type platformProxy struct {
+	platformUnimplHelper
+	*mocks.MockPlatformServiceServer
+}
+
+type dbKeyProxy struct {
+	dbKeyUnimplHelper
+	*mocks.MockDatabaseApiKeyServiceServer
 }
 
 // TestEnv bundles everything a test needs.
 type TestEnv struct {
 	State                *state.State
-	Server               *FakeClusterService
-	BookingServer        *FakeBookingService
-	PlatformServer       *FakePlatformService
-	DatabaseApiKeyServer *FakeDatabaseApiKeyService
-	BackupServer         *FakeBackupService
-	Capture              *RequestCapture
+	ClusterServer        *mocks.MockClusterServiceServer
+	BookingServer        *mocks.MockBookingServiceServer
+	PlatformServer       *mocks.MockPlatformServiceServer
+	DatabaseApiKeyServer *mocks.MockDatabaseApiKeyServiceServer
+	BackupServer         *mocks.MockBackupServiceServer
 	Cleanup              func()
 }
 
@@ -94,21 +115,20 @@ func WithVersion(v string) Option {
 func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	t.Helper()
 
-	fake := &FakeClusterService{}
-	fakeBooking := &FakeBookingService{}
-	fakePlatform := &FakePlatformService{}
-	fakeDatabaseApiKey := &FakeDatabaseApiKeyService{}
-	fakeBackup := &FakeBackupService{}
-	capture := &RequestCapture{}
+	server := mocks.NewMockClusterServiceServer(t)
+	bookingServer := mocks.NewMockBookingServiceServer(t)
+	platformServer := mocks.NewMockPlatformServiceServer(t)
+	databaseApiKeyServer := mocks.NewMockDatabaseApiKeyServiceServer(t)
+	backupServer := mocks.NewMockBackupServiceServer(t)
 
 	// Start gRPC server on bufconn.
 	lis := bufconn.Listen(bufSize)
-	srv := grpc.NewServer(grpc.UnaryInterceptor(capture.intercept))
-	clusterv1.RegisterClusterServiceServer(srv, fake)
-	bookingv1.RegisterBookingServiceServer(srv, fakeBooking)
-	platformv1.RegisterPlatformServiceServer(srv, fakePlatform)
-	clusterauthv2.RegisterDatabaseApiKeyServiceServer(srv, fakeDatabaseApiKey)
-	backupv1.RegisterBackupServiceServer(srv, fakeBackup)
+	srv := grpc.NewServer()
+	clusterv1.RegisterClusterServiceServer(srv, &clusterProxy{MockClusterServiceServer: server})
+	bookingv1.RegisterBookingServiceServer(srv, &bookingProxy{MockBookingServiceServer: bookingServer})
+	platformv1.RegisterPlatformServiceServer(srv, &platformProxy{MockPlatformServiceServer: platformServer})
+	clusterauthv2.RegisterDatabaseApiKeyServiceServer(srv, &dbKeyProxy{MockDatabaseApiKeyServiceServer: databaseApiKeyServer})
+	backupv1.RegisterBackupServiceServer(srv, &backupProxy{MockBackupServiceServer: backupServer})
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -152,12 +172,11 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 
 	return &TestEnv{
 		State:                s,
-		Server:               fake,
-		BookingServer:        fakeBooking,
-		PlatformServer:       fakePlatform,
-		DatabaseApiKeyServer: fakeDatabaseApiKey,
-		BackupServer:         fakeBackup,
-		Capture:              capture,
+		ClusterServer:        server,
+		BookingServer:        bookingServer,
+		PlatformServer:       platformServer,
+		DatabaseApiKeyServer: databaseApiKeyServer,
+		BackupServer:         backupServer,
 		Cleanup:              cleanup,
 	}
 }

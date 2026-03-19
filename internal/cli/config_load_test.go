@@ -1,9 +1,11 @@
 package cli_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
@@ -20,14 +22,15 @@ func TestConfigLoad_FlagSetsAccountID(t *testing.T) {
 		"account_id": "account-from-file",
 	})
 
-	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+	env.ClusterServer.EXPECT().
+		ListClusters(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+			assert.Equal(t, "account-from-file", req.GetAccountId())
+			return &clusterv1.ListClustersResponse{}, nil
+		})
 
 	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "cluster", "list")
 	require.NoError(t, err)
-
-	req, ok := env.Server.ListClustersCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "account-from-file", req.GetAccountId())
 }
 
 // TestConfigLoad_EnvVarSetsAccountID verifies that QDRANT_CLOUD_CONFIG env var
@@ -41,14 +44,15 @@ func TestConfigLoad_EnvVarSetsAccountID(t *testing.T) {
 
 	t.Setenv("QDRANT_CLOUD_CONFIG", cfgPath)
 
-	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+	env.ClusterServer.EXPECT().
+		ListClusters(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+			assert.Equal(t, "account-from-envvar", req.GetAccountId())
+			return &clusterv1.ListClustersResponse{}, nil
+		})
 
 	_, _, err := testutil.Exec(t, env, "cluster", "list")
 	require.NoError(t, err)
-
-	req, ok := env.Server.ListClustersCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "account-from-envvar", req.GetAccountId())
 }
 
 // TestConfigLoad_FlagOverridesEnvVar verifies that --config flag takes
@@ -67,14 +71,15 @@ func TestConfigLoad_FlagOverridesEnvVar(t *testing.T) {
 
 	t.Setenv("QDRANT_CLOUD_CONFIG", envCfg)
 
-	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+	env.ClusterServer.EXPECT().
+		ListClusters(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+			assert.Equal(t, "account-from-flag", req.GetAccountId())
+			return &clusterv1.ListClustersResponse{}, nil
+		})
 
 	_, _, err := testutil.Exec(t, env, "--config", flagCfg, "cluster", "list")
 	require.NoError(t, err)
-
-	req, ok := env.Server.ListClustersCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "account-from-flag", req.GetAccountId())
 }
 
 // TestConfigLoad_WithAccountIDTakesPrecedence verifies that WithAccountID (Set)
@@ -86,12 +91,14 @@ func TestConfigLoad_WithAccountIDTakesPrecedence(t *testing.T) {
 		"account_id": "account-from-file",
 	})
 
-	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+	env.ClusterServer.EXPECT().
+		ListClusters(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, req *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
+			assert.Equal(t, "explicit-id", req.GetAccountId())
+			return &clusterv1.ListClustersResponse{}, nil
+		})
+
 
 	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "cluster", "list")
 	require.NoError(t, err)
-
-	req, ok := env.Server.ListClustersCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "explicit-id", req.GetAccountId())
 }

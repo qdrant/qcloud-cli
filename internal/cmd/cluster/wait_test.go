@@ -15,7 +15,7 @@ import (
 func TestWaitCluster_Success(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.GetClusterCalls.
+	env.ClusterServer.GetClusterCalls.
 		OnCall(0, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 			return &clusterv1.GetClusterResponse{
 				Cluster: &clusterv1.Cluster{
@@ -59,7 +59,7 @@ func TestWaitCluster_Success(t *testing.T) {
 func TestWaitCluster_Failure(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			Id: "cluster-fail",
 			State: &clusterv1.ClusterState{
@@ -82,7 +82,7 @@ func TestWaitCluster_Failure(t *testing.T) {
 func TestWaitCluster_Timeout(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+	env.ClusterServer.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
 		Cluster: &clusterv1.Cluster{
 			Id:    "cluster-slow",
 			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},

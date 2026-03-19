@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -16,7 +17,10 @@ import (
 func TestBackupList_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupsCalls.Returns(&backupv1.ListBackupsResponse{
+	env.BackupServer.EXPECT().ListBackups(mock.Anything, mock.MatchedBy(func(req *backupv1.ListBackupsRequest) bool {
+		assert.Equal(t, "test-account-id", req.GetAccountId())
+		return true
+	})).Return(&backupv1.ListBackupsResponse{
 		Items: []*backupv1.Backup{
 			{
 				Id:        "backup-1",
@@ -39,16 +43,12 @@ func TestBackupList_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "my-backup")
 	assert.Contains(t, stdout, "cluster-abc")
 	assert.Contains(t, stdout, "SUCCEEDED")
-
-	req, ok := env.BackupServer.ListBackupsCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "test-account-id", req.GetAccountId())
 }
 
 func TestBackupList_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupsCalls.Returns(&backupv1.ListBackupsResponse{
+	env.BackupServer.EXPECT().ListBackups(mock.Anything, mock.Anything).Return(&backupv1.ListBackupsResponse{
 		Items: []*backupv1.Backup{
 			{Id: "backup-json", ClusterId: "cluster-123"},
 		},
@@ -72,7 +72,7 @@ func TestBackupList_JSONOutput(t *testing.T) {
 func TestBackupList_EmptyResponse(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupsCalls.Returns(&backupv1.ListBackupsResponse{}, nil)
+	env.BackupServer.EXPECT().ListBackups(mock.Anything, mock.Anything).Return(&backupv1.ListBackupsResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "list")
 	require.NoError(t, err)
@@ -83,20 +83,19 @@ func TestBackupList_EmptyResponse(t *testing.T) {
 func TestBackupList_ClusterIDFilter(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupsCalls.Returns(&backupv1.ListBackupsResponse{}, nil)
+	env.BackupServer.EXPECT().ListBackups(mock.Anything, mock.MatchedBy(func(req *backupv1.ListBackupsRequest) bool {
+		assert.Equal(t, "my-cluster", req.GetClusterId())
+		return true
+	})).Return(&backupv1.ListBackupsResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env, "backup", "list", "--cluster-id=my-cluster")
 	require.NoError(t, err)
-
-	req, ok := env.BackupServer.ListBackupsCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, "my-cluster", req.GetClusterId())
 }
 
 func TestBackupList_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.ListBackupsCalls.Returns(nil, assert.AnError)
+	env.BackupServer.EXPECT().ListBackups(mock.Anything, mock.Anything).Return(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "backup", "list")
 	require.Error(t, err)

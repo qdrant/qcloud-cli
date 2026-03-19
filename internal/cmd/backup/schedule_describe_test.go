@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -16,7 +17,12 @@ import (
 func TestScheduleDescribe_TextOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.GetBackupScheduleCalls.Returns(
+	env.BackupServer.EXPECT().GetBackupSchedule(mock.Anything, mock.MatchedBy(func(req *backupv1.GetBackupScheduleRequest) bool {
+		assert.Equal(t, "test-account-id", req.GetAccountId())
+		assert.Equal(t, "cluster-abc", req.GetClusterId())
+		assert.Equal(t, "schedule-1", req.GetBackupScheduleId())
+		return true
+	})).Return(
 		&backupv1.GetBackupScheduleResponse{
 			BackupSchedule: &backupv1.BackupSchedule{
 				Id:        "schedule-1",
@@ -31,10 +37,6 @@ func TestScheduleDescribe_TextOutput(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "backup", "schedule", "describe", "schedule-1", "--cluster-id=cluster-abc")
 	require.NoError(t, err)
-	req, _ := env.BackupServer.GetBackupScheduleCalls.Last()
-	assert.Equal(t, "test-account-id", req.GetAccountId())
-	assert.Equal(t, "cluster-abc", req.GetClusterId())
-	assert.Equal(t, "schedule-1", req.GetBackupScheduleId())
 	assert.Contains(t, stdout, "schedule-1")
 	assert.Contains(t, stdout, "cluster-abc")
 	assert.Contains(t, stdout, "0 2 * * *")
@@ -45,7 +47,7 @@ func TestScheduleDescribe_TextOutput(t *testing.T) {
 func TestScheduleDescribe_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.GetBackupScheduleCalls.Returns(
+	env.BackupServer.EXPECT().GetBackupSchedule(mock.Anything, mock.Anything).Return(
 		&backupv1.GetBackupScheduleResponse{
 			BackupSchedule: &backupv1.BackupSchedule{Id: "schedule-json", Schedule: "0 4 * * *"},
 		},
@@ -74,7 +76,7 @@ func TestScheduleDescribe_MissingClusterID(t *testing.T) {
 func TestScheduleDescribe_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BackupServer.GetBackupScheduleCalls.Returns(nil, assert.AnError)
+	env.BackupServer.EXPECT().GetBackupSchedule(mock.Anything, mock.Anything).Return(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "backup", "schedule", "describe", "schedule-1", "--cluster-id=cluster-abc")
 	require.Error(t, err)
