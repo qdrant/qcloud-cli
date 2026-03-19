@@ -138,11 +138,17 @@ func TestCPUCompletion(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "")
 	require.NoError(t, err)
+	// 500m stays as "500m" (not divisible by 1000); 1000m auto-picks "1" (whole core).
 	assert.Contains(t, stdout, "500m")
-	assert.Contains(t, stdout, "1000m")
-	// Deduplication: 1000m appears twice in packages but once in completions.
-	count := strings.Count(stdout, "1000m")
-	assert.Equal(t, 1, count, "1000m should appear only once")
+	// Deduplication: 1 core appears twice in packages but once in completions.
+	lines := strings.Split(stdout, "\n")
+	count := 0
+	for _, l := range lines {
+		if l == "1" {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "1 core should appear only once")
 }
 
 func TestCPUCompletion_FilteredByRAM(t *testing.T) {
@@ -157,7 +163,15 @@ func TestCPUCompletion_FilteredByRAM(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--ram", "4GiB", "--cpu", "")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "1000m")
+	// 1000m auto-picks "1" (whole core).
+	lines := strings.Split(stdout, "\n")
+	var found bool
+	for _, l := range lines {
+		if l == "1" {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected '1' core in completions")
 	assert.NotContains(t, stdout, "500m")
 }
 
@@ -246,16 +260,27 @@ func TestRAMCompletion_APIFormatMismatch(t *testing.T) {
 	}, nil)
 
 	// Filter by ram=4GiB should match the API's "4Gi" via numeric parsing.
+	// CPU 1000m auto-picks "1" (whole core); 2000m → "2".
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--ram", "4GiB", "--cpu", "")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "1000m")
-	assert.NotContains(t, stdout, "2000m")
+	lines := strings.Split(stdout, "\n")
+	var found1, found2 bool
+	for _, l := range lines {
+		if l == "1" {
+			found1 = true
+		}
+		if l == "2" {
+			found2 = true
+		}
+	}
+	assert.True(t, found1, "expected '1' core in completions")
+	assert.False(t, found2, "expected '2' cores not in completions")
 }
 
 func TestCPUCompletion_NormalizedOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	// API returns "1" for CPU -- completion should normalize to "1000m".
+	// API returns "1" for CPU -- auto-pick keeps it as "1" (whole core).
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
 		Items: []*bookingv1.Package{
 			{Id: "pkg-1", Name: "starter", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1", Ram: "4Gi", Disk: "100GiB"}},
@@ -264,7 +289,14 @@ func TestCPUCompletion_NormalizedOutput(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "1000m")
+	lines := strings.Split(stdout, "\n")
+	var found bool
+	for _, l := range lines {
+		if l == "1" {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected '1' core in completions")
 }
 
 func TestRAMCompletion_NormalizedOutput(t *testing.T) {

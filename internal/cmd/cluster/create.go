@@ -13,6 +13,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -30,10 +31,10 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().String("version", "", "Qdrant version (default latest)")
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes (default 1)")
 			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list')")
-			cmd.Flags().String("cpu", "", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
-			cmd.Flags().String("ram", "", "RAM in GiB to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
-			cmd.Flags().String("disk", "", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
-			cmd.Flags().String("gpu", "", "Number of GPUs to select a package (e.g. \"1\", \"2\", or \"1000m\")")
+			cmd.Flags().Var(new(resource.Millicores), "cpu", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
+			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
+			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
+			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs to select a package (e.g. \"1\", \"2\", or \"1000m\")")
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
 			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
@@ -71,33 +72,26 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			version, _ := cmd.Flags().GetString("version")
 			nodes, _ := cmd.Flags().GetUint32("nodes")
 			packageValue, _ := cmd.Flags().GetString("package")
-			cpu, _ := cmd.Flags().GetString("cpu")
-			ram, _ := cmd.Flags().GetString("ram")
-			disk, _ := cmd.Flags().GetString("disk")
-			gpu, _ := cmd.Flags().GetString("gpu")
 			multiAz, _ := cmd.Flags().GetBool("multi-az")
 			labelMap, _ := cmd.Flags().GetStringToString("label")
 
-			if cpu != "" {
-				cpu, err = normalizeMillicores(cpu)
-				if err != nil {
-					return nil, fmt.Errorf("invalid --cpu value: %w", err)
-				}
+			cpuChanged := cmd.Flags().Changed("cpu")
+			ramChanged := cmd.Flags().Changed("ram")
+
+			var cpu resource.Millicores
+			var ram resource.ByteQuantity
+			var gpu resource.Millicores
+			if cpuChanged {
+				cpu = *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 			}
-			if ram != "" {
-				ram, err = normalizeRAM(ram)
-				if err != nil {
-					return nil, fmt.Errorf("invalid --ram value: %w", err)
-				}
+			if ramChanged {
+				ram = *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
 			}
-			if gpu != "" {
-				gpu, err = normalizeMillicores(gpu)
-				if err != nil {
-					return nil, fmt.Errorf("invalid --gpu value: %w", err)
-				}
+			if cmd.Flags().Changed("gpu") {
+				gpu = *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
 			}
 
-			if packageValue == "" && cpu == "" && ram == "" {
+			if packageValue == "" && !cpuChanged && !ramChanged {
 				return nil, fmt.Errorf("either --package or --cpu and --ram are required")
 			}
 
@@ -107,7 +101,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			if packageValue != "" {
 				if isUUID(packageValue) {
 					packageID = packageValue
-					if disk != "" {
+					if cmd.Flags().Changed("disk") {
 						pkg, err = resolvePackageByID(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, packageValue)
 						if err != nil {
 							return nil, err
@@ -121,7 +115,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 					packageID = pkg.GetId()
 				}
 			} else {
-				pkg, err = resolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, cpu, ram, gpu, multiAz)
+				pkg, err = resolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, cpu, gpu, ram, multiAz)
 				if err != nil {
 					return nil, err
 				}
@@ -147,15 +141,18 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				cluster.Labels = append(cluster.Labels, &commonv1.KeyValue{Key: k, Value: v})
 			}
 
-			if disk != "" && pkg != nil {
-				requestedGiB, err := parseDiskGiB(disk)
-				if err != nil {
-					return nil, fmt.Errorf("invalid --disk value: %w", err)
-				}
+			if cmd.Flags().Changed("disk") && pkg != nil {
+				requestedDisk := *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
 				if pkgDiskStr := pkg.GetResourceConfiguration().GetDisk(); pkgDiskStr != "" {
-					if pkgGiB, err := parseDiskGiB(pkgDiskStr); err == nil && requestedGiB > pkgGiB {
+					pkgDisk, err := resource.ParseByteQuantity(pkgDiskStr)
+					if err != nil {
+						return nil, err
+					}
+
+					// only apply additional disk calculation if requested disk is bigger than the disk package
+					if requestedDisk > pkgDisk {
 						cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
-							Disk: requestedGiB - pkgGiB,
+							Disk: uint32(requestedDisk.GiB() - pkgDisk.GiB()), // API expects additional disk in GiB
 						}
 					}
 				}
