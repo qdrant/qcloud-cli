@@ -58,14 +58,16 @@ func ParseByteQuantity(s string) (ByteQuantity, error) {
 		{"K", KiB},
 	}
 	for _, e := range suffixes {
-		if strings.HasSuffix(s, e.suffix) {
-			n, err := strconv.ParseInt(strings.TrimSuffix(s, e.suffix), 10, 64)
+		if q, ok := strings.CutSuffix(s, e.suffix); ok {
+			n, err := strconv.ParseInt(q, 10, 64)
 			if err != nil {
 				return 0, fmt.Errorf("cannot parse %q as a byte quantity", s)
 			}
+
 			return ByteQuantity(n) * e.mult, nil
 		}
 	}
+
 	// Bare integer: treat as GiB.
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {

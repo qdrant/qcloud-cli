@@ -5,14 +5,16 @@ import (
 	"io"
 	"time"
 
+	"github.com/spf13/cobra"
+
+	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
+	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
-	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
-	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
-	"github.com/spf13/cobra"
 )
 
 func newScaleCommand(s *state.State) *cobra.Command {
@@ -25,6 +27,7 @@ func newScaleCommand(s *state.State) *cobra.Command {
 				Args:  util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes (default 1)")
+			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompts")
 			cmd.Flags().Var(new(resource.Millicores), "cpu", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
@@ -143,39 +146,42 @@ func newScaleCommand(s *state.State) *cobra.Command {
 				return nil, err
 			}
 
-			currentAdditionalDisk := resource.ByteQuantity(cluster.Configuration.AdditionalResources.GetDisk() * uint32(resource.GiB))
+			currentAdditionalDisk := resource.ByteQuantity(int64(cluster.Configuration.AdditionalResources.GetDisk()) * int64(resource.GiB))
 			currentTotalDisk := currentPkgDisk + currentAdditionalDisk
 
+			// If a new package is selected from user changes and the user changes the disk too
+			// but it's smaller than the new packages' minimum disk value, it will be overriden.
+			// This is used to notify the user about it.
+			diskWillBeOverridden := false
+			var newEffectiveDisk resource.ByteQuantity
+			var requestedDisk resource.ByteQuantity
 			if cmd.Flags().Changed("disk") {
-				disk := *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
+				requestedDisk = *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
+				newEffectiveDisk = max(requestedDisk, newPkgDisk)
+				if newEffectiveDisk < currentTotalDisk {
+					return nil, fmt.Errorf("disk cannot be downscaled from %s to %s", currentTotalDisk, requestedDisk)
+				}
+
 				// only apply additional disk calculation if requested disk is bigger than the disk package
 				// if disk is less than the package disk, let the api fail
-				if disk > newPkgDisk {
-					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
-						Disk: uint32(disk.GiB() - newPkgDisk.GiB()),
-					}
-				} else {
-					// zero out additional disk in case the cluster had it
-					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
-						Disk: 0, 
-					}
+				cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
+					Disk: uint32(newEffectiveDisk.GiB() - newPkgDisk.GiB()),
+				}
+
+				if requestedDisk < newEffectiveDisk {
+					diskWillBeOverridden = true
 				}
 			} else {
-				// if the resolved package has less disk than the current one, calculate the difference
-				// as disk additional resource. The API does not allow downscaling disk space.
-				if newPkgDisk < currentTotalDisk {
-					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
-						Disk: uint32(currentTotalDisk.GiB() - newPkgDisk.GiB()),
-					}
-				} else {
-					// zero out additional disk in case the package already covers previous disk size
-					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
-						Disk: 0, 
-					}
+				// at this point the user didn't request a disk value but a package change could
+				// make the disk change.
+				newEffectiveDisk = max(currentTotalDisk, newPkgDisk)
+
+				cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
+					Disk: uint32(newEffectiveDisk.GiB() - newPkgDisk.GiB()),
 				}
 			}
 
-
+			oldNodes := cluster.Configuration.NumberOfNodes
 			if cmd.Flags().Changed("nodes") {
 				nodes, err := cmd.Flags().GetUint32("nodes")
 				if err != nil {
@@ -183,6 +189,22 @@ func newScaleCommand(s *state.State) *cobra.Command {
 				}
 
 				cluster.Configuration.NumberOfNodes = nodes
+			}
+
+			force, _ := cmd.Flags().GetBool("force")
+			prompt := scaleConfirmPrompt(
+				cluster,
+				currentPkg.GetPackage(),
+				newPkg,
+				oldNodes,
+				currentTotalDisk,
+				newEffectiveDisk,
+				requestedDisk,
+				diskWillBeOverridden,
+			)
+			if !util.ConfirmAction(force, prompt) {
+				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
+				return nil, nil
 			}
 
 			resp, err := client.Cluster().UpdateCluster(ctx, &clusterv1.UpdateClusterRequest{
@@ -200,9 +222,20 @@ func newScaleCommand(s *state.State) *cobra.Command {
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Scaling Cluster %s (%s)...\n", resp.GetCluster().GetId(), resp.GetCluster().GetName())
-			return waitForHealthyWithInterval(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, resp.GetCluster().GetId(), waitTimeout, pollInterval)
+			return waitForHealthyWithInterval(
+				ctx, 
+				client.Cluster(), 
+				cmd.ErrOrStderr(), 
+				accountID, 
+				resp.GetCluster().GetId(), 
+				waitTimeout, 
+				pollInterval,
+			)
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, updated *clusterv1.Cluster) {
+			if updated == nil {
+				return
+			}
 			if updated.State.Phase != clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
 				fmt.Fprintf(out, "Cluster %s (%s) is scaling, it will take some time to take effect. Use 'cluster wait %s' to wait for it to become healthy\n", updated.GetId(), updated.GetName(), updated.GetId())
 				return
@@ -217,4 +250,44 @@ func newScaleCommand(s *state.State) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
 	return cmd
+}
+
+// scaleDiff formats a field value as "old => new" when the value changes, or just "val" when unchanged.
+func scaleDiff(oldVal, newVal string) string {
+	if oldVal == newVal {
+		return newVal
+	}
+	return oldVal + " => " + newVal
+}
+
+// scaleConfirmPrompt builds the confirmation message shown before a scale operation,
+// displaying old => new for fields that are changing.
+func scaleConfirmPrompt(
+	cluster *clusterv1.Cluster,
+	oldPkg, newPkg *bookingv1.Package,
+	oldNodes uint32,
+	currentTotalDisk, newEffectiveDisk, requestedDisk resource.ByteQuantity,
+	diskWillBeOverridden bool,
+) string {
+	oldRC := oldPkg.GetResourceConfiguration()
+	newRC := newPkg.GetResourceConfiguration()
+
+	diskLine := scaleDiff(currentTotalDisk.String(), newEffectiveDisk.String())
+	if diskWillBeOverridden {
+		diskLine = fmt.Sprintf("%s (requested: %s - package minimum disk is being applied)", scaleDiff(currentTotalDisk.String(), newEffectiveDisk.String()), requestedDisk)
+	}
+
+	prompt := fmt.Sprintf(
+		"Cluster %s (%s) will be scaled to:\n  Nodes:   %s\n  CPU:     %s\n  RAM:     %s\n  Disk:    %s",
+		cluster.GetId(), cluster.GetName(),
+		scaleDiff(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
+		scaleDiff(oldRC.GetCpu(), newRC.GetCpu()),
+		scaleDiff(oldRC.GetRam(), newRC.GetRam()),
+		diskLine,
+	)
+	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
+		prompt += fmt.Sprintf("\n  GPU:     %s", scaleDiff(oldRC.GetGpu(), newRC.GetGpu()))
+	}
+	prompt += "\nProceed?"
+	return prompt
 }
