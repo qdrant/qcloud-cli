@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.8.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.8.0)
+
+### Features
+
+- cluster scale command (#33)
+
 ## [v0.7.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.7.1)
 
 ### Bug Fixes
