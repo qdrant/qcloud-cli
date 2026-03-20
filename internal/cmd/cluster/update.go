@@ -11,6 +11,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -20,7 +21,7 @@ func newUpdateCommand(s *state.State) *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <cluster-id>",
 				Short: "Update an existing cluster",
-				Args:  cobra.ExactArgs(1),
+				Args:  util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times; replaces all existing labels")
 			return cmd
