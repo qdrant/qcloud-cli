@@ -61,27 +61,33 @@ func formatMillicents(mc int32, currency string) string {
 	return fmt.Sprintf("%.4f %s", float64(mc)/100_000.0, currency)
 }
 
+const (
+	diskPerfBalanced      = "balanced"
+	diskPerfCostOptimised = "cost-optimised"
+	diskPerfPerformance   = "performance"
+)
+
 func parseDiskPerformance(s string) (commonv1.StorageTierType, error) {
 	switch s {
-	case "balanced":
+	case diskPerfBalanced:
 		return commonv1.StorageTierType_STORAGE_TIER_TYPE_BALANCED, nil
-	case "cost-optimised":
+	case diskPerfCostOptimised:
 		return commonv1.StorageTierType_STORAGE_TIER_TYPE_COST_OPTIMISED, nil
-	case "performance":
+	case diskPerfPerformance:
 		return commonv1.StorageTierType_STORAGE_TIER_TYPE_PERFORMANCE, nil
 	default:
-		return commonv1.StorageTierType_STORAGE_TIER_TYPE_UNSPECIFIED, fmt.Errorf("invalid disk performance %q: must be one of balanced, cost-optimised, performance", s)
+		return commonv1.StorageTierType_STORAGE_TIER_TYPE_UNSPECIFIED, fmt.Errorf("invalid disk performance %q: must be one of %s, %s, %s", s, diskPerfBalanced, diskPerfCostOptimised, diskPerfPerformance)
 	}
 }
 
 func storageTierString(t commonv1.StorageTierType) string {
 	switch t {
 	case commonv1.StorageTierType_STORAGE_TIER_TYPE_BALANCED:
-		return "balanced"
+		return diskPerfBalanced
 	case commonv1.StorageTierType_STORAGE_TIER_TYPE_COST_OPTIMISED:
-		return "cost-optimised"
+		return diskPerfCostOptimised
 	case commonv1.StorageTierType_STORAGE_TIER_TYPE_PERFORMANCE:
-		return "performance"
+		return diskPerfPerformance
 	default:
 		return ""
 	}
