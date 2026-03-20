@@ -41,6 +41,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
 			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			cmd.Flags().String("disk-performance", "", `Disk performance tier ("balanced", "cost-optimised", "performance")`)
 			_ = cmd.MarkFlagRequired("cloud-provider")
 			_ = cmd.MarkFlagRequired("cloud-region")
 			return cmd
@@ -141,6 +142,17 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				cluster.Labels = append(cluster.Labels, &commonv1.KeyValue{Key: k, Value: v})
 			}
 
+			if cmd.Flags().Changed("disk-performance") {
+				perfStr, _ := cmd.Flags().GetString("disk-performance")
+				tierType, err := parseDiskPerformance(perfStr)
+				if err != nil {
+					return nil, err
+				}
+				cluster.Configuration.ClusterStorageConfiguration = &clusterv1.ClusterStorageConfiguration{
+					StorageTierType: tierType,
+				}
+			}
+
 			if cmd.Flags().Changed("disk") && pkg != nil {
 				requestedDisk := *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
 				if pkgDiskStr := pkg.GetResourceConfiguration().GetDisk(); pkgDiskStr != "" {
@@ -193,5 +205,6 @@ func newCreateCommand(s *state.State) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("ram", ramCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("disk-performance", diskPerformanceCompletion())
 	return cmd
 }

@@ -9,6 +9,7 @@ import (
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
@@ -615,6 +616,43 @@ func TestCreateCluster_NoGPUExcludesGPUPackages(t *testing.T) {
 	assert.NotNil(t, listReq.Gpu)
 	assert.False(t, *listReq.Gpu, "ListPackagesRequest.Gpu should be false when --gpu is not provided")
 	assert.Nil(t, listReq.MinResources, "MinResources should be nil when --gpu is not provided")
+}
+
+func TestCreateCluster_WithDiskPerformance(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-perf"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--disk-performance", "balanced",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, commonv1.StorageTierType_STORAGE_TIER_TYPE_BALANCED, req.GetCluster().GetConfiguration().GetClusterStorageConfiguration().GetStorageTierType())
+}
+
+func TestCreateCluster_InvalidDiskPerformance(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--disk-performance", "ultra",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ultra")
 }
 
 func TestCreateCluster_ExplicitNameSkipsSuggest(t *testing.T) {

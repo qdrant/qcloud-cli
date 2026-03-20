@@ -11,6 +11,7 @@ import (
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
@@ -431,6 +432,37 @@ func TestScale_NoResourceFlagsSkipsPackageResolution(t *testing.T) {
 	req, ok := env.Server.UpdateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, pkgID1, req.GetCluster().GetConfiguration().GetPackageId())
+}
+
+func TestScale_DiskPerformance(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: pkg,
+		newPkg:     pkg,
+	})
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk-performance", "performance", "--force")
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, commonv1.StorageTierType_STORAGE_TIER_TYPE_PERFORMANCE, req.GetCluster().GetConfiguration().GetClusterStorageConfiguration().GetStorageTierType())
+}
+
+func TestScale_InvalidDiskPerformance(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: pkg,
+		newPkg:     pkg,
+	})
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk-performance", "ultra", "--force")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ultra")
 }
 
 func TestScale_DeprecatedCurrentPackageSucceedsWithNoResourceFlags(t *testing.T) {
