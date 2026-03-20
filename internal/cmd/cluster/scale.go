@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -26,7 +27,7 @@ func newScaleCommand(s *state.State) *cobra.Command {
 				Long:  "Scales the resources of a cluster",
 				Args:  util.ExactArgs(1, "a cluster ID"),
 			}
-			cmd.Flags().Uint32("nodes", 1, "Number of nodes (default 1)")
+			cmd.Flags().Uint32("nodes", 0, "Number of nodes")
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompts")
 			cmd.Flags().Var(new(resource.Millicores), "cpu", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
@@ -121,24 +122,31 @@ func newScaleCommand(s *state.State) *cobra.Command {
 				return nil, err
 			}
 
-			// scale doesn't allow changing multi-az so any new package selected needs to
-			// use the same multi-az value
-			newPkg, err := resolvePackageByResources(
-				ctx,
-				client.Booking(),
-				accountID,
-				cluster.CloudProviderId,
-				cluster.CloudProviderRegionId,
-				cpu,
-				gpu,
-				ram,
-				currentPkg.GetPackage().GetMultiAz(),
-			)
-			if err != nil {
-				return nil, err
+			// If no resource flags changed, keep the current package — avoids a
+			// ListPackages round-trip and prevents spurious failures when the current
+			// package is deprecated or shares specs with another active package.
+			var newPkg *bookingv1.Package
+			if cmd.Flags().Changed("cpu") || cmd.Flags().Changed("ram") || cmd.Flags().Changed("gpu") {
+				// scale doesn't allow changing multi-az so any new package selected needs to
+				// use the same multi-az value
+				newPkg, err = resolvePackageByResources(
+					ctx,
+					client.Booking(),
+					accountID,
+					cluster.CloudProviderId,
+					cluster.CloudProviderRegionId,
+					cpu,
+					gpu,
+					ram,
+					currentPkg.GetPackage().GetMultiAz(),
+				)
+				if err != nil {
+					return nil, err
+				}
+				cluster.Configuration.PackageId = newPkg.Id
+			} else {
+				newPkg = currentPkg.GetPackage()
 			}
-
-			cluster.Configuration.PackageId = newPkg.Id
 
 			// disk handling
 			newPkgDisk, err := resource.ParseByteQuantity(newPkg.GetResourceConfiguration().GetDisk())
@@ -188,6 +196,10 @@ func newScaleCommand(s *state.State) *cobra.Command {
 					return nil, err
 				}
 
+				if nodes == 0 {
+					return nil, errors.New("nodes can't be downscaled to 0")
+				}
+
 				cluster.Configuration.NumberOfNodes = nodes
 			}
 
@@ -223,12 +235,12 @@ func newScaleCommand(s *state.State) *cobra.Command {
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Scaling Cluster %s (%s)...\n", resp.GetCluster().GetId(), resp.GetCluster().GetName())
 			return waitForHealthyWithInterval(
-				ctx, 
-				client.Cluster(), 
-				cmd.ErrOrStderr(), 
-				accountID, 
-				resp.GetCluster().GetId(), 
-				waitTimeout, 
+				ctx,
+				client.Cluster(),
+				cmd.ErrOrStderr(),
+				accountID,
+				resp.GetCluster().GetId(),
+				waitTimeout,
 				pollInterval,
 			)
 		},
