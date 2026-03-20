@@ -82,7 +82,12 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 					fmt.Fprintln(w)
 					fmt.Fprintln(w, "Resources (per node):")
 					if disk := res.GetDisk(); disk != nil {
-						fmt.Fprintf(w, "  Disk:  %s base, %s available\n",
+						tier := storageTierString(cluster.GetConfiguration().GetClusterStorageConfiguration().GetStorageTierType())
+						tierSuffix := "\n"
+						if tier != "" {
+							tierSuffix = fmt.Sprintf(" (tier: %s)\n", tier)
+						}
+						fmt.Fprintf(w, "  Disk:  %s base, %s available"+tierSuffix,
 							formatGiB(disk.GetBase()), formatGiB(disk.GetAvailable()))
 					}
 					if ram := res.GetRam(); ram != nil {

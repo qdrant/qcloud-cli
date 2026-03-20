@@ -287,6 +287,13 @@ func gpuCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 	}
 }
 
+// diskPerformanceCompletion returns a static completion function for the --disk-performance flag.
+func diskPerformanceCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{diskPerfBalanced, diskPerfCostOptimised, diskPerfPerformance}, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
 // packageCompletion returns a completion function for the --package flag.
 func packageCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

@@ -37,6 +37,7 @@ func newScaleCommand(s *state.State) *cobra.Command {
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
 			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			cmd.Flags().String("disk-performance", "", `Disk performance tier ("balanced", "cost-optimised", "performance")`)
 			return cmd
 		},
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*clusterv1.Cluster, error) {
@@ -203,6 +204,25 @@ func newScaleCommand(s *state.State) *cobra.Command {
 				cluster.Configuration.NumberOfNodes = nodes
 			}
 
+			oldStorageTier := storageTierString(cluster.Configuration.GetClusterStorageConfiguration().GetStorageTierType())
+			if cmd.Flags().Changed("disk-performance") {
+				perfStr, _ := cmd.Flags().GetString("disk-performance")
+				tierType, err := parseDiskPerformance(perfStr)
+				if err != nil {
+					return nil, err
+				}
+
+				clusterStorageConfig := cluster.GetConfiguration().GetClusterStorageConfiguration()
+				if clusterStorageConfig != nil {
+					clusterStorageConfig.StorageTierType = tierType
+				} else {
+					cluster.GetConfiguration().ClusterStorageConfiguration = &clusterv1.ClusterStorageConfiguration{
+						StorageTierType: tierType,
+					}
+				}
+			}
+			newStorageTier := storageTierString(cluster.Configuration.GetClusterStorageConfiguration().GetStorageTierType())
+
 			force, _ := cmd.Flags().GetBool("force")
 			prompt := scaleConfirmPrompt(
 				cluster,
@@ -213,6 +233,8 @@ func newScaleCommand(s *state.State) *cobra.Command {
 				newEffectiveDisk,
 				requestedDisk,
 				diskWillBeOverridden,
+				oldStorageTier,
+				newStorageTier,
 			)
 			if !util.ConfirmAction(force, prompt) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
@@ -261,6 +283,7 @@ func newScaleCommand(s *state.State) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("ram", ramCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("disk-performance", diskPerformanceCompletion())
 	return cmd
 }
 
@@ -280,6 +303,7 @@ func scaleConfirmPrompt(
 	oldNodes uint32,
 	currentTotalDisk, newEffectiveDisk, requestedDisk resource.ByteQuantity,
 	diskWillBeOverridden bool,
+	oldStorageTier, newStorageTier string,
 ) string {
 	oldRC := oldPkg.GetResourceConfiguration()
 	newRC := newPkg.GetResourceConfiguration()
@@ -299,6 +323,9 @@ func scaleConfirmPrompt(
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
 		prompt += fmt.Sprintf("\n  GPU:     %s", scaleDiff(oldRC.GetGpu(), newRC.GetGpu()))
+	}
+	if oldStorageTier != "" || newStorageTier != "" {
+		prompt += fmt.Sprintf("\n  Storage tier: %s", scaleDiff(oldStorageTier, newStorageTier))
 	}
 	prompt += "\nProceed?"
 	return prompt
