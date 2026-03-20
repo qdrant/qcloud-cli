@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.9.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.9.0)
+
+### Features
+
+- add --disk-performance flag to the 'cluster create' and 'cluster scale' commands (#35)
+
 ## [v0.8.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.8.0)
 
 ### Features
