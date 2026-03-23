@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.11.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.11.0)
+
+### Features
+
+- add --multi-az to the cluster scale command (#45)
+
+### Bug Fixes
+
+- stricter context setting (#47)
+
 ## [v0.10.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.10.2)
 
 ### Bug Fixes
