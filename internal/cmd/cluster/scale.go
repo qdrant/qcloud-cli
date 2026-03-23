@@ -149,7 +149,7 @@ match.`,
 			// ListPackages round-trip and prevents spurious failures when the current
 			// package is deprecated or shares specs with another active package.
 			var newPkg *bookingv1.Package
-			if cmd.Flags().Changed("cpu") || cmd.Flags().Changed("ram") || cmd.Flags().Changed("gpu") {
+			if cmd.Flags().Changed("cpu") || cmd.Flags().Changed("ram") || cmd.Flags().Changed("gpu") || cmd.Flags().Changed("multi-az") {
 				// scale doesn't allow changing multi-az so any new package selected needs to
 				// use the same multi-az value
 				newPkg, err = resolvePackageByResources(
