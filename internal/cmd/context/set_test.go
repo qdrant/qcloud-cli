@@ -18,19 +18,19 @@ func TestContextSet_CreatesNewContext(t *testing.T) {
 		"staging": {"api_key": "sk"},
 	})
 
-	stdout, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "prod",
-		"--endpoint", "grpc.prod.qdrant.io:443",
-		"--api-key", "prod-key",
-		"--account-id", "prod-acct",
+	stdout, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "test",
+		"--endpoint", "grpc.test.qdrant.io:443",
+		"--api-key", "test-key",
+		"--account-id", "test-acct",
 	)
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "prod")
+	assert.Contains(t, stdout, "test")
 
-	prod := testutil.FindContextEntry(t, cfgPath, "prod")
-	require.NotNil(t, prod)
-	assert.Equal(t, "grpc.prod.qdrant.io:443", prod.Endpoint)
-	assert.Equal(t, "prod-key", prod.APIKey)
-	assert.Equal(t, "prod-acct", prod.AccountID)
+	testCtx := testutil.FindContextEntry(t, cfgPath, "test")
+	require.NotNil(t, testCtx)
+	assert.Equal(t, "grpc.test.qdrant.io:443", testCtx.Endpoint)
+	assert.Equal(t, "test-key", testCtx.APIKey)
+	assert.Equal(t, "test-acct", testCtx.AccountID)
 }
 
 func TestContextSet_PartialUpdate(t *testing.T) {
@@ -68,6 +68,8 @@ func TestContextSet_AutoActivatesWhenNoCurrentContext(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "first",
 		"--endpoint", "grpc.example.com:443",
+		"--account-id", "522a0c47-b7bf-45ef-892d-6551bc475e48",
+		"--api-key", "test-key",
 	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, `"first"`)
@@ -78,7 +80,6 @@ func TestContextSet_AutoActivatesWhenNoCurrentContext(t *testing.T) {
 
 func TestContextSet_DoesNotActivateWhenCurrentContextExists(t *testing.T) {
 	env := newEnv(t)
-	t.Cleanup(env.Cleanup)
 
 	dir := t.TempDir()
 	cfgPath := testutil.WriteContextConfigFile(t, dir, "existing", map[string]map[string]string{
@@ -86,10 +87,47 @@ func TestContextSet_DoesNotActivateWhenCurrentContextExists(t *testing.T) {
 	})
 
 	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "new",
-		"--endpoint", "grpc.new.com:443",
+		"--endpoint", "grpc.test-qdrant.cloud.io:443",
+		"--account-id", "522a0c47-b7bf-45ef-892d-6551bc475e48",
+		"--api-key", "test-key",
 	)
 	require.NoError(t, err)
 
 	m := readYAML(t, cfgPath)
 	assert.Equal(t, "existing", m["current_context"])
+}
+
+func TestContextSet_FailsWhenEntriesAreMissing(t *testing.T) {
+	t.Run("api-key", func(t *testing.T) {
+		env := newEnv(t)
+		t.Cleanup(env.Cleanup)
+
+		_, _, err := testutil.Exec(t, env, "context", "set", "test",
+			"--endpoint", "grpc.test-cloud.qdrant.io:443",
+			"--account-id", "test",
+		)
+		require.NoError(t, err)
+	})
+	
+	t.Run("account-id", func(t *testing.T) {
+		env := newEnv(t)
+		t.Cleanup(env.Cleanup)
+
+		_, _, err := testutil.Exec(t, env, "context", "set", "test",
+			"--endpoint", "grpc.test-cloud.qdrant.io:443",
+			"--api-key", "thekey",
+		)
+		require.NoError(t, err)
+	})
+
+	t.Run("endpoint", func(t *testing.T) {
+		env := newEnv(t)
+		t.Cleanup(env.Cleanup)
+
+		_, _, err := testutil.Exec(t, env, "context", "set", "test",
+			"--api-key", "thekey",
+			"--account-id", "780c7589-f3e8-4567-808f-60a54d43ae10",
+		)
+		require.NoError(t, err)
+	})
 }
