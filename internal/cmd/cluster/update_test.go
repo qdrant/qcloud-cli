@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
@@ -50,7 +51,14 @@ func TestUpdateCluster_ClearLabels(t *testing.T) {
 
 	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: req.GetClusterId(), Name: "my-cluster"},
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Labels: []*commonv1.KeyValue{
+					{Key: "env", Value: "staging"},
+					{Key: "team", Value: "infra"},
+				},
+			},
 		}, nil
 	})
 	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
@@ -59,12 +67,96 @@ func TestUpdateCluster_ClearLabels(t *testing.T) {
 		}, nil
 	})
 
-	_, _, err := testutil.Exec(t, env, "cluster", "update", "cluster-abc")
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--label", "env-",
+		"--label", "team-",
+	)
 	require.NoError(t, err)
 
 	req, ok := env.Server.UpdateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Empty(t, req.GetCluster().GetLabels())
+}
+
+func TestUpdateCluster_ApplyLabels(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Labels: []*commonv1.KeyValue{
+					{Key: "env", Value: "staging"},
+					{Key: "team", Value: "infra"},
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--label", "env=prod",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	capturedLabels := make(map[string]string)
+	for _, kv := range req.GetCluster().GetLabels() {
+		capturedLabels[kv.GetKey()] = kv.GetValue()
+	}
+	assert.Equal(t, map[string]string{"env": "prod", "team": "infra"}, capturedLabels)
+}
+
+func TestUpdateCluster_RemoveLabel(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Labels: []*commonv1.KeyValue{
+					{Key: "env", Value: "staging"},
+					{Key: "team", Value: "infra"},
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--label", "team-",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	capturedLabels := make(map[string]string)
+	for _, kv := range req.GetCluster().GetLabels() {
+		capturedLabels[kv.GetKey()] = kv.GetValue()
+	}
+	assert.Equal(t, map[string]string{"env": "staging"}, capturedLabels)
+}
+
+func TestUpdateCluster_InvalidLabelFormat(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--label", "badformat",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid --label value")
 }
 
 func TestUpdateCluster_APIError(t *testing.T) {
