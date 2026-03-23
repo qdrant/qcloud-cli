@@ -24,15 +24,30 @@ func newScaleCommand(s *state.State) *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "scale <cluster-id>",
 				Short: "Scales the resources of a cluster",
-				Long:  "Scales the resources of a cluster",
-				Args:  util.ExactArgs(1, "a cluster ID"),
+				Long: `Scales the resources of a cluster.
+
+Use this command to change the resource package for the nodes of a Qdrant cluster, change
+the number of nodes in the cluster, and allocate more disk space per node. You can select
+one of the pre-defined resource packages to apply for all nodes in the cluster. A package
+defines CPU, RAM, GPU, and minimum disk size.
+
+The --cpu, --ram, and --gpu flags specify per-node resources and are used to match a
+package. If none of these flags are provided, the current package is preserved. Available
+packages can be listed with 'cluster package list' using the --cloud-provider and
+--cloud-region flags.
+
+Each package includes a baseline disk size. Requesting more disk than the baseline with
+--disk provisions the difference as additional storage. Disk cannot be downscaled. If a
+new package has a larger baseline disk than the current total, the disk size increases to
+match.`,
+				Args: util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().Uint32("nodes", 0, "Number of nodes")
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompts")
-			cmd.Flags().Var(new(resource.Millicores), "cpu", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
-			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
-			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
-			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs to select a package (e.g. \"1\", \"2\", or \"1000m\")")
+			cmd.Flags().Var(new(resource.Millicores), "cpu", "CPU per node (e.g. \"1\", \"0.5\", or \"1000m\")")
+			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM per node (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
+			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size per node (e.g. \"200GiB\"); if larger than the node's included disk, the difference is provisioned as additional storage")
+			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs per node (e.g. \"1\", \"2\", or \"1000m\")")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
