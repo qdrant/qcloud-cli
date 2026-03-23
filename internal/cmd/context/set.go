@@ -48,11 +48,10 @@ func newSetCommand(s *state.State) *cobra.Command {
 				ctx.AccountID = s.Config.AccountID()
 			}
 
-
 			if ctx.Endpoint == "" {
 				return errors.New("cannot set a context with an empty endpoint")
 			}
-			
+
 			if ctx.APIKey == "" {
 				return errors.New("cannot set a context with an empty API key")
 			}

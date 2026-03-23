@@ -174,7 +174,7 @@ func TestContextSet_InheritsValuesFromEnvVarsOrDefaultsIfMissing(t *testing.T) {
 		assert.Equal(t, "grpc.test-cloud.qdrant.io:443", ctxE.Endpoint)
 		assert.Equal(t, "780c7589-f3e8-4567-808f-60a54d43ae10", ctxE.AccountID)
 	})
-	
+
 	t.Run("endpoint is defaulted to hardcoded value without env var", func(t *testing.T) {
 		dir := t.TempDir()
 		t.Setenv("HOME", dir)
