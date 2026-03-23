@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -67,6 +68,59 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 						fmt.Fprintf(w, "          ")
 					}
 					fmt.Fprintf(w, "%s=%s\n", kv.GetKey(), kv.GetValue())
+				}
+			}
+
+			if cfg := cluster.GetConfiguration(); cfg != nil {
+				notSet := "(not set)"
+
+				if dbCfg := cfg.GetDatabaseConfiguration(); dbCfg != nil {
+					fmt.Fprintln(w)
+					fmt.Fprintln(w, "Database Configuration:")
+
+					col := dbCfg.GetCollection()
+					fmt.Fprintln(w, "  Collection Defaults:")
+					if col != nil {
+						fmt.Fprintf(w, "    Replication Factor:        %s\n", output.OptionalValue(col.ReplicationFactor, notSet))
+						fmt.Fprintf(w, "    Write Consistency Factor:  %s\n", output.OptionalValue(col.WriteConsistencyFactor, notSet))
+						if vec := col.GetVectors(); vec != nil {
+							fmt.Fprintf(w, "    On Disk:                   %s\n", output.OptionalValue(vec.OnDisk, notSet))
+						} else {
+							fmt.Fprintf(w, "    On Disk:                   %s\n", notSet)
+						}
+					} else {
+						fmt.Fprintf(w, "    Replication Factor:        %s\n", notSet)
+						fmt.Fprintf(w, "    Write Consistency Factor:  %s\n", notSet)
+						fmt.Fprintf(w, "    On Disk:                   %s\n", notSet)
+					}
+
+					perf := dbCfg.GetStorage().GetPerformance()
+					fmt.Fprintln(w, "  Advanced Optimizations:")
+					if perf != nil {
+						fmt.Fprintf(w, "    Optimizer CPU Budget:      %s\n", output.OptionalValue(perf.OptimizerCpuBudget, notSet))
+						fmt.Fprintf(w, "    Async Scorer:              %s\n", output.OptionalValue(perf.AsyncScorer, notSet))
+					} else {
+						fmt.Fprintf(w, "    Optimizer CPU Budget:      %s\n", notSet)
+						fmt.Fprintf(w, "    Async Scorer:              %s\n", notSet)
+					}
+				}
+
+				ips := cfg.GetAllowedIpSourceRanges()
+				restartMode := restartPolicyString(cfg.GetRestartPolicy())
+				rebalance := rebalanceStrategyString(cfg.GetRebalanceStrategy())
+
+				if len(ips) > 0 || restartMode != "" || rebalance != "" {
+					fmt.Fprintln(w)
+					fmt.Fprintln(w, "Cluster Configuration:")
+					if len(ips) > 0 {
+						fmt.Fprintf(w, "  Allowed IPs:          %s\n", strings.Join(ips, ", "))
+					}
+					if restartMode != "" {
+						fmt.Fprintf(w, "  Restart Mode:         %s\n", restartMode)
+					}
+					if rebalance != "" {
+						fmt.Fprintf(w, "  Rebalance Strategy:   %s\n", rebalance)
+					}
 				}
 			}
 

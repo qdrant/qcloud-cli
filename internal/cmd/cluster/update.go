@@ -3,27 +3,59 @@ package cluster
 import (
 	"fmt"
 	"io"
+	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
+// dbConfigFlags lists flags that trigger a rolling restart.
+var dbConfigFlags = []string{
+	"replication-factor",
+	"write-consistency-factor",
+	"async-scorer",
+	"optimizer-cpu-budget",
+}
+
 func newUpdateCommand(s *state.State) *cobra.Command {
-	return base.UpdateCmd[*clusterv1.Cluster]{
+	cmd := base.UpdateCmd[*clusterv1.Cluster]{
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <cluster-id>",
 				Short: "Update an existing cluster",
-				Args:  util.ExactArgs(1, "a cluster ID"),
+				Long: `Updates the configuration of a cluster.
+
+Use this command to modify cluster settings such as labels, database defaults,
+IP restrictions, restart mode, and rebalance strategy.
+
+Database configuration changes (--replication-factor, --write-consistency-factor,
+--async-scorer, --optimizer-cpu-budget) will trigger a rolling restart of the
+cluster. The cluster remains available during the restart, but individual nodes
+will be briefly unavailable as they cycle.
+
+Cluster configuration changes (--allowed-ips, --restart-mode, --rebalance-strategy)
+and label changes take effect without a restart.`,
+				Args: util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times; replaces all existing labels")
+			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
+			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
+			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
+			cmd.Flags().Int32("optimizer-cpu-budget", 0, `CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)`)
+			cmd.Flags().StringSlice("allowed-ips", nil, "Allowed client IP CIDR ranges (replaces all existing); max 20")
+			cmd.Flags().String("restart-mode", "", `Restart policy ("rolling", "parallel", "automatic")`)
+			cmd.Flags().String("rebalance-strategy", "", `Shard rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
+			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
 			return cmd
 		},
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*clusterv1.Cluster, error) {
@@ -55,13 +87,102 @@ func newUpdateCommand(s *state.State) *cobra.Command {
 				return nil, err
 			}
 
-			labelMap, _ := cmd.Flags().GetStringToString("label")
-			cluster.Labels = nil
-			for k, v := range labelMap {
-				cluster.Labels = append(cluster.Labels, &commonv1.KeyValue{Key: k, Value: v})
+			updated := proto.CloneOf(cluster)
+
+			// Labels
+			if cmd.Flags().Changed("label") {
+				labelMap, _ := cmd.Flags().GetStringToString("label")
+				updated.Labels = nil
+				for k, v := range labelMap {
+					updated.Labels = append(updated.Labels, &commonv1.KeyValue{Key: k, Value: v})
+				}
 			}
+
+			// Ensure configuration exists
+			if updated.Configuration == nil {
+				updated.Configuration = &clusterv1.ClusterConfiguration{}
+			}
+			cfg := updated.Configuration
+
+			// --- Database configuration flags (trigger rolling restart) ---
+
+			dbChanged := slices.ContainsFunc(dbConfigFlags, func(f string) bool {
+				return cmd.Flags().Changed(f)
+			})
+
+			if dbChanged {
+				if cfg.DatabaseConfiguration == nil {
+					cfg.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}
+				}
+				dbCfg := cfg.DatabaseConfiguration
+
+				if cmd.Flags().Changed("replication-factor") || cmd.Flags().Changed("write-consistency-factor") {
+					if dbCfg.Collection == nil {
+						dbCfg.Collection = &clusterv1.DatabaseConfigurationCollection{}
+					}
+					if cmd.Flags().Changed("replication-factor") {
+						v, _ := cmd.Flags().GetUint32("replication-factor")
+						dbCfg.Collection.ReplicationFactor = &v
+					}
+					if cmd.Flags().Changed("write-consistency-factor") {
+						v, _ := cmd.Flags().GetInt32("write-consistency-factor")
+						dbCfg.Collection.WriteConsistencyFactor = &v
+					}
+				}
+
+				if cmd.Flags().Changed("async-scorer") || cmd.Flags().Changed("optimizer-cpu-budget") {
+					if dbCfg.Storage == nil {
+						dbCfg.Storage = &clusterv1.DatabaseConfigurationStorage{}
+					}
+					if dbCfg.Storage.Performance == nil {
+						dbCfg.Storage.Performance = &clusterv1.DatabaseConfigurationStoragePerformance{}
+					}
+					if cmd.Flags().Changed("async-scorer") {
+						v, _ := cmd.Flags().GetBool("async-scorer")
+						dbCfg.Storage.Performance.AsyncScorer = &v
+					}
+					if cmd.Flags().Changed("optimizer-cpu-budget") {
+						v, _ := cmd.Flags().GetInt32("optimizer-cpu-budget")
+						dbCfg.Storage.Performance.OptimizerCpuBudget = &v
+					}
+				}
+
+				// Confirmation prompt for rolling restart
+				force, _ := cmd.Flags().GetBool("force")
+				prompt := updateDBConfigPrompt(cluster, updated, cmd)
+				if !util.ConfirmAction(force, prompt) {
+					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
+					return nil, nil
+				}
+			}
+
+			// --- Cluster configuration flags (no restart) ---
+
+			if cmd.Flags().Changed("allowed-ips") {
+				ips, _ := cmd.Flags().GetStringSlice("allowed-ips")
+				cfg.AllowedIpSourceRanges = ips
+			}
+
+			if cmd.Flags().Changed("restart-mode") {
+				modeStr, _ := cmd.Flags().GetString("restart-mode")
+				mode, err := parseRestartMode(modeStr)
+				if err != nil {
+					return nil, err
+				}
+				cfg.RestartPolicy = mode.Enum()
+			}
+
+			if cmd.Flags().Changed("rebalance-strategy") {
+				stratStr, _ := cmd.Flags().GetString("rebalance-strategy")
+				strat, err := parseRebalanceStrategy(stratStr)
+				if err != nil {
+					return nil, err
+				}
+				cfg.RebalanceStrategy = strat.Enum()
+			}
+
 			resp, err := client.Cluster().UpdateCluster(ctx, &clusterv1.UpdateClusterRequest{
-				Cluster: cluster,
+				Cluster: updated,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to update cluster: %w", err)
@@ -70,8 +191,65 @@ func newUpdateCommand(s *state.State) *cobra.Command {
 			return resp.GetCluster(), nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, updated *clusterv1.Cluster) {
+			if updated == nil {
+				return
+			}
 			fmt.Fprintf(out, "Cluster %s (%s) updated successfully.\n", updated.GetId(), updated.GetName())
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
+
+	_ = cmd.RegisterFlagCompletionFunc("restart-mode", restartModeCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("rebalance-strategy", rebalanceStrategyCompletion())
+	return cmd
+}
+
+// updateDBConfigPrompt builds the confirmation message shown when database
+// configuration flags are changed, warning about the rolling restart.
+// It compares old (before mutation) and updated (after mutation) cluster objects
+// to display a diff of each changed field.
+func updateDBConfigPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command) string {
+	var lines []string
+	lines = append(lines, fmt.Sprintf("Updating cluster %s (%s) will change:", old.GetId(), old.GetName()))
+
+	oldCol := old.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+	newCol := updated.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+	oldPerf := old.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+	newPerf := updated.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+
+	notSet := "(not set)"
+
+	if cmd.Flags().Changed("replication-factor") {
+		var oldRF *uint32
+		if oldCol != nil {
+			oldRF = oldCol.ReplicationFactor
+		}
+		lines = append(lines, fmt.Sprintf("  Replication factor:        %s", output.DiffValue(output.OptionalValue(oldRF, notSet), fmt.Sprintf("%d", newCol.GetReplicationFactor()))))
+	}
+	if cmd.Flags().Changed("write-consistency-factor") {
+		var oldWCF *int32
+		if oldCol != nil {
+			oldWCF = oldCol.WriteConsistencyFactor
+		}
+		lines = append(lines, fmt.Sprintf("  Write consistency factor:  %s", output.DiffValue(output.OptionalValue(oldWCF, notSet), fmt.Sprintf("%d", newCol.GetWriteConsistencyFactor()))))
+	}
+	if cmd.Flags().Changed("async-scorer") {
+		var oldAS *bool
+		if oldPerf != nil {
+			oldAS = oldPerf.AsyncScorer
+		}
+		lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
+	}
+	if cmd.Flags().Changed("optimizer-cpu-budget") {
+		var oldBudget *int32
+		if oldPerf != nil {
+			oldBudget = oldPerf.OptimizerCpuBudget
+		}
+		lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:      %s", output.DiffValue(output.OptionalValue(oldBudget, notSet), fmt.Sprintf("%d", newPerf.GetOptimizerCpuBudget()))))
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, "WARNING: Database configuration changes will result in a rolling restart of your cluster.")
+	lines = append(lines, "Proceed?")
+	return strings.Join(lines, "\n")
 }

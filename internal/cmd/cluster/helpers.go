@@ -92,3 +92,67 @@ func storageTierString(t commonv1.StorageTierType) string {
 		return ""
 	}
 }
+
+const (
+	restartModeRolling   = "rolling"
+	restartModeParallel  = "parallel"
+	restartModeAutomatic = "automatic"
+)
+
+func parseRestartMode(s string) (clusterv1.ClusterConfigurationRestartPolicy, error) {
+	switch s {
+	case restartModeRolling:
+		return clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_ROLLING, nil
+	case restartModeParallel:
+		return clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_PARALLEL, nil
+	case restartModeAutomatic:
+		return clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_AUTOMATIC, nil
+	default:
+		return clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_UNSPECIFIED, fmt.Errorf("invalid restart mode %q: must be one of %s, %s, %s", s, restartModeRolling, restartModeParallel, restartModeAutomatic)
+	}
+}
+
+const (
+	rebalanceByCount        = "by-count"
+	rebalanceBySize         = "by-size"
+	rebalanceByCountAndSize = "by-count-and-size"
+)
+
+func restartPolicyString(p clusterv1.ClusterConfigurationRestartPolicy) string {
+	switch p {
+	case clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_ROLLING:
+		return restartModeRolling
+	case clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_PARALLEL:
+		return restartModeParallel
+	case clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_AUTOMATIC:
+		return restartModeAutomatic
+	default:
+		return ""
+	}
+}
+
+func rebalanceStrategyString(s clusterv1.ClusterConfigurationRebalanceStrategy) string {
+	switch s {
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT:
+		return rebalanceByCount
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_SIZE:
+		return rebalanceBySize
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE:
+		return rebalanceByCountAndSize
+	default:
+		return ""
+	}
+}
+
+func parseRebalanceStrategy(s string) (clusterv1.ClusterConfigurationRebalanceStrategy, error) {
+	switch s {
+	case rebalanceByCount:
+		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT, nil
+	case rebalanceBySize:
+		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_SIZE, nil
+	case rebalanceByCountAndSize:
+		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE, nil
+	default:
+		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_UNSPECIFIED, fmt.Errorf("invalid rebalance strategy %q: must be one of %s, %s, %s", s, rebalanceByCount, rebalanceBySize, rebalanceByCountAndSize)
+	}
+}

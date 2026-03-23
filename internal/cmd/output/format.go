@@ -1,6 +1,8 @@
 package output
 
 import (
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -22,4 +24,33 @@ func FullDateTime(t time.Time) string {
 		return ""
 	}
 	return t.UTC().Format("2006-01-02 15:04:05 UTC")
+}
+
+// DiffValue formats a field value as "old => new" when the value changes, or just "val" when unchanged.
+func DiffValue(oldVal, newVal string) string {
+	if oldVal == newVal {
+		return newVal
+	}
+
+	return oldVal + " => " + newVal
+}
+
+// OptionalValue formats an optional pointer value as a string.
+// Returns fallback for nil pointers. Supports any pointer type.
+// Booleans are formatted as "yes"/"no"; all other types use their default format.
+func OptionalValue(v any, fallback string) string {
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() || rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return fallback
+	}
+
+	elem := rv.Elem().Interface()
+	if b, ok := elem.(bool); ok {
+		if b {
+			return "yes"
+		}
+		return "no"
+	}
+
+	return fmt.Sprintf("%v", elem)
 }

@@ -40,8 +40,15 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
 			cmd.Flags().String("disk-performance", "", `Disk performance tier ("balanced", "cost-optimised", "performance")`)
+			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
+			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
+			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
+			cmd.Flags().Int32("optimizer-cpu-budget", 0, `CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)`)
+			cmd.Flags().StringSlice("allowed-ips", nil, "Allowed client IP CIDR ranges; max 20")
+			cmd.Flags().String("restart-mode", "", `Restart policy ("rolling", "parallel", "automatic")`)
+			cmd.Flags().String("rebalance-strategy", "", `Shard rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
+			_ = cmd.Flags().MarkHidden("wait-poll-interval")
 			_ = cmd.MarkFlagRequired("cloud-provider")
 			_ = cmd.MarkFlagRequired("cloud-region")
 			return cmd
@@ -153,6 +160,70 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				}
 			}
 
+			// Database configuration flags
+			if cmd.Flags().Changed("replication-factor") || cmd.Flags().Changed("write-consistency-factor") ||
+				cmd.Flags().Changed("async-scorer") || cmd.Flags().Changed("optimizer-cpu-budget") {
+				if cluster.Configuration.DatabaseConfiguration == nil {
+					cluster.Configuration.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}
+				}
+				dbCfg := cluster.Configuration.DatabaseConfiguration
+
+				if cmd.Flags().Changed("replication-factor") || cmd.Flags().Changed("write-consistency-factor") {
+					if dbCfg.Collection == nil {
+						dbCfg.Collection = &clusterv1.DatabaseConfigurationCollection{}
+					}
+					if cmd.Flags().Changed("replication-factor") {
+						v, _ := cmd.Flags().GetUint32("replication-factor")
+						dbCfg.Collection.ReplicationFactor = &v
+					}
+					if cmd.Flags().Changed("write-consistency-factor") {
+						v, _ := cmd.Flags().GetInt32("write-consistency-factor")
+						dbCfg.Collection.WriteConsistencyFactor = &v
+					}
+				}
+
+				if cmd.Flags().Changed("async-scorer") || cmd.Flags().Changed("optimizer-cpu-budget") {
+					if dbCfg.Storage == nil {
+						dbCfg.Storage = &clusterv1.DatabaseConfigurationStorage{}
+					}
+					if dbCfg.Storage.Performance == nil {
+						dbCfg.Storage.Performance = &clusterv1.DatabaseConfigurationStoragePerformance{}
+					}
+					if cmd.Flags().Changed("async-scorer") {
+						v, _ := cmd.Flags().GetBool("async-scorer")
+						dbCfg.Storage.Performance.AsyncScorer = &v
+					}
+					if cmd.Flags().Changed("optimizer-cpu-budget") {
+						v, _ := cmd.Flags().GetInt32("optimizer-cpu-budget")
+						dbCfg.Storage.Performance.OptimizerCpuBudget = &v
+					}
+				}
+			}
+
+			// Cluster configuration flags
+			if cmd.Flags().Changed("allowed-ips") {
+				ips, _ := cmd.Flags().GetStringSlice("allowed-ips")
+				cluster.Configuration.AllowedIpSourceRanges = ips
+			}
+
+			if cmd.Flags().Changed("restart-mode") {
+				modeStr, _ := cmd.Flags().GetString("restart-mode")
+				mode, err := parseRestartMode(modeStr)
+				if err != nil {
+					return nil, err
+				}
+				cluster.Configuration.RestartPolicy = mode.Enum()
+			}
+
+			if cmd.Flags().Changed("rebalance-strategy") {
+				stratStr, _ := cmd.Flags().GetString("rebalance-strategy")
+				strat, err := parseRebalanceStrategy(stratStr)
+				if err != nil {
+					return nil, err
+				}
+				cluster.Configuration.RebalanceStrategy = strat.Enum()
+			}
+
 			if cmd.Flags().Changed("disk") && pkg != nil {
 				requestedDisk := *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
 				if pkgDiskStr := pkg.GetResourceConfiguration().GetDisk(); pkgDiskStr != "" {
@@ -206,5 +277,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk-performance", diskPerformanceCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("restart-mode", restartModeCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("rebalance-strategy", rebalanceStrategyCompletion())
 	return cmd
 }

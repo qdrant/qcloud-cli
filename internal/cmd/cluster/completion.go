@@ -294,6 +294,20 @@ func diskPerformanceCompletion() func(*cobra.Command, []string, string) ([]strin
 	}
 }
 
+// restartModeCompletion returns a static completion function for the --restart-mode flag.
+func restartModeCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{restartModeRolling, restartModeParallel, restartModeAutomatic}, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// rebalanceStrategyCompletion returns a static completion function for the --rebalance-strategy flag.
+func rebalanceStrategyCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{rebalanceByCount, rebalanceBySize, rebalanceByCountAndSize}, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
 // packageCompletion returns a completion function for the --package flag.
 func packageCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
