@@ -46,7 +46,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
 			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
 			cmd.Flags().Int32("optimizer-cpu-budget", 0, `CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)`)
-			cmd.Flags().StringSlice("allowed-ips", nil, "Allowed client IP CIDR ranges; max 20")
+			cmd.Flags().StringArray("allowed-ip", nil, "Allowed client IP CIDR ranges; max 20")
 			cmd.Flags().String("restart-mode", "", `Restart policy ("rolling", "parallel", "automatic")`)
 			cmd.Flags().String("rebalance-strategy", "", `Shard rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
 			_ = cmd.Flags().MarkHidden("wait-poll-interval")
@@ -206,9 +206,13 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			}
 
 			// Cluster configuration flags
-			if cmd.Flags().Changed("allowed-ips") {
-				ips, _ := cmd.Flags().GetStringSlice("allowed-ips")
-				cluster.Configuration.AllowedIpSourceRanges = ips
+			if cmd.Flags().Changed("allowed-ip") {
+				raw, _ := cmd.Flags().GetStringArray("allowed-ip")
+				changes, err := util.ParseIPs(raw)
+				if err != nil {
+					return nil, err
+				}
+				cluster.Configuration.AllowedIpSourceRanges = changes.Add
 			}
 
 			if cmd.Flags().Changed("restart-mode") {

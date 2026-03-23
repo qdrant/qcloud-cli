@@ -810,7 +810,8 @@ func TestCreateCluster_WithAllowedIPs(t *testing.T) {
 		"--cloud-provider", "aws",
 		"--cloud-region", "us-east-1",
 		"--package", "00000000-0000-0000-0000-000000000001",
-		"--allowed-ips", "10.0.0.0/8,172.16.0.0/12",
+		"--allowed-ip", "10.0.0.0/8",
+		"--allowed-ip", "172.16.0.0/12",
 	)
 	require.NoError(t, err)
 

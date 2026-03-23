@@ -246,13 +246,14 @@ func TestUpdateCluster_OptimizerCPUBudget(t *testing.T) {
 	assert.Equal(t, int32(4), budget)
 }
 
-func TestUpdateCluster_AllowedIPs(t *testing.T) {
+func TestUpdateCluster_SetAllowedIPs(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupUpdateHandlers(env)
 
 	stdout, _, err := testutil.Exec(t, env,
 		"cluster", "update", "cluster-abc",
-		"--allowed-ips", "10.0.0.0/8,172.16.0.0/12",
+		"--allowed-ip", "10.0.0.0/8",
+		"--allowed-ip", "172.16.0.0/12",
 	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "updated successfully")
@@ -261,6 +262,97 @@ func TestUpdateCluster_AllowedIPs(t *testing.T) {
 	require.True(t, ok)
 	ips := req.GetCluster().GetConfiguration().GetAllowedIpSourceRanges()
 	assert.Equal(t, []string{"10.0.0.0/8", "172.16.0.0/12"}, ips)
+}
+
+func TestUpdateCluster_AddAllowedIP(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{
+					AllowedIpSourceRanges: []string{"10.0.0.0/8"},
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--allowed-ip", "172.16.0.0/12",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	ips := req.GetCluster().GetConfiguration().GetAllowedIpSourceRanges()
+	assert.Equal(t, []string{"10.0.0.0/8", "172.16.0.0/12"}, ips)
+}
+
+func TestUpdateCluster_RemoveAllowedIP(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{
+					AllowedIpSourceRanges: []string{"10.0.0.0/8", "172.16.0.0/12"},
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--allowed-ip", "172.16.0.0/12-",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	ips := req.GetCluster().GetConfiguration().GetAllowedIpSourceRanges()
+	assert.Equal(t, []string{"10.0.0.0/8"}, ips)
+}
+
+func TestUpdateCluster_ClearAllowedIPs(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{
+					AllowedIpSourceRanges: []string{"10.0.0.0/8", "172.16.0.0/12"},
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--allowed-ip", "10.0.0.0/8-",
+		"--allowed-ip", "172.16.0.0/12-",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	ips := req.GetCluster().GetConfiguration().GetAllowedIpSourceRanges()
+	assert.Empty(t, ips)
 }
 
 func TestUpdateCluster_RestartMode(t *testing.T) {
