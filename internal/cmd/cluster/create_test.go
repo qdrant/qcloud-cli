@@ -675,3 +675,223 @@ func TestCreateCluster_ExplicitNameSkipsSuggest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, env.Server.SuggestClusterNameCalls.Count(), "SuggestClusterName should not be called when --name is provided")
 }
+
+func TestCreateCluster_WithReplicationFactor(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-rf"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--replication-factor", "3",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	rf := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetCollection().GetReplicationFactor()
+	assert.Equal(t, uint32(3), rf)
+}
+
+func TestCreateCluster_WithWriteConsistencyFactor(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-wcf"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--write-consistency-factor", "2",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	wcf := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetCollection().GetWriteConsistencyFactor()
+	assert.Equal(t, int32(2), wcf)
+}
+
+func TestCreateCluster_WithAsyncScorer(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-as"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--async-scorer",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	as := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance().GetAsyncScorer()
+	assert.True(t, as)
+}
+
+func TestCreateCluster_WithOptimizerCPUBudget(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-ocb"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--optimizer-cpu-budget", "4",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	budget := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance().GetOptimizerCpuBudget()
+	assert.Equal(t, int32(4), budget)
+}
+
+func TestCreateCluster_WithAllDBConfigFlags(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-alldb"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--replication-factor", "3",
+		"--write-consistency-factor", "2",
+		"--async-scorer",
+		"--optimizer-cpu-budget", "-1",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	dbCfg := req.GetCluster().GetConfiguration().GetDatabaseConfiguration()
+	assert.Equal(t, uint32(3), dbCfg.GetCollection().GetReplicationFactor())
+	assert.Equal(t, int32(2), dbCfg.GetCollection().GetWriteConsistencyFactor())
+	assert.True(t, dbCfg.GetStorage().GetPerformance().GetAsyncScorer())
+	assert.Equal(t, int32(-1), dbCfg.GetStorage().GetPerformance().GetOptimizerCpuBudget())
+}
+
+func TestCreateCluster_WithAllowedIPs(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-ips"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--allowed-ips", "10.0.0.0/8,172.16.0.0/12",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	ips := req.GetCluster().GetConfiguration().GetAllowedIpSourceRanges()
+	assert.Equal(t, []string{"10.0.0.0/8", "172.16.0.0/12"}, ips)
+}
+
+func TestCreateCluster_WithRestartMode(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-rm"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--restart-mode", "parallel",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	rp := req.GetCluster().GetConfiguration().GetRestartPolicy()
+	assert.Equal(t, clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_PARALLEL, rp)
+}
+
+func TestCreateCluster_WithRebalanceStrategy(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-rs"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--rebalance-strategy", "by-count-and-size",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	rs := req.GetCluster().GetConfiguration().GetRebalanceStrategy()
+	assert.Equal(t, clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE, rs)
+}
+
+func TestCreateCluster_InvalidRestartMode(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--restart-mode", "invalid",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid restart mode")
+}
+
+func TestCreateCluster_InvalidRebalanceStrategy(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--rebalance-strategy", "invalid",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid rebalance strategy")
+}
