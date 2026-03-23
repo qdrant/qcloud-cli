@@ -49,6 +49,7 @@ match.`,
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM per node (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size per node (e.g. \"200GiB\"); if larger than the node's included disk, the difference is provisioned as additional storage")
 			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs per node (e.g. \"1\", \"2\", or \"1000m\")")
+			cmd.Flags().Bool("multi-az", false, "Schedule nodes in multiple availability zones")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
@@ -139,11 +140,16 @@ match.`,
 				return nil, err
 			}
 
+			multiAz := currentPkg.GetPackage().GetMultiAz()
+			if cmd.Flags().Changed("multi-az") {
+				multiAz, _ = cmd.Flags().GetBool("multi-az")
+			}
+
 			// If no resource flags changed, keep the current package — avoids a
 			// ListPackages round-trip and prevents spurious failures when the current
 			// package is deprecated or shares specs with another active package.
 			var newPkg *bookingv1.Package
-			if cmd.Flags().Changed("cpu") || cmd.Flags().Changed("ram") || cmd.Flags().Changed("gpu") {
+			if cmd.Flags().Changed("cpu") || cmd.Flags().Changed("ram") || cmd.Flags().Changed("gpu") || cmd.Flags().Changed("multi-az") {
 				// scale doesn't allow changing multi-az so any new package selected needs to
 				// use the same multi-az value
 				newPkg, err = resolvePackageByResources(
@@ -155,11 +161,12 @@ match.`,
 					cpu,
 					gpu,
 					ram,
-					currentPkg.GetPackage().GetMultiAz(),
+					multiAz,
 				)
 				if err != nil {
 					return nil, err
 				}
+
 				cluster.Configuration.PackageId = newPkg.Id
 			} else {
 				newPkg = currentPkg.GetPackage()
@@ -322,11 +329,12 @@ func scaleConfirmPrompt(
 	}
 
 	prompt := fmt.Sprintf(
-		"Cluster %s (%s) will be scaled to:\n  Nodes:   %s\n  CPU:     %s\n  RAM:     %s\n  Disk:    %s",
+		"Cluster %s (%s) will be scaled to:\n  Nodes:   %s\n  CPU:     %s\n  RAM:     %s\n  Disk:    %s\n  Multi AZ: %s",
 		cluster.GetId(), cluster.GetName(),
 		output.DiffValue(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
 		output.DiffValue(oldRC.GetCpu(), newRC.GetCpu()),
 		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
+		output.DiffValue(boolToYesNo(oldPkg.GetMultiAz()), boolToYesNo(newPkg.GetMultiAz())),
 		diskLine,
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {

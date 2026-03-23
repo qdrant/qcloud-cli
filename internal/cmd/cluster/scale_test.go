@@ -42,7 +42,7 @@ func baseCluster() *clusterv1.Cluster {
 	}
 }
 
-func scalePkg(id, cpu, ram, disk string) *bookingv1.Package {
+func newPkg(id, cpu, ram, disk string) *bookingv1.Package {
 	return &bookingv1.Package{
 		Id:   id,
 		Name: id,
@@ -51,6 +51,20 @@ func scalePkg(id, cpu, ram, disk string) *bookingv1.Package {
 			Ram:  ram,
 			Disk: disk,
 		},
+		MultiAz: false,
+	}
+}
+
+func newMultiAzPkg(id, cpu, ram, disk string) *bookingv1.Package {
+	return &bookingv1.Package{
+		Id:   id,
+		Name: id,
+		ResourceConfiguration: &bookingv1.ResourceConfiguration{
+			Cpu:  cpu,
+			Ram:  ram,
+			Disk: disk,
+		},
+		MultiAz: true,
 	}
 }
 
@@ -71,7 +85,7 @@ func setupScale(env *testutil.TestEnv, s scaleEnv) {
 
 func TestScale_NoChanges(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: pkg,
@@ -90,7 +104,7 @@ func TestScale_NoChanges(t *testing.T) {
 
 func TestScale_Nodes(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: pkg,
@@ -110,8 +124,8 @@ func TestScale_CPU(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
-		currentPkg: scalePkg(pkgID1, "1000m", "4GiB", "50GiB"),
-		newPkg:     scalePkg(pkgID2, "2000m", "4GiB", "50GiB"),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID2, "2000m", "4GiB", "50GiB"),
 	})
 
 	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--force")
@@ -127,8 +141,8 @@ func TestScale_RAM(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
-		currentPkg: scalePkg(pkgID1, "1000m", "4GiB", "50GiB"),
-		newPkg:     scalePkg(pkgID3, "1000m", "8GiB", "50GiB"),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID3, "1000m", "8GiB", "50GiB"),
 	})
 
 	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "8GiB", "--force")
@@ -141,7 +155,7 @@ func TestScale_RAM(t *testing.T) {
 
 func TestScale_DiskAbovePackageMinimum(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: pkg,
@@ -161,8 +175,8 @@ func TestScale_DiskBelowPackageMinimumIsOverridden(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
-		currentPkg: scalePkg(pkgID1, "1000m", "4GiB", "50GiB"),
-		newPkg:     scalePkg(pkgID4, "2000m", "4GiB", "100GiB"),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID4, "2000m", "4GiB", "100GiB"),
 	})
 
 	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--disk", "80GiB", "--force")
@@ -178,8 +192,8 @@ func TestScale_NewPackageWithLargerDiskUpgradesDiskSilently(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
-		currentPkg: scalePkg(pkgID1, "1000m", "4GiB", "50GiB"),
-		newPkg:     scalePkg(pkgID4, "2000m", "4GiB", "100GiB"),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID4, "2000m", "4GiB", "100GiB"),
 	})
 
 	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--force")
@@ -193,7 +207,7 @@ func TestScale_NewPackageWithLargerDiskUpgradesDiskSilently(t *testing.T) {
 
 func TestScale_DiskDownscaleIsRejected(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	cluster := baseCluster()
 	cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{Disk: 50} // 50GiB pkg + 50GiB extra = 100GiB total
 	setupScale(env, scaleEnv{
@@ -210,7 +224,7 @@ func TestScale_DiskDownscaleIsRejected(t *testing.T) {
 
 func TestScale_AbortWithoutForce(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: pkg,
@@ -221,6 +235,23 @@ func TestScale_AbortWithoutForce(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Aborted.")
 	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestScale_MultiAz(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newMultiAzPkg(pkgID2, "2000m", "4GiB", "50GiB"),
+	})
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--multi-az", "--force")
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, pkgID2, req.GetCluster().GetConfiguration().GetPackageId())
+	assert.Equal(t, 1, env.BookingServer.ListPackagesCalls.Count())
 }
 
 func TestScale_MissingClusterID(t *testing.T) {
@@ -251,7 +282,7 @@ func TestScale_GetPackageError(t *testing.T) {
 
 func TestScale_PackageNotFound(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	currentPkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
 	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: currentPkg}, nil)
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: nil}, nil)
@@ -263,9 +294,9 @@ func TestScale_PackageNotFound(t *testing.T) {
 
 func TestScale_AmbiguousPackageMatch(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	currentPkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
-	pkgA := scalePkg(pkgIDA, "1000m", "4GiB", "50GiB")
-	pkgB := scalePkg(pkgIDB, "1000m", "4GiB", "80GiB")
+	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkgA := newPkg(pkgIDA, "1000m", "4GiB", "50GiB")
+	pkgB := newPkg(pkgIDB, "1000m", "4GiB", "80GiB")
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
 	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: currentPkg}, nil)
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{pkgA, pkgB}}, nil)
@@ -277,7 +308,7 @@ func TestScale_AmbiguousPackageMatch(t *testing.T) {
 
 func TestScale_UpdateClusterError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
 	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: pkg}, nil)
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{pkg}}, nil)
@@ -289,7 +320,7 @@ func TestScale_UpdateClusterError(t *testing.T) {
 
 func TestScale_WaitSuccess(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	cluster := baseCluster()
 
 	env.Server.GetClusterCalls.
@@ -333,7 +364,7 @@ func TestScale_WaitSuccess(t *testing.T) {
 
 func TestScale_WaitTimeout(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	cluster := baseCluster()
 
 	env.Server.GetClusterCalls.
@@ -365,7 +396,7 @@ func TestScale_WaitTimeout(t *testing.T) {
 
 func TestScale_NoWait(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
 	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: pkg}, nil)
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{pkg}}, nil)
@@ -383,7 +414,7 @@ func TestScale_NoWait(t *testing.T) {
 
 func TestScale_PrintsSuccessWhenClusterIsHealthy(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
 	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: pkg}, nil)
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{pkg}}, nil)
@@ -400,7 +431,7 @@ func TestScale_PrintsSuccessWhenClusterIsHealthy(t *testing.T) {
 
 func TestScale_PrintsScalingWhenClusterIsNotYetHealthy(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
 	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: pkg}, nil)
 	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{pkg}}, nil)
@@ -418,7 +449,7 @@ func TestScale_PrintsScalingWhenClusterIsNotYetHealthy(t *testing.T) {
 
 func TestScale_NoResourceFlagsSkipsPackageResolution(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: pkg,
@@ -436,7 +467,7 @@ func TestScale_NoResourceFlagsSkipsPackageResolution(t *testing.T) {
 
 func TestScale_DiskPerformance(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: pkg,
@@ -453,7 +484,7 @@ func TestScale_DiskPerformance(t *testing.T) {
 
 func TestScale_InvalidDiskPerformance(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	pkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: pkg,
@@ -467,7 +498,7 @@ func TestScale_InvalidDiskPerformance(t *testing.T) {
 
 func TestScale_DeprecatedCurrentPackageSucceedsWithNoResourceFlags(t *testing.T) {
 	env := testutil.NewTestEnv(t)
-	currentPkg := scalePkg(pkgID1, "1000m", "4GiB", "50GiB")
+	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
 	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: currentPkg}, nil)
 	// ListPackages returns empty — simulates a deprecated package absent from the active list.
