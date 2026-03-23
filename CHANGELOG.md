@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.10.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.10.2)
+
+### Bug Fixes
+
+- add installation instructions in the readme, change the releases with a format that allows to download latest without the version in the filename (#43)
+
 ## [v0.10.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.10.1)
 
 ### Bug Fixes
