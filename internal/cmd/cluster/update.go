@@ -42,11 +42,14 @@ Database configuration changes (--replication-factor, --write-consistency-factor
 cluster. The cluster remains available during the restart, but individual nodes
 will be briefly unavailable as they cycle.
 
-Cluster configuration changes (--allowed-ips, --restart-mode, --rebalance-strategy)
+Cluster configuration changes (--allowed-ip, --restart-mode, --rebalance-strategy)
 and label changes take effect without a restart.
 
 Labels are merged with existing labels by default. Use 'key=value' to add or
-overwrite a label, and 'key-' (with a trailing dash) to remove one.`,
+overwrite a label, and 'key-' (with a trailing dash) to remove one.
+
+Allowed IPs are merged with existing IPs by default. Specify an IP CIDR to add
+it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				Args: util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().StringArray("label", nil, "Label to set ('key=value') or remove ('key-'); merges with existing labels")
@@ -54,7 +57,7 @@ overwrite a label, and 'key-' (with a trailing dash) to remove one.`,
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
 			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
 			cmd.Flags().Int32("optimizer-cpu-budget", 0, `CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)`)
-			cmd.Flags().StringSlice("allowed-ips", nil, "Allowed client IP CIDR ranges (replaces all existing); max 20")
+			cmd.Flags().StringArray("allowed-ip", nil, "Allowed IP CIDR to add or remove (suffix with '-'); merges with existing IPs")
 			cmd.Flags().String("restart-mode", "", `Restart policy ("rolling", "parallel", "automatic")`)
 			cmd.Flags().String("rebalance-strategy", "", `Shard rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
@@ -161,9 +164,13 @@ overwrite a label, and 'key-' (with a trailing dash) to remove one.`,
 
 			// --- Cluster configuration flags (no restart) ---
 
-			if cmd.Flags().Changed("allowed-ips") {
-				ips, _ := cmd.Flags().GetStringSlice("allowed-ips")
-				cfg.AllowedIpSourceRanges = ips
+			if cmd.Flags().Changed("allowed-ip") {
+				raw, _ := cmd.Flags().GetStringArray("allowed-ip")
+				changes, err := util.ParseIPs(raw)
+				if err != nil {
+					return nil, err
+				}
+				cfg.AllowedIpSourceRanges = util.ApplyIPs(cfg.AllowedIpSourceRanges, changes)
 			}
 
 			if cmd.Flags().Changed("restart-mode") {
