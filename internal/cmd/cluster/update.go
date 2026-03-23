@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
-	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
@@ -44,10 +43,13 @@ cluster. The cluster remains available during the restart, but individual nodes
 will be briefly unavailable as they cycle.
 
 Cluster configuration changes (--allowed-ips, --restart-mode, --rebalance-strategy)
-and label changes take effect without a restart.`,
+and label changes take effect without a restart.
+
+Labels are merged with existing labels by default. Use 'key=value' to add or
+overwrite a label, and 'key-' (with a trailing dash) to remove one.`,
 				Args: util.ExactArgs(1, "a cluster ID"),
 			}
-			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times; replaces all existing labels")
+			cmd.Flags().StringArray("label", nil, "Label to set ('key=value') or remove ('key-'); merges with existing labels")
 			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
 			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
@@ -91,11 +93,12 @@ and label changes take effect without a restart.`,
 
 			// Labels
 			if cmd.Flags().Changed("label") {
-				labelMap, _ := cmd.Flags().GetStringToString("label")
-				updated.Labels = nil
-				for k, v := range labelMap {
-					updated.Labels = append(updated.Labels, &commonv1.KeyValue{Key: k, Value: v})
+				raw, _ := cmd.Flags().GetStringArray("label")
+				changes, err := util.ParseLabels(raw)
+				if err != nil {
+					return nil, err
 				}
+				updated.Labels = util.MergeLabels(updated.Labels, changes)
 			}
 
 			// Ensure configuration exists

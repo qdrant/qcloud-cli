@@ -13,6 +13,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -36,7 +37,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
 			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs to select a package (e.g. \"1\", \"2\", or \"1000m\")")
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
-			cmd.Flags().StringToString("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
+			cmd.Flags().StringArray("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
 			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
 			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
@@ -81,7 +82,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			nodes, _ := cmd.Flags().GetUint32("nodes")
 			packageValue, _ := cmd.Flags().GetString("package")
 			multiAz, _ := cmd.Flags().GetBool("multi-az")
-			labelMap, _ := cmd.Flags().GetStringToString("label")
+			rawLabels, _ := cmd.Flags().GetStringArray("label")
 
 			cpuChanged := cmd.Flags().Changed("cpu")
 			ramChanged := cmd.Flags().Changed("ram")
@@ -145,7 +146,11 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			if packageID != "" {
 				cluster.Configuration.PackageId = packageID
 			}
-			for k, v := range labelMap {
+			labelChanges, err := util.ParseLabels(rawLabels)
+			if err != nil {
+				return nil, err
+			}
+			for k, v := range labelChanges.Set {
 				cluster.Labels = append(cluster.Labels, &commonv1.KeyValue{Key: k, Value: v})
 			}
 
