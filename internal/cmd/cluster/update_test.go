@@ -79,7 +79,7 @@ func TestUpdateCluster_ClearLabels(t *testing.T) {
 	assert.Empty(t, req.GetCluster().GetLabels())
 }
 
-func TestUpdateCluster_MergeLabels(t *testing.T) {
+func TestUpdateCluster_ApplyLabels(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {

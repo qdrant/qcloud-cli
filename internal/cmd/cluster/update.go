@@ -98,7 +98,7 @@ overwrite a label, and 'key-' (with a trailing dash) to remove one.`,
 				if err != nil {
 					return nil, err
 				}
-				updated.Labels = util.MergeLabels(updated.Labels, changes)
+				updated.Labels = util.ApplyLabels(updated.Labels, changes)
 			}
 
 			// Ensure configuration exists
