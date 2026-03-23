@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -30,32 +31,26 @@ func DiffValue(oldVal, newVal string) string {
 	if oldVal == newVal {
 		return newVal
 	}
+
 	return oldVal + " => " + newVal
 }
 
 // OptionalValue formats an optional pointer value as a string.
-// Returns fallback for nil pointers. Supports *uint32, *int32, and *bool.
+// Returns fallback for nil pointers. Supports any pointer type.
+// Booleans are formatted as "yes"/"no"; all other types use their default format.
 func OptionalValue(v any, fallback string) string {
-	switch val := v.(type) {
-	case *uint32:
-		if val == nil {
-			return fallback
-		}
-		return fmt.Sprintf("%d", *val)
-	case *int32:
-		if val == nil {
-			return fallback
-		}
-		return fmt.Sprintf("%d", *val)
-	case *bool:
-		if val == nil {
-			return fallback
-		}
-		if *val {
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() || rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return fallback
+	}
+
+	elem := rv.Elem().Interface()
+	if b, ok := elem.(bool); ok {
+		if b {
 			return "yes"
 		}
 		return "no"
-	default:
-		return fallback
 	}
+
+	return fmt.Sprintf("%v", elem)
 }

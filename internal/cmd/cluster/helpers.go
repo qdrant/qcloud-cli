@@ -118,6 +118,32 @@ const (
 	rebalanceByCountAndSize = "by-count-and-size"
 )
 
+func restartPolicyString(p clusterv1.ClusterConfigurationRestartPolicy) string {
+	switch p {
+	case clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_ROLLING:
+		return restartModeRolling
+	case clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_PARALLEL:
+		return restartModeParallel
+	case clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_AUTOMATIC:
+		return restartModeAutomatic
+	default:
+		return ""
+	}
+}
+
+func rebalanceStrategyString(s clusterv1.ClusterConfigurationRebalanceStrategy) string {
+	switch s {
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT:
+		return rebalanceByCount
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_SIZE:
+		return rebalanceBySize
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE:
+		return rebalanceByCountAndSize
+	default:
+		return ""
+	}
+}
+
 func parseRebalanceStrategy(s string) (clusterv1.ClusterConfigurationRebalanceStrategy, error) {
 	switch s {
 	case rebalanceByCount:
