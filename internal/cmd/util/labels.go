@@ -53,7 +53,6 @@ func ParseLabels(raw []string) (*LabelChanges, error) {
 				return nil, fmt.Errorf("empty key in --label %q", entry)
 			}
 
-
 			// Last operation wins, hence if a label is set after it's set, clean it from the Set field.
 			delete(changes.Set, key)
 			changes.Remove[key] = true
