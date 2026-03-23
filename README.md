@@ -20,6 +20,33 @@
 `qcloud` currently is under heavy development. The output and command shape can heavily change from version to version.
 
 
+## Installation
+
+### From GitHub Releases
+
+Download the latest release from [GitHub Releases](https://github.com/qdrant/qcloud-cli/releases).
+
+Select the archive that matches your OS and CPU architecture, extract it, and place the `qcloud` binary somewhere in your `PATH` (e.g. `~/.local/bin` or `/usr/local/bin`).
+
+> **macOS:** The binary is not signed. If macOS blocks it, run `xattr -d com.apple.quarantine qcloud` after extracting. In the future we will sign the binary so that this step is not needed.
+
+> If `~/.local/bin` is not in your `PATH`, you can use `/usr/local/bin` instead (requires `sudo`).
+
+### From source
+
+With Go installed, you can build and install directly from source:
+
+```sh
+go install github.com/qdrant/qcloud-cli/cmd/qcloud@latest
+```
+
+### Verify
+
+```sh
+qcloud version
+```
+
+
 ## Quick Start
 
 Before using `qcloud`, create a management API key and note your account ID from the [Qdrant Cloud UI](https://cloud.qdrant.io).
@@ -35,7 +62,7 @@ qcloud cluster cloud-provider list
 qcloud cluster cloud-region list --cloud-provider aws
 
 # 3. Create a cluster by specifying resources (waits until healthy)
-#    Use --cpu, --ram, --disk (and optionally --gpu / --multi-az) to select
+#    Use --cpu, --ram, --disk to select
 #    a matching package automatically.
 qcloud cluster create \
   --cloud-provider aws \
@@ -45,11 +72,6 @@ qcloud cluster create \
   --disk 50GiB \
   --name my-cluster \
   --wait
-
-#    Alternatively, pick a package explicitly with --package:
-#      qcloud cluster package list --cloud-provider aws --cloud-region us-east-1
-#      qcloud cluster create --cloud-provider aws --cloud-region us-east-1 \
-#        --package <PACKAGE_ID> --name my-cluster --wait
 
 # 4. Describe your new cluster
 qcloud cluster describe <CLUSTER_ID>
