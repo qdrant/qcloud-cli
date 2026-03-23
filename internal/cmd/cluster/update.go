@@ -7,12 +7,14 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -85,20 +87,22 @@ and label changes take effect without a restart.`,
 				return nil, err
 			}
 
+			updated := proto.CloneOf(cluster)
+
 			// Labels
 			if cmd.Flags().Changed("label") {
 				labelMap, _ := cmd.Flags().GetStringToString("label")
-				cluster.Labels = nil
+				updated.Labels = nil
 				for k, v := range labelMap {
-					cluster.Labels = append(cluster.Labels, &commonv1.KeyValue{Key: k, Value: v})
+					updated.Labels = append(updated.Labels, &commonv1.KeyValue{Key: k, Value: v})
 				}
 			}
 
 			// Ensure configuration exists
-			if cluster.Configuration == nil {
-				cluster.Configuration = &clusterv1.ClusterConfiguration{}
+			if updated.Configuration == nil {
+				updated.Configuration = &clusterv1.ClusterConfiguration{}
 			}
-			cfg := cluster.Configuration
+			cfg := updated.Configuration
 
 			// --- Database configuration flags (trigger rolling restart) ---
 
@@ -145,7 +149,7 @@ and label changes take effect without a restart.`,
 
 				// Confirmation prompt for rolling restart
 				force, _ := cmd.Flags().GetBool("force")
-				prompt := updateDBConfigPrompt(cluster, cmd)
+				prompt := updateDBConfigPrompt(cluster, updated, cmd)
 				if !util.ConfirmAction(force, prompt) {
 					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 					return nil, nil
@@ -178,7 +182,7 @@ and label changes take effect without a restart.`,
 			}
 
 			resp, err := client.Cluster().UpdateCluster(ctx, &clusterv1.UpdateClusterRequest{
-				Cluster: cluster,
+				Cluster: updated,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to update cluster: %w", err)
@@ -202,25 +206,46 @@ and label changes take effect without a restart.`,
 
 // updateDBConfigPrompt builds the confirmation message shown when database
 // configuration flags are changed, warning about the rolling restart.
-func updateDBConfigPrompt(cluster *clusterv1.Cluster, cmd *cobra.Command) string {
+// It compares old (before mutation) and updated (after mutation) cluster objects
+// to display a diff of each changed field.
+func updateDBConfigPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command) string {
 	var lines []string
-	lines = append(lines, fmt.Sprintf("Updating cluster %s (%s) will change:", cluster.GetId(), cluster.GetName()))
+	lines = append(lines, fmt.Sprintf("Updating cluster %s (%s) will change:", old.GetId(), old.GetName()))
+
+	oldCol := old.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+	newCol := updated.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+	oldPerf := old.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+	newPerf := updated.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+
+	notSet := "(not set)"
 
 	if cmd.Flags().Changed("replication-factor") {
-		v, _ := cmd.Flags().GetUint32("replication-factor")
-		lines = append(lines, fmt.Sprintf("  Replication factor:        %d", v))
+		var oldRF *uint32
+		if oldCol != nil {
+			oldRF = oldCol.ReplicationFactor
+		}
+		lines = append(lines, fmt.Sprintf("  Replication factor:        %s", output.DiffValue(output.OptionalValue(oldRF, notSet), fmt.Sprintf("%d", newCol.GetReplicationFactor()))))
 	}
 	if cmd.Flags().Changed("write-consistency-factor") {
-		v, _ := cmd.Flags().GetInt32("write-consistency-factor")
-		lines = append(lines, fmt.Sprintf("  Write consistency factor:  %d", v))
+		var oldWCF *int32
+		if oldCol != nil {
+			oldWCF = oldCol.WriteConsistencyFactor
+		}
+		lines = append(lines, fmt.Sprintf("  Write consistency factor:  %s", output.DiffValue(output.OptionalValue(oldWCF, notSet), fmt.Sprintf("%d", newCol.GetWriteConsistencyFactor()))))
 	}
 	if cmd.Flags().Changed("async-scorer") {
-		v, _ := cmd.Flags().GetBool("async-scorer")
-		lines = append(lines, fmt.Sprintf("  Async scorer:              %s", boolToYesNo(v)))
+		var oldAS *bool
+		if oldPerf != nil {
+			oldAS = oldPerf.AsyncScorer
+		}
+		lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
 	}
 	if cmd.Flags().Changed("optimizer-cpu-budget") {
-		v, _ := cmd.Flags().GetInt32("optimizer-cpu-budget")
-		lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:      %d", v))
+		var oldBudget *int32
+		if oldPerf != nil {
+			oldBudget = oldPerf.OptimizerCpuBudget
+		}
+		lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:      %s", output.DiffValue(output.OptionalValue(oldBudget, notSet), fmt.Sprintf("%d", newPerf.GetOptimizerCpuBudget()))))
 	}
 
 	lines = append(lines, "")

@@ -13,6 +13,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -302,14 +303,6 @@ match.`,
 	return cmd
 }
 
-// scaleDiff formats a field value as "old => new" when the value changes, or just "val" when unchanged.
-func scaleDiff(oldVal, newVal string) string {
-	if oldVal == newVal {
-		return newVal
-	}
-	return oldVal + " => " + newVal
-}
-
 // scaleConfirmPrompt builds the confirmation message shown before a scale operation,
 // displaying old => new for fields that are changing.
 func scaleConfirmPrompt(
@@ -323,24 +316,24 @@ func scaleConfirmPrompt(
 	oldRC := oldPkg.GetResourceConfiguration()
 	newRC := newPkg.GetResourceConfiguration()
 
-	diskLine := scaleDiff(currentTotalDisk.String(), newEffectiveDisk.String())
+	diskLine := output.DiffValue(currentTotalDisk.String(), newEffectiveDisk.String())
 	if diskWillBeOverridden {
-		diskLine = fmt.Sprintf("%s (requested: %s - package minimum disk is being applied)", scaleDiff(currentTotalDisk.String(), newEffectiveDisk.String()), requestedDisk)
+		diskLine = fmt.Sprintf("%s (requested: %s - package minimum disk is being applied)", output.DiffValue(currentTotalDisk.String(), newEffectiveDisk.String()), requestedDisk)
 	}
 
 	prompt := fmt.Sprintf(
 		"Cluster %s (%s) will be scaled to:\n  Nodes:   %s\n  CPU:     %s\n  RAM:     %s\n  Disk:    %s",
 		cluster.GetId(), cluster.GetName(),
-		scaleDiff(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
-		scaleDiff(oldRC.GetCpu(), newRC.GetCpu()),
-		scaleDiff(oldRC.GetRam(), newRC.GetRam()),
+		output.DiffValue(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
+		output.DiffValue(oldRC.GetCpu(), newRC.GetCpu()),
+		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
 		diskLine,
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
-		prompt += fmt.Sprintf("\n  GPU:     %s", scaleDiff(oldRC.GetGpu(), newRC.GetGpu()))
+		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(oldRC.GetGpu(), newRC.GetGpu()))
 	}
 	if oldStorageTier != "" || newStorageTier != "" {
-		prompt += fmt.Sprintf("\n  Storage tier: %s", scaleDiff(oldStorageTier, newStorageTier))
+		prompt += fmt.Sprintf("\n  Storage tier: %s", output.DiffValue(oldStorageTier, newStorageTier))
 	}
 	prompt += "\nProceed?"
 	return prompt
