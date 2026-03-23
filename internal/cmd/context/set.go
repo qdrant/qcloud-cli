@@ -1,6 +1,7 @@
 package context
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -26,19 +27,37 @@ func newSetCommand(s *state.State) *cobra.Command {
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			name := args[0]
 
-			// Load existing context values or start with an empty entry.
 			ctx, _ := s.Config.GetContext(name)
 			ctx.Name = name
 
-			// Apply only flags that were explicitly provided.
-			if ep, ok := changedString(cmd, "endpoint"); ok {
+			if ep, ok := flagChangedWithValue(cmd, "endpoint"); ok {
 				ctx.Endpoint = ep
+			} else {
+				ctx.Endpoint = s.Config.Endpoint()
 			}
-			if key, ok := changedString(cmd, "api-key"); ok {
+
+			if key, ok := flagChangedWithValue(cmd, "api-key"); ok {
 				ctx.APIKey = key
+			} else {
+				ctx.APIKey = s.Config.APIKey()
 			}
-			if id, ok := changedString(cmd, "account-id"); ok {
+
+			if id, ok := flagChangedWithValue(cmd, "account-id"); ok {
 				ctx.AccountID = id
+			} else {
+				ctx.AccountID = s.Config.AccountID()
+			}
+
+			if ctx.Endpoint == "" {
+				return errors.New("cannot set a context with an empty endpoint")
+			}
+
+			if ctx.APIKey == "" {
+				return errors.New("cannot set a context with an empty API key")
+			}
+
+			if ctx.AccountID == "" {
+				return errors.New("cannot set a context with an empty account id")
 			}
 
 			s.Config.UpsertContext(ctx)
@@ -60,7 +79,7 @@ func newSetCommand(s *state.State) *cobra.Command {
 	}.CobraCommand(s)
 }
 
-func changedString(cmd *cobra.Command, name string) (string, bool) {
+func flagChangedWithValue(cmd *cobra.Command, name string) (string, bool) {
 	if !cmd.Flags().Changed(name) {
 		return "", false
 	}
