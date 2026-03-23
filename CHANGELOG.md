@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.10.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.10.0)
+
+### Features
+
+- add remaining database configuration cluster update (#38)
+
 ## [v0.9.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.9.0)
 
 ### Features
