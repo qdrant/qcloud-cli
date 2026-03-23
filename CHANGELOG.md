@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.10.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.10.1)
+
+### Bug Fixes
+
+- rework --label on cluster update to add/update and remove instead (#40)
+- change the allow-ips to allow-ip, make it behave like the --label (#42)
+
 ## [v0.10.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.10.0)
 
 ### Features
