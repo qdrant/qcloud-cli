@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.11.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.11.1)
+
+### Bug Fixes
+
+- fix scale confirm prompt line order (#49)
+- change ParseMillicores to use math.Round instead of truncation using a cast (#51)
+- avoid double -dev in the version variable when building with make (#53)
+- use getter methods to retrieve phase when scaling a cluster for nil safety (#54)
+
 ## [v0.11.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.11.0)
 
 ### Features
