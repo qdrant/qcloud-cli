@@ -188,9 +188,12 @@ func flagChangedWithValue(cmd *cobra.Command, name string) (string, bool) {
 	return v, true
 }
 
+
+// shellArgRegex and quoteShellArg has been taken from https://github.com/alessio/shellescape
+// Credits to @alessio
 var shellArgRegex = regexp.MustCompile(`[^\w@%+=:,./-]`)
 
-// Quote returns a shell-escaped version of the string s. The returned value
+// quoteShellArg returns a shell-escaped version of the string s. The returned value
 // is a string that can safely be used as one token in a shell command line.
 func quoteShellArg(s string) string {
 	if len(s) == 0 {
