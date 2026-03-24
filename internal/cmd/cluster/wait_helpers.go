@@ -6,6 +6,9 @@ import (
 	"io"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 )
 
@@ -36,6 +39,9 @@ func waitForHealthyWithInterval(
 			ClusterId: clusterID,
 		})
 		if err != nil {
+			if s, ok := status.FromError(err); ok && s.Code() == codes.DeadlineExceeded {
+				return nil, fmt.Errorf("timed out waiting for cluster to become healthy: %w", err)
+			}
 			return nil, fmt.Errorf("failed to get cluster status: %w", err)
 		}
 
@@ -55,11 +61,13 @@ func waitForHealthyWithInterval(
 	}
 
 	// Poll immediately, then on each tick.
-	for ; ; <-ticker.C {
-		select {
-		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out waiting for cluster to become healthy: %w", ctx.Err())
-		default:
+	for first := true; ; first = false {
+		if !first {
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("timed out waiting for cluster to become healthy: %w", ctx.Err())
+			case <-ticker.C:
+			}
 		}
 
 		cluster, err := poll()
