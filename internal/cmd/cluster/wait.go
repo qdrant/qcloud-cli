@@ -14,6 +14,11 @@ import (
 
 func newWaitCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Wait for a cluster to become healthy
+qcloud cluster wait 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Wait with a custom timeout
+qcloud cluster wait 7b2ea926-724b-4de2-b73a-8675c42a6ebe --timeout 30m`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "wait <cluster-id>",

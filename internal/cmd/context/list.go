@@ -16,7 +16,9 @@ func newListCommand(s *state.State) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List all contexts",
-		Args:  cobra.NoArgs,
+		Example: `# List all contexts
+qcloud context list`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			names := s.Config.ContextNames()
 			current := s.Config.CurrentContext()

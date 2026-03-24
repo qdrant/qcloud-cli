@@ -20,7 +20,12 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 	return base.DescribeCmd[*clusterv1.Cluster]{
 		Use:   "describe <cluster-id>",
 		Short: "Describe a cluster",
-		Args:  util.ExactArgs(1, "a cluster ID"),
+		Example: `# Describe a cluster
+qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Output as JSON
+qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
+		Args: util.ExactArgs(1, "a cluster ID"),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*clusterv1.Cluster, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)

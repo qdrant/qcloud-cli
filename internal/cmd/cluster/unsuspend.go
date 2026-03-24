@@ -15,6 +15,8 @@ import (
 
 func newUnsuspendCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Unsuspend a cluster
+qcloud cluster unsuspend 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "unsuspend <cluster-id>",

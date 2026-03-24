@@ -14,6 +14,7 @@ import (
 // Read flags in Run via cmd.Flags().GetString() etc. — do not use bound vars.
 type CreateCmd[T any] struct {
 	BaseCobraCommand  func() *cobra.Command
+	Example           string
 	Run               func(s *state.State, cmd *cobra.Command, args []string) (T, error)
 	PrintResource     func(cmd *cobra.Command, out io.Writer, resource T)
 	ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
@@ -22,6 +23,7 @@ type CreateCmd[T any] struct {
 // CobraCommand builds a cobra.Command from this CreateCmd.
 func (cc CreateCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	cmd := cc.BaseCobraCommand()
+	cmd.Example = cc.Example
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		resource, err := cc.Run(s, cmd, args)
 		if err != nil {

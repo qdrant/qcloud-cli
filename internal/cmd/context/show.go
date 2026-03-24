@@ -16,6 +16,8 @@ type showOutput struct {
 
 func newShowCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Show the active context
+qcloud context show`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "show",

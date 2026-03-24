@@ -19,7 +19,9 @@ func newKeyListCommand(s *state.State) *cobra.Command {
 	return base.DescribeCmd[*clusterauthv2.ListDatabaseApiKeysResponse]{
 		Use:   "list <cluster-id>",
 		Short: "List API keys for a cluster",
-		Args:  util.ExactArgs(1, "a cluster ID"),
+		Example: `# List API keys for a cluster
+qcloud cluster key list 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
+		Args: util.ExactArgs(1, "a cluster ID"),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
 			clusterID := args[0]
 
