@@ -293,7 +293,7 @@ match.`,
 			if updated == nil {
 				return
 			}
-			if updated.State.Phase != clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
+			if updated.GetState().GetPhase() != clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
 				fmt.Fprintf(out, "Cluster %s (%s) is scaling, it will take some time to take effect. Use 'cluster wait %s' to wait for it to become healthy\n", updated.GetId(), updated.GetName(), updated.GetId())
 				return
 			}
