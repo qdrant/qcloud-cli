@@ -13,6 +13,11 @@ import (
 
 func newSetCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Save the current configuration as a named context
+qcloud context set production
+
+# Create a context with explicit values
+qcloud context set staging --api-key sk-... --account-id acc-123`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "set <name>",

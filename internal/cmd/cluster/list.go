@@ -18,6 +18,17 @@ func newListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*clusterv1.ListClustersResponse]{
 		Use:   "list",
 		Short: "List all clusters",
+		Example: `# List all clusters
+qcloud cluster list
+
+# List clusters in JSON format
+qcloud cluster list --json
+
+# Filter by cloud provider and region
+qcloud cluster list --cloud-provider aws --cloud-region eu-central-1
+
+# Manual pagination
+qcloud cluster list --page-size 10`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*clusterv1.ListClustersResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)

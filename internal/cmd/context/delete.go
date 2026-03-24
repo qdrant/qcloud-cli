@@ -12,6 +12,11 @@ import (
 
 func newDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Delete a context
+qcloud context delete staging
+
+# Delete without confirmation
+qcloud context delete staging --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <name>",

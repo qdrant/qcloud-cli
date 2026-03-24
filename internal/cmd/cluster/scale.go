@@ -21,6 +21,14 @@ import (
 
 func newScaleCommand(s *state.State) *cobra.Command {
 	cmd := base.UpdateCmd[*clusterv1.Cluster]{
+		Example: `# Scale up CPU and RAM
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --cpu 4 --ram 16Gi
+
+# Add more nodes
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --nodes 3
+
+# Increase disk and wait for completion
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 500Gi --wait`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "scale <cluster-id>",
