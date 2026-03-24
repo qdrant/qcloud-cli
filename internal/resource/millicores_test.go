@@ -25,8 +25,8 @@ func TestParseMillicores(t *testing.T) {
 		{"1.1", 1100, false},
 		{"2.3", 2300, false},
 		{"0.001", 1, false},
-		{"0.0005", 1, false},   // rounds up from 0.5
-		{"0.0004", 0, false},   // rounds down
+		{"0.0005", 1, false}, // rounds up from 0.5
+		{"0.0004", 0, false}, // rounds down
 		{"99.999", 99999, false},
 		{"bad", 0, true},
 		{"badm", 0, true},

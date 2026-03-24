@@ -14,7 +14,7 @@ type Millicores int64
 // ParseMillicores parses a millicore string.
 // "1" → 1000, "0.5" → 500, "1000m" → 1000.
 func ParseMillicores(s string) (Millicores, error) {
-	if rv, ok := strings.CutSuffix(s, "m"); ok  {
+	if rv, ok := strings.CutSuffix(s, "m"); ok {
 		v, err := strconv.ParseInt(rv, 10, 64)
 		if err != nil {
 			return 0, fmt.Errorf("cannot parse %q as a millicore value", s)
