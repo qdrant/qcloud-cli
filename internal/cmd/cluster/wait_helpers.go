@@ -54,19 +54,21 @@ func waitForHealthyWithInterval(
 		return nil, nil //nolint:nilnil // nil cluster means keep polling
 	}
 
-	for {
+	// Poll immediately, then on each tick.
+	for ; ; <-ticker.C {
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("timed out waiting for cluster to become healthy: %w", ctx.Err())
-		case <-ticker.C:
-			cluster, err := poll()
-			if err != nil {
-				return nil, err
-			}
+		default:
+		}
 
-			if cluster != nil {
-				return cluster, nil
-			}
+		cluster, err := poll()
+		if err != nil {
+			return nil, err
+		}
+
+		if cluster != nil {
+			return cluster, nil
 		}
 	}
 }
