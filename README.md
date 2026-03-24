@@ -58,8 +58,8 @@ qcloud context set my-cloud \
   --account-id <YOUR_ACCOUNT_ID>
 
 # 2. List available cloud providers and regions
-qcloud cluster cloud-provider list
-qcloud cluster cloud-region list --cloud-provider aws
+qcloud cloud-provider list
+qcloud cloud-region list --cloud-provider aws
 
 # 3. Create a cluster by specifying resources (waits until healthy)
 #    Use --cpu, --ram, --disk to select
