@@ -3,10 +3,10 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || "undefine
 .PHONY: build debug debug-run test lint format clean bootstrap
 
 build:
-	CGO_ENABLED=0 go build -ldflags "-X main.version=$(VERSION)-dev" -o build/qcloud ./cmd/qcloud
+	CGO_ENABLED=0 go build -ldflags "-X main.version=$(VERSION)" -o build/qcloud ./cmd/qcloud
 
 debug:
-	go build -gcflags="all=-N -l" -ldflags "-X main.version=$(VERSION)-dev" -o build/qcloud-debug ./cmd/qcloud
+	go build -gcflags="all=-N -l" -ldflags "-X main.version=$(VERSION)" -o build/qcloud-debug ./cmd/qcloud
 
 debug-run: debug
 	dlv exec ./build/qcloud-debug --headless --listen=:2345 --api-version=2 -- $(ARGS)
