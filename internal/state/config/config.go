@@ -1,10 +1,12 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -28,10 +30,11 @@ const (
 
 // ContextEntry holds the configuration for a single named context.
 type ContextEntry struct {
-	Name      string `mapstructure:"name"        yaml:"name"                  json:"name"`
-	Endpoint  string `mapstructure:"endpoint"    yaml:"endpoint,omitempty"    json:"endpoint,omitempty"`
-	APIKey    string `mapstructure:"api_key"     yaml:"api_key,omitempty"     json:"api_key,omitempty"`
-	AccountID string `mapstructure:"account_id"  yaml:"account_id,omitempty"  json:"account_id,omitempty"`
+	Name          string `mapstructure:"name"            yaml:"name"                          json:"name"`
+	Endpoint      string `mapstructure:"endpoint"        yaml:"endpoint,omitempty"            json:"endpoint,omitempty"`
+	APIKey        string `mapstructure:"api_key"         yaml:"api_key,omitempty"             json:"api_key,omitempty"`
+	APIKeyCommand string `mapstructure:"api_key_command" yaml:"api_key_command,omitempty"     json:"api_key_command,omitempty"`
+	AccountID     string `mapstructure:"account_id"      yaml:"account_id,omitempty"          json:"account_id,omitempty"`
 }
 
 // File holds the top-level structure of the config file.
@@ -113,6 +116,12 @@ func (c *Config) Load(configPath string) error {
 			}
 			if ctx.APIKey != "" {
 				flat[KeyAPIKey] = ctx.APIKey
+			} else if ctx.APIKeyCommand != "" {
+				key, err := resolveAPIKeyCommand(ctx.APIKeyCommand)
+				if err != nil {
+					return err
+				}
+				flat[KeyAPIKey] = key
 			}
 			if ctx.AccountID != "" {
 				flat[KeyAccountID] = ctx.AccountID
@@ -269,4 +278,25 @@ func (c *Config) WriteToFile() error {
 	}
 
 	return nil
+}
+
+// resolveAPIKeyCommand executes the given shell command and returns its
+// trimmed stdout as the API key.
+func resolveAPIKeyCommand(command string) (string, error) {
+	cmd := exec.Command("sh", "-c", command)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg != "" {
+			return "", fmt.Errorf("api_key_command failed: %w: %s", err, msg)
+		}
+		return "", fmt.Errorf("api_key_command failed: %w", err)
+	}
+	key := strings.TrimSpace(stdout.String())
+	if key == "" {
+		return "", fmt.Errorf("api_key_command returned empty output")
+	}
+	return key, nil
 }

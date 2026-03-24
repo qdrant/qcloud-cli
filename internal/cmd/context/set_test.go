@@ -175,6 +175,26 @@ func TestContextSet_InheritsValuesFromEnvVarsOrDefaultsIfMissing(t *testing.T) {
 		assert.Equal(t, "780c7589-f3e8-4567-808f-60a54d43ae10", ctxE.AccountID)
 	})
 
+	t.Run("api-key-command", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("HOME", dir)
+
+		env := newEnv(t)
+		t.Cleanup(env.Cleanup)
+
+		_, _, err := testutil.Exec(t, env, "context", "set", "test",
+			"--api-key-command", "echo thekey",
+			"--account-id", "780c7589-f3e8-4567-808f-60a54d43ae10",
+		)
+		require.NoError(t, err)
+
+		cfgPath := path.Join(dir, ".config", "qcloud", "config.yaml")
+		ctxE := testutil.FindContextEntry(t, cfgPath, "test")
+		require.NotNil(t, ctxE)
+		assert.Equal(t, "echo thekey", ctxE.APIKeyCommand)
+		assert.Empty(t, ctxE.APIKey)
+	})
+
 	t.Run("endpoint is defaulted to hardcoded value without env var", func(t *testing.T) {
 		dir := t.TempDir()
 		t.Setenv("HOME", dir)
@@ -196,4 +216,95 @@ func TestContextSet_InheritsValuesFromEnvVarsOrDefaultsIfMissing(t *testing.T) {
 		assert.Equal(t, "grpc.cloud.qdrant.io:443", ctxE.Endpoint)
 		assert.Equal(t, "780c7589-f3e8-4567-808f-60a54d43ae10", ctxE.AccountID)
 	})
+}
+
+func TestContextSet_APIKeyHelper(t *testing.T) {
+	tests := []struct {
+		helper  string
+		ref     string
+		wantCmd string
+	}{
+		{"1password", "op://vault/qdrant/key", "op read op://vault/qdrant/key"},
+		{"vault", "secret/qdrant", "vault kv get -field=api_key secret/qdrant"},
+		{"pass", "qdrant/api-key", "pass show qdrant/api-key"},
+		{"keychain", "qcloud-prod", "security find-generic-password -s qcloud-prod -w"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.helper, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("HOME", dir)
+
+			env := newEnv(t)
+			t.Cleanup(env.Cleanup)
+
+			_, _, err := testutil.Exec(t, env, "context", "set", "test",
+				"--api-key-helper", tt.helper,
+				"--api-key-ref", tt.ref,
+				"--account-id", "acct-1",
+			)
+			require.NoError(t, err)
+
+			cfgPath := path.Join(dir, ".config", "qcloud", "config.yaml")
+			ctxE := testutil.FindContextEntry(t, cfgPath, "test")
+			require.NotNil(t, ctxE)
+			assert.Equal(t, tt.wantCmd, ctxE.APIKeyCommand)
+			assert.Empty(t, ctxE.APIKey)
+		})
+	}
+}
+
+func TestContextSet_APIKeyHelper_UnknownHelper(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+
+	_, _, err := testutil.Exec(t, env, "context", "set", "test",
+		"--api-key-helper", "unknown",
+		"--api-key-ref", "some-ref",
+		"--account-id", "acct-1",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown api-key-helper")
+}
+
+func TestContextSet_APIKeyAndCommandMutuallyExclusive(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+
+	_, _, err := testutil.Exec(t, env, "context", "set", "test",
+		"--api-key", "thekey",
+		"--api-key-command", "echo thekey",
+		"--account-id", "acct-1",
+	)
+	require.Error(t, err)
+}
+
+func TestContextSet_APIKeyCommandClearsPlainKey(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	dir := t.TempDir()
+	cfgPath := testutil.WriteContextConfigFile(t, dir, "prod", map[string]map[string]string{
+		"prod": {
+			"endpoint":   "grpc.cloud.qdrant.io:443",
+			"api_key":    "old-plain-key",
+			"account_id": "acct-1",
+		},
+	})
+
+	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "prod",
+		"--api-key-command", "echo new-command-key",
+	)
+	require.NoError(t, err)
+
+	ctxE := testutil.FindContextEntry(t, cfgPath, "prod")
+	require.NotNil(t, ctxE)
+	assert.Equal(t, "echo new-command-key", ctxE.APIKeyCommand)
+	assert.Empty(t, ctxE.APIKey)
 }

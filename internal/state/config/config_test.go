@@ -294,6 +294,97 @@ func TestWriteToFile_CreatesDefaultPath(t *testing.T) {
 	assert.NotNil(t, testutil.FindContextEntry(t, defaultPath, "dev"), "dev context not found in saved file")
 }
 
+// ----- api_key_command tests -----
+
+func TestLoad_APIKeyCommand_ResolvesKey(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "prod", map[string]map[string]string{
+		"prod": {
+			"api_key_command": "echo resolved-key",
+			"account_id":      "acct-1",
+		},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Equal(t, "resolved-key", c.APIKey())
+}
+
+func TestLoad_APIKeyCommand_TrimsWhitespace(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "prod", map[string]map[string]string{
+		"prod": {
+			"api_key_command": "echo '  spaced-key  '",
+			"account_id":      "acct-1",
+		},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Equal(t, "spaced-key", c.APIKey())
+}
+
+func TestLoad_APIKeyCommand_PlainAPIKeyTakesPrecedence(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "prod", map[string]map[string]string{
+		"prod": {
+			"api_key":         "plain-key",
+			"api_key_command": "echo command-key",
+			"account_id":      "acct-1",
+		},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Equal(t, "plain-key", c.APIKey())
+}
+
+func TestLoad_APIKeyCommand_EnvVarOverrides(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "prod", map[string]map[string]string{
+		"prod": {
+			"api_key_command": "echo command-key",
+			"account_id":      "acct-1",
+		},
+	})
+
+	t.Setenv("QDRANT_CLOUD_API_KEY", "env-key")
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Equal(t, "env-key", c.APIKey())
+}
+
+func TestLoad_APIKeyCommand_FailureReturnsError(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "prod", map[string]map[string]string{
+		"prod": {
+			"api_key_command": "false",
+			"account_id":      "acct-1",
+		},
+	})
+
+	c := config.New()
+	err := c.Load(cfgPath)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "api_key_command failed")
+}
+
+func TestLoad_APIKeyCommand_EmptyOutputReturnsError(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "prod", map[string]map[string]string{
+		"prod": {
+			"api_key_command": "printf ''",
+			"account_id":      "acct-1",
+		},
+	})
+
+	c := config.New()
+	err := c.Load(cfgPath)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "api_key_command returned empty output")
+}
+
 // TestConfigFileTagsAreSnakeCase asserts that every field tag (mapstructure, yaml, json)
 // on the exported config structs uses snake_case names.
 // This prevents accidental camelCase or other styles from being introduced.
