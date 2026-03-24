@@ -3,6 +3,7 @@ package context
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -176,7 +177,7 @@ func resolveAPIKeyFlags(cmd *cobra.Command) (string, error) {
 		return "", fmt.Errorf("unknown api-key-helper %q (supported: %s)", helper, strings.Join(names, ", "))
 	}
 
-	return fmt.Sprintf(tmpl, ref), nil
+	return fmt.Sprintf(tmpl, quoteShellArg(ref)), nil
 }
 
 func flagChangedWithValue(cmd *cobra.Command, name string) (string, bool) {
@@ -186,3 +187,20 @@ func flagChangedWithValue(cmd *cobra.Command, name string) (string, bool) {
 	v, _ := cmd.Flags().GetString(name)
 	return v, true
 }
+
+var shellArgRegex = regexp.MustCompile(`[^\w@%+=:,./-]`)
+
+// Quote returns a shell-escaped version of the string s. The returned value
+// is a string that can safely be used as one token in a shell command line.
+func quoteShellArg(s string) string {
+	if len(s) == 0 {
+		return "''"
+	}
+
+	if shellArgRegex.MatchString(s) {
+		return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	}
+
+	return s
+}
+

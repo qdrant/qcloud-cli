@@ -228,6 +228,7 @@ func TestContextSet_APIKeyHelper(t *testing.T) {
 		{"vault", "secret/qdrant", "vault kv get -field=api_key secret/qdrant"},
 		{"pass", "qdrant/api-key", "pass show qdrant/api-key"},
 		{"keychain", "qcloud-prod", "security find-generic-password -s qcloud-prod -w"},
+		{"1password", "ls -la /etc", "op read 'ls -la /etc'"},
 	}
 
 	for _, tt := range tests {
