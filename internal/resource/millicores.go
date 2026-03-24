@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -13,18 +14,20 @@ type Millicores int64
 // ParseMillicores parses a millicore string.
 // "1" → 1000, "0.5" → 500, "1000m" → 1000.
 func ParseMillicores(s string) (Millicores, error) {
-	if strings.HasSuffix(s, "m") {
-		v, err := strconv.ParseInt(strings.TrimSuffix(s, "m"), 10, 64)
+	if rv, ok := strings.CutSuffix(s, "m"); ok {
+		v, err := strconv.ParseInt(rv, 10, 64)
 		if err != nil {
 			return 0, fmt.Errorf("cannot parse %q as a millicore value", s)
 		}
+
 		return Millicores(v), nil
 	}
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return 0, fmt.Errorf("cannot parse %q as a millicore value", s)
 	}
-	return Millicores(int64(v * 1000)), nil
+
+	return Millicores(math.Round(v * 1000)), nil
 }
 
 // Set implements pflag.Value.
