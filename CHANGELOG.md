@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.12.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.12.0)
+
+### Features
+
+- add the option to use a helper command to retrieve api key securely instead of storing it in plain text (#59)
+
+### Bug Fixes
+
+- readme quickstart commands (#61)
+
 ## [v0.11.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.11.2)
 
 ### Bug Fixes
