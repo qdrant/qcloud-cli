@@ -156,7 +156,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				// Confirmation prompt for rolling restart
 				force, _ := cmd.Flags().GetBool("force")
 				prompt := updateDBConfigPrompt(cluster, updated, cmd)
-				if !util.ConfirmAction(force, prompt) {
+				if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
 					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 					return nil, nil
 				}

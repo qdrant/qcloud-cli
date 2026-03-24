@@ -237,6 +237,21 @@ func TestScale_AbortWithoutForce(t *testing.T) {
 	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
 }
 
+func TestScale_ConfirmPromptShowsDiskAndMultiAzCorrectly(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newMultiAzPkg(pkgID2, "2000m", "4GiB", "50GiB"),
+	})
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--multi-az")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "Disk:    50GiB")
+	assert.Contains(t, stderr, "Multi AZ: no => yes")
+}
+
 func TestScale_MultiAz(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{

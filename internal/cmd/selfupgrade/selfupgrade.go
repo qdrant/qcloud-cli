@@ -71,7 +71,7 @@ func NewCommand(s *state.State) *cobra.Command {
 			}
 
 			prompt := fmt.Sprintf("Upgrade qcloud from %s to %s?", currentVersion, release.Version())
-			if !util.ConfirmAction(force, prompt) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
 				fmt.Fprintln(out, "Aborted.")
 				return nil
 			}

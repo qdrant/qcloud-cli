@@ -153,7 +153,7 @@ base.Cmd{
     },
     Run: func(s *state.State, cmd *cobra.Command, args []string) error {
         force, _ := cmd.Flags().GetBool("force")
-        if !util.ConfirmAction(force, fmt.Sprintf("Delete foo %s?", args[0])) {
+        if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Delete foo %s?", args[0])) {
             fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
             return nil
         }
