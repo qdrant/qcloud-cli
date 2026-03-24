@@ -259,7 +259,7 @@ match.`,
 				oldStorageTier,
 				newStorageTier,
 			)
-			if !util.ConfirmAction(force, prompt) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil, nil
 			}
@@ -334,8 +334,8 @@ func scaleConfirmPrompt(
 		output.DiffValue(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
 		output.DiffValue(oldRC.GetCpu(), newRC.GetCpu()),
 		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
-		output.DiffValue(boolToYesNo(oldPkg.GetMultiAz()), boolToYesNo(newPkg.GetMultiAz())),
 		diskLine,
+		output.DiffValue(boolToYesNo(oldPkg.GetMultiAz()), boolToYesNo(newPkg.GetMultiAz())),
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
 		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(oldRC.GetGpu(), newRC.GetGpu()))
