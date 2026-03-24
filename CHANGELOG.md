@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.11.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.11.2)
+
+### Bug Fixes
+
+- poll immediately when waiting for cluster health (#56)
+
 ## [v0.11.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.11.1)
 
 ### Bug Fixes
