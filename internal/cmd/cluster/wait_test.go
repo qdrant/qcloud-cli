@@ -91,7 +91,8 @@ func TestWaitCluster_Timeout(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "wait", "cluster-slow",
-		"--timeout", "50ms",
+		"--timeout", "200ms",
+		"--poll-interval", "10ms",
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "timed out")

@@ -178,7 +178,8 @@ func TestCreateCluster_WaitTimeout(t *testing.T) {
 		"--cloud-region", "us-east-1",
 		"--package", "00000000-0000-0000-0000-000000000001",
 		"--wait",
-		"--wait-timeout", "50ms",
+		"--wait-timeout", "200ms",
+		"--wait-poll-interval", "10ms",
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "timed out")

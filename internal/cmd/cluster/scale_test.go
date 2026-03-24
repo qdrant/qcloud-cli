@@ -403,7 +403,8 @@ func TestScale_WaitTimeout(t *testing.T) {
 	_, _, err := testutil.Exec(t, env,
 		"cluster", "scale", "cluster-123", "--force",
 		"--wait",
-		"--wait-timeout", "50ms",
+		"--wait-timeout", "200ms",
+		"--wait-poll-interval", "10ms",
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "timed out")
