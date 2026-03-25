@@ -127,30 +127,14 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 			}
 			cfg := updated.Configuration
 
-			// --- Version upgrade (triggers rolling restart) ---
-			if cmd.Flags().Changed("version") {
+			// --- Apply version upgrade ---
+			versionChanged := cmd.Flags().Changed("version")
+			if versionChanged {
 				newVersion, _ := cmd.Flags().GetString("version")
-				oldVersion := cluster.GetState().GetVersion()
-				if oldVersion == "" {
-					oldVersion = cluster.GetConfiguration().GetVersion()
-				}
-
-				force, _ := cmd.Flags().GetBool("force")
-				prompt := fmt.Sprintf(
-					"Upgrading cluster %s (%s):\n  Version:  %s\n\nWARNING: Version upgrades will result in a rolling restart of your cluster.\nProceed?",
-					cluster.GetId(), cluster.GetName(),
-					output.DiffValue(oldVersion, newVersion),
-				)
-				if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
-					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
-					return nil, nil
-				}
-
 				cfg.Version = &newVersion
 			}
 
-			// --- Database configuration flags (trigger rolling restart) ---
-
+			// --- Apply database configuration flags ---
 			dbChanged := slices.ContainsFunc(dbConfigFlags, func(f string) bool {
 				return cmd.Flags().Changed(f)
 			})
@@ -191,10 +175,12 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 						dbCfg.Storage.Performance.OptimizerCpuBudget = &v
 					}
 				}
+			}
 
-				// Confirmation prompt for rolling restart
+			// --- Single confirmation prompt for all restart-triggering changes ---
+			if versionChanged || dbChanged {
 				force, _ := cmd.Flags().GetBool("force")
-				prompt := updateDBConfigPrompt(cluster, updated, cmd)
+				prompt := updateRestartPrompt(cluster, updated, cmd, versionChanged, dbChanged)
 				if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
 					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 					return nil, nil
@@ -254,52 +240,60 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 	return cmd
 }
 
-// updateDBConfigPrompt builds the confirmation message shown when database
-// configuration flags are changed, warning about the rolling restart.
-// It compares old (before mutation) and updated (after mutation) cluster objects
-// to display a diff of each changed field.
-func updateDBConfigPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command) string {
+// updateRestartPrompt builds a single confirmation message for all changes that
+// trigger a rolling restart (version upgrade and/or database configuration).
+func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, versionChanged, dbChanged bool) string {
 	var lines []string
 	lines = append(lines, fmt.Sprintf("Updating cluster %s (%s) will change:", old.GetId(), old.GetName()))
 
-	oldCol := old.GetConfiguration().GetDatabaseConfiguration().GetCollection()
-	newCol := updated.GetConfiguration().GetDatabaseConfiguration().GetCollection()
-	oldPerf := old.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
-	newPerf := updated.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+	if versionChanged {
+		oldVersion := old.GetState().GetVersion()
+		if oldVersion == "" {
+			oldVersion = old.GetConfiguration().GetVersion()
+		}
+		lines = append(lines, fmt.Sprintf("  Version:                   %s", output.DiffValue(oldVersion, updated.GetConfiguration().GetVersion())))
+	}
 
-	notSet := "(not set)"
+	if dbChanged {
+		oldCol := old.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+		newCol := updated.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+		oldPerf := old.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+		newPerf := updated.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
 
-	if cmd.Flags().Changed("replication-factor") {
-		var oldRF *uint32
-		if oldCol != nil {
-			oldRF = oldCol.ReplicationFactor
+		notSet := "(not set)"
+
+		if cmd.Flags().Changed("replication-factor") {
+			var oldRF *uint32
+			if oldCol != nil {
+				oldRF = oldCol.ReplicationFactor
+			}
+			lines = append(lines, fmt.Sprintf("  Replication factor:        %s", output.DiffValue(output.OptionalValue(oldRF, notSet), fmt.Sprintf("%d", newCol.GetReplicationFactor()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Replication factor:        %s", output.DiffValue(output.OptionalValue(oldRF, notSet), fmt.Sprintf("%d", newCol.GetReplicationFactor()))))
-	}
-	if cmd.Flags().Changed("write-consistency-factor") {
-		var oldWCF *int32
-		if oldCol != nil {
-			oldWCF = oldCol.WriteConsistencyFactor
+		if cmd.Flags().Changed("write-consistency-factor") {
+			var oldWCF *int32
+			if oldCol != nil {
+				oldWCF = oldCol.WriteConsistencyFactor
+			}
+			lines = append(lines, fmt.Sprintf("  Write consistency factor:  %s", output.DiffValue(output.OptionalValue(oldWCF, notSet), fmt.Sprintf("%d", newCol.GetWriteConsistencyFactor()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Write consistency factor:  %s", output.DiffValue(output.OptionalValue(oldWCF, notSet), fmt.Sprintf("%d", newCol.GetWriteConsistencyFactor()))))
-	}
-	if cmd.Flags().Changed("async-scorer") {
-		var oldAS *bool
-		if oldPerf != nil {
-			oldAS = oldPerf.AsyncScorer
+		if cmd.Flags().Changed("async-scorer") {
+			var oldAS *bool
+			if oldPerf != nil {
+				oldAS = oldPerf.AsyncScorer
+			}
+			lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
-	}
-	if cmd.Flags().Changed("optimizer-cpu-budget") {
-		var oldBudget *int32
-		if oldPerf != nil {
-			oldBudget = oldPerf.OptimizerCpuBudget
+		if cmd.Flags().Changed("optimizer-cpu-budget") {
+			var oldBudget *int32
+			if oldPerf != nil {
+				oldBudget = oldPerf.OptimizerCpuBudget
+			}
+			lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:      %s", output.DiffValue(output.OptionalValue(oldBudget, notSet), fmt.Sprintf("%d", newPerf.GetOptimizerCpuBudget()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:      %s", output.DiffValue(output.OptionalValue(oldBudget, notSet), fmt.Sprintf("%d", newPerf.GetOptimizerCpuBudget()))))
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, "WARNING: Database configuration changes will result in a rolling restart of your cluster.")
+	lines = append(lines, "WARNING: These changes will result in a rolling restart of your cluster.")
 	lines = append(lines, "Proceed?")
 	return strings.Join(lines, "\n")
 }
