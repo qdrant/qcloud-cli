@@ -37,6 +37,9 @@ qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --label env-
 # Restrict access to specific IPs
 qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --allowed-ip 10.0.0.0/8
 
+# Upgrade the Qdrant version
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --version v1.17.0
+
 # Change replication factor (triggers rolling restart)
 qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --replication-factor 3 --force`,
 		BaseCobraCommand: func() *cobra.Command {
@@ -45,8 +48,10 @@ qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --replication-factor 
 				Short: "Update an existing cluster",
 				Long: `Updates the configuration of a cluster.
 
-Use this command to modify cluster settings such as labels, database defaults,
-IP restrictions, restart mode, and rebalance strategy.
+Use this command to modify cluster settings such as the Qdrant version, labels,
+database defaults, IP restrictions, restart mode, and rebalance strategy.
+
+Version upgrades (--version) will trigger a rolling restart of the cluster.
 
 Database configuration changes (--replication-factor, --write-consistency-factor,
 --async-scorer, --optimizer-cpu-budget) will trigger a rolling restart of the
@@ -63,6 +68,7 @@ Allowed IPs are merged with existing IPs by default. Specify an IP CIDR to add
 it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				Args: util.ExactArgs(1, "a cluster ID"),
 			}
+			cmd.Flags().String("version", "", `Qdrant version to upgrade to (e.g. "v1.17.0" or "latest")`)
 			cmd.Flags().StringArray("label", nil, "Label to set ('key=value') or remove ('key-'); merges with existing labels")
 			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
@@ -121,8 +127,14 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 			}
 			cfg := updated.Configuration
 
-			// --- Database configuration flags (trigger rolling restart) ---
+			// --- Apply version upgrade ---
+			versionChanged := cmd.Flags().Changed("version")
+			if versionChanged {
+				newVersion, _ := cmd.Flags().GetString("version")
+				cfg.Version = &newVersion
+			}
 
+			// --- Apply database configuration flags ---
 			dbChanged := slices.ContainsFunc(dbConfigFlags, func(f string) bool {
 				return cmd.Flags().Changed(f)
 			})
@@ -163,10 +175,12 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 						dbCfg.Storage.Performance.OptimizerCpuBudget = &v
 					}
 				}
+			}
 
-				// Confirmation prompt for rolling restart
+			// --- Single confirmation prompt for all restart-triggering changes ---
+			if versionChanged || dbChanged {
 				force, _ := cmd.Flags().GetBool("force")
-				prompt := updateDBConfigPrompt(cluster, updated, cmd)
+				prompt := updateRestartPrompt(cluster, updated, cmd, versionChanged, dbChanged)
 				if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
 					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 					return nil, nil
@@ -220,57 +234,66 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
+	_ = cmd.RegisterFlagCompletionFunc("version", versionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("restart-mode", restartModeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("rebalance-strategy", rebalanceStrategyCompletion())
 	return cmd
 }
 
-// updateDBConfigPrompt builds the confirmation message shown when database
-// configuration flags are changed, warning about the rolling restart.
-// It compares old (before mutation) and updated (after mutation) cluster objects
-// to display a diff of each changed field.
-func updateDBConfigPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command) string {
+// updateRestartPrompt builds a single confirmation message for all changes that
+// trigger a rolling restart (version upgrade and/or database configuration).
+func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, versionChanged, dbChanged bool) string {
 	var lines []string
 	lines = append(lines, fmt.Sprintf("Updating cluster %s (%s) will change:", old.GetId(), old.GetName()))
 
-	oldCol := old.GetConfiguration().GetDatabaseConfiguration().GetCollection()
-	newCol := updated.GetConfiguration().GetDatabaseConfiguration().GetCollection()
-	oldPerf := old.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
-	newPerf := updated.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+	if versionChanged {
+		oldVersion := old.GetState().GetVersion()
+		if oldVersion == "" {
+			oldVersion = old.GetConfiguration().GetVersion()
+		}
+		lines = append(lines, fmt.Sprintf("  Version:                   %s", output.DiffValue(oldVersion, updated.GetConfiguration().GetVersion())))
+	}
 
-	notSet := "(not set)"
+	if dbChanged {
+		oldCol := old.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+		newCol := updated.GetConfiguration().GetDatabaseConfiguration().GetCollection()
+		oldPerf := old.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
+		newPerf := updated.GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance()
 
-	if cmd.Flags().Changed("replication-factor") {
-		var oldRF *uint32
-		if oldCol != nil {
-			oldRF = oldCol.ReplicationFactor
+		notSet := "(not set)"
+
+		if cmd.Flags().Changed("replication-factor") {
+			var oldRF *uint32
+			if oldCol != nil {
+				oldRF = oldCol.ReplicationFactor
+			}
+			lines = append(lines, fmt.Sprintf("  Replication factor:        %s", output.DiffValue(output.OptionalValue(oldRF, notSet), fmt.Sprintf("%d", newCol.GetReplicationFactor()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Replication factor:        %s", output.DiffValue(output.OptionalValue(oldRF, notSet), fmt.Sprintf("%d", newCol.GetReplicationFactor()))))
-	}
-	if cmd.Flags().Changed("write-consistency-factor") {
-		var oldWCF *int32
-		if oldCol != nil {
-			oldWCF = oldCol.WriteConsistencyFactor
+		if cmd.Flags().Changed("write-consistency-factor") {
+			var oldWCF *int32
+			if oldCol != nil {
+				oldWCF = oldCol.WriteConsistencyFactor
+			}
+			lines = append(lines, fmt.Sprintf("  Write consistency factor:  %s", output.DiffValue(output.OptionalValue(oldWCF, notSet), fmt.Sprintf("%d", newCol.GetWriteConsistencyFactor()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Write consistency factor:  %s", output.DiffValue(output.OptionalValue(oldWCF, notSet), fmt.Sprintf("%d", newCol.GetWriteConsistencyFactor()))))
-	}
-	if cmd.Flags().Changed("async-scorer") {
-		var oldAS *bool
-		if oldPerf != nil {
-			oldAS = oldPerf.AsyncScorer
+		if cmd.Flags().Changed("async-scorer") {
+			var oldAS *bool
+			if oldPerf != nil {
+				oldAS = oldPerf.AsyncScorer
+			}
+			lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
-	}
-	if cmd.Flags().Changed("optimizer-cpu-budget") {
-		var oldBudget *int32
-		if oldPerf != nil {
-			oldBudget = oldPerf.OptimizerCpuBudget
+		if cmd.Flags().Changed("optimizer-cpu-budget") {
+			var oldBudget *int32
+			if oldPerf != nil {
+				oldBudget = oldPerf.OptimizerCpuBudget
+			}
+			lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:      %s", output.DiffValue(output.OptionalValue(oldBudget, notSet), fmt.Sprintf("%d", newPerf.GetOptimizerCpuBudget()))))
 		}
-		lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:      %s", output.DiffValue(output.OptionalValue(oldBudget, notSet), fmt.Sprintf("%d", newPerf.GetOptimizerCpuBudget()))))
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, "WARNING: Database configuration changes will result in a rolling restart of your cluster.")
+	lines = append(lines, "WARNING: These changes will result in a rolling restart of your cluster.")
 	lines = append(lines, "Proceed?")
 	return strings.Join(lines, "\n")
 }
