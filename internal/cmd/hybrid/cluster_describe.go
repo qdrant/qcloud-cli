@@ -17,9 +17,10 @@ import (
 
 func newClusterDescribeCommand(s *state.State) *cobra.Command {
 	return base.DescribeCmd[*clusterv1.Cluster]{
-		Use:   "describe <cluster-id>",
-		Short: "Describe a cluster in a hybrid cloud environment",
-		Args:  util.ExactArgs(1, "a cluster ID"),
+		Use:               "describe <cluster-id>",
+		Short:             "Describe a cluster in a hybrid cloud environment",
+		Args:              util.ExactArgs(1, "a cluster ID"),
+		ValidArgsFunction: hybridClusterIDCompletion(s),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*clusterv1.Cluster, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
@@ -76,6 +77,7 @@ func newClusterDescribeCommand(s *state.State) *cobra.Command {
 				// Hybrid-specific configuration
 				hasHybridCfg := cfg.ServiceType != nil || len(cfg.GetNodeSelector()) > 0 ||
 					len(cfg.GetTolerations()) > 0 || len(cfg.GetAnnotations()) > 0 ||
+					len(cfg.GetPodLabels()) > 0 || len(cfg.GetServiceAnnotations()) > 0 ||
 					cfg.ReservedCpuPercentage != nil || cfg.ReservedMemoryPercentage != nil
 
 				if hasHybridCfg {
@@ -100,8 +102,31 @@ func newClusterDescribeCommand(s *state.State) *cobra.Command {
 					if tols := cfg.GetTolerations(); len(tols) > 0 {
 						fmt.Fprintf(w, "  Tolerations:\n")
 						for _, t := range tols {
-							fmt.Fprintf(w, "    key=%s value=%s effect=%s\n", t.GetKey(), t.GetValue(),
-								strings.TrimPrefix(t.GetEffect().String(), "TOLERATION_EFFECT_"))
+							op := strings.TrimPrefix(t.GetOperator().String(), "TOLERATION_OPERATOR_")
+							effect := strings.TrimPrefix(t.GetEffect().String(), "TOLERATION_EFFECT_")
+							if t.GetOperator() == clusterv1.TolerationOperator_TOLERATION_OPERATOR_EXISTS {
+								fmt.Fprintf(w, "    key=%s operator=%s effect=%s\n", t.GetKey(), op, effect)
+							} else {
+								fmt.Fprintf(w, "    key=%s value=%s operator=%s effect=%s\n", t.GetKey(), t.GetValue(), op, effect)
+							}
+						}
+					}
+					if anns := cfg.GetAnnotations(); len(anns) > 0 {
+						fmt.Fprintf(w, "  Annotations:\n")
+						for _, kv := range anns {
+							fmt.Fprintf(w, "    %s=%s\n", kv.GetKey(), kv.GetValue())
+						}
+					}
+					if pl := cfg.GetPodLabels(); len(pl) > 0 {
+						fmt.Fprintf(w, "  Pod Labels:\n")
+						for _, kv := range pl {
+							fmt.Fprintf(w, "    %s=%s\n", kv.GetKey(), kv.GetValue())
+						}
+					}
+					if sa := cfg.GetServiceAnnotations(); len(sa) > 0 {
+						fmt.Fprintf(w, "  Service Annotations:\n")
+						for _, kv := range sa {
+							fmt.Fprintf(w, "    %s=%s\n", kv.GetKey(), kv.GetValue())
 						}
 					}
 				}

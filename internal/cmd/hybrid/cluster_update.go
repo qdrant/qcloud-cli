@@ -26,7 +26,8 @@ var hybridClusterDBConfigFlags = []string{
 }
 
 func newClusterUpdateCommand(s *state.State) *cobra.Command {
-	return base.UpdateCmd[*clusterv1.Cluster]{
+	cmd := base.UpdateCmd[*clusterv1.Cluster]{
+		ValidArgsFunction: hybridClusterIDCompletion(s),
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <cluster-id>",
@@ -240,6 +241,8 @@ func newClusterUpdateCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(out, "Cluster %s (%s) updated.\n", updated.GetId(), updated.GetName())
 		},
 	}.CobraCommand(s)
+	_ = cmd.RegisterFlagCompletionFunc("service-type", serviceTypeCompletion())
+	return cmd
 }
 
 func hybridClusterUpdateDBPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command) string {
@@ -272,7 +275,7 @@ func hybridClusterUpdateDBPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Com
 		if oldPerf != nil {
 			oldAS = oldPerf.AsyncScorer
 		}
-		lines = append(lines, fmt.Sprintf("  Async scorer:             %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
+		lines = append(lines, fmt.Sprintf("  Async scorer:             %s", output.DiffValue(output.OptionalValue(oldAS, notSet), output.BoolYesNo(newPerf.GetAsyncScorer()))))
 	}
 	if cmd.Flags().Changed("optimizer-cpu-budget") {
 		var oldBudget *int32

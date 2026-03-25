@@ -292,7 +292,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", completion.CloudProviderCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("cloud-region", completion.CloudRegionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("package", packageCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("version", versionCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("version", completion.VersionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("cpu", cpuCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("ram", ramCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))

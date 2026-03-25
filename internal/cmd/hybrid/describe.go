@@ -16,9 +16,10 @@ import (
 
 func newDescribeCommand(s *state.State) *cobra.Command {
 	return base.DescribeCmd[*hybridv1.HybridCloudEnvironment]{
-		Use:   "describe <env-id>",
-		Short: "Describe a hybrid cloud environment",
-		Args:  util.ExactArgs(1, "a hybrid cloud environment ID"),
+		Use:               "describe <env-id>",
+		Short:             "Describe a hybrid cloud environment",
+		Args:              util.ExactArgs(1, "a hybrid cloud environment ID"),
+		ValidArgsFunction: envIDCompletion(s),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*hybridv1.HybridCloudEnvironment, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
@@ -51,7 +52,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 				t := env.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:             %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
-			fmt.Fprintf(w, "Bootstrap Generated: %s\n", boolToYesNo(env.GetBootstrapCommandsGenerated()))
+			fmt.Fprintf(w, "Bootstrap Generated: %s\n", output.BoolYesNo(env.GetBootstrapCommandsGenerated()))
 
 			if cfg := env.GetConfiguration(); cfg != nil {
 				fmt.Fprintf(w, "\nConfiguration:\n")
@@ -95,11 +96,4 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			return nil
 		},
 	}.CobraCommand(s)
-}
-
-func boolToYesNo(v bool) string {
-	if v {
-		return "yes"
-	}
-	return "no"
 }

@@ -14,6 +14,7 @@ import (
 
 func newBootstrapCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		ValidArgsFunction: envIDCompletion(s),
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "bootstrap <env-id>",

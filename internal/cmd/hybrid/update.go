@@ -15,7 +15,8 @@ import (
 )
 
 func newUpdateCommand(s *state.State) *cobra.Command {
-	return base.UpdateCmd[*hybridv1.HybridCloudEnvironment]{
+	cmd := base.UpdateCmd[*hybridv1.HybridCloudEnvironment]{
+		ValidArgsFunction: envIDCompletion(s),
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <env-id>",
@@ -104,10 +105,9 @@ func newUpdateCommand(s *state.State) *cobra.Command {
 			return resp.GetHybridCloudEnvironment(), nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, env *hybridv1.HybridCloudEnvironment) {
-			if env == nil {
-				return
-			}
 			fmt.Fprintf(out, "Hybrid cloud environment %s (%s) updated.\n", env.GetId(), env.GetName())
 		},
 	}.CobraCommand(s)
+	_ = cmd.RegisterFlagCompletionFunc("log-level", logLevelCompletion())
+	return cmd
 }

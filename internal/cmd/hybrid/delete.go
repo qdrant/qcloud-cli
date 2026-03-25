@@ -14,6 +14,7 @@ import (
 
 func newDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		ValidArgsFunction: envIDCompletion(s),
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <env-id>",

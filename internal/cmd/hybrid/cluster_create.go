@@ -11,13 +11,15 @@ import (
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 func newClusterCreateCommand(s *state.State) *cobra.Command {
-	return base.CreateCmd[*clusterv1.Cluster]{
+	cmd := base.CreateCmd[*clusterv1.Cluster]{
+		ValidArgsFunction: envIDCompletion(s),
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create <env-id>",
@@ -266,4 +268,7 @@ The cloud provider and region are fixed to "hybrid" and the environment ID respe
 			fmt.Fprintf(out, "Cluster %s (%s) created.\n", created.GetId(), created.GetName())
 		},
 	}.CobraCommand(s)
+	_ = cmd.RegisterFlagCompletionFunc("service-type", serviceTypeCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("version", completion.VersionCompletion(s))
+	return cmd
 }

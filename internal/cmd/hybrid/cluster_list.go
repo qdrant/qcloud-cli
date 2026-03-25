@@ -85,5 +85,6 @@ func newClusterListCommand(s *state.State) *cobra.Command {
 	}.CobraCommand(s)
 
 	cmd.Flags().String("env-id", "", "Filter by hybrid cloud environment ID")
+	_ = cmd.RegisterFlagCompletionFunc("env-id", envIDCompletion(s))
 	return cmd
 }

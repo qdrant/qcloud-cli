@@ -14,6 +14,7 @@ import (
 
 func newClusterDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		ValidArgsFunction: hybridClusterIDCompletion(s),
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <cluster-id>",

@@ -13,7 +13,7 @@ import (
 )
 
 func newCreateCommand(s *state.State) *cobra.Command {
-	return base.CreateCmd[*hybridv1.HybridCloudEnvironment]{
+	cmd := base.CreateCmd[*hybridv1.HybridCloudEnvironment]{
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create",
@@ -86,4 +86,6 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(out, "Hybrid cloud environment %s (%s) created.\n", env.GetId(), env.GetName())
 		},
 	}.CobraCommand(s)
+	_ = cmd.RegisterFlagCompletionFunc("log-level", logLevelCompletion())
+	return cmd
 }
