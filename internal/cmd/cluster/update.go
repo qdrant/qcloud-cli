@@ -37,6 +37,9 @@ qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --label env-
 # Restrict access to specific IPs
 qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --allowed-ip 10.0.0.0/8
 
+# Upgrade the Qdrant version
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --version v1.17.0
+
 # Change replication factor (triggers rolling restart)
 qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --replication-factor 3 --force`,
 		BaseCobraCommand: func() *cobra.Command {
@@ -45,8 +48,10 @@ qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --replication-factor 
 				Short: "Update an existing cluster",
 				Long: `Updates the configuration of a cluster.
 
-Use this command to modify cluster settings such as labels, database defaults,
-IP restrictions, restart mode, and rebalance strategy.
+Use this command to modify cluster settings such as the Qdrant version, labels,
+database defaults, IP restrictions, restart mode, and rebalance strategy.
+
+Version upgrades (--version) will trigger a rolling restart of the cluster.
 
 Database configuration changes (--replication-factor, --write-consistency-factor,
 --async-scorer, --optimizer-cpu-budget) will trigger a rolling restart of the
@@ -63,6 +68,7 @@ Allowed IPs are merged with existing IPs by default. Specify an IP CIDR to add
 it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				Args: util.ExactArgs(1, "a cluster ID"),
 			}
+			cmd.Flags().String("version", "", `Qdrant version to upgrade to (e.g. "v1.17.0" or "latest")`)
 			cmd.Flags().StringArray("label", nil, "Label to set ('key=value') or remove ('key-'); merges with existing labels")
 			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
@@ -120,6 +126,28 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				updated.Configuration = &clusterv1.ClusterConfiguration{}
 			}
 			cfg := updated.Configuration
+
+			// --- Version upgrade (triggers rolling restart) ---
+			if cmd.Flags().Changed("version") {
+				newVersion, _ := cmd.Flags().GetString("version")
+				oldVersion := cluster.GetState().GetVersion()
+				if oldVersion == "" {
+					oldVersion = cluster.GetConfiguration().GetVersion()
+				}
+
+				force, _ := cmd.Flags().GetBool("force")
+				prompt := fmt.Sprintf(
+					"Upgrading cluster %s (%s):\n  Version:  %s\n\nWARNING: Version upgrades will result in a rolling restart of your cluster.\nProceed?",
+					cluster.GetId(), cluster.GetName(),
+					output.DiffValue(oldVersion, newVersion),
+				)
+				if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
+					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
+					return nil, nil
+				}
+
+				cfg.Version = &newVersion
+			}
 
 			// --- Database configuration flags (trigger rolling restart) ---
 
@@ -220,6 +248,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
+	_ = cmd.RegisterFlagCompletionFunc("version", versionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("restart-mode", restartModeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("rebalance-strategy", rebalanceStrategyCompletion())
 	return cmd
