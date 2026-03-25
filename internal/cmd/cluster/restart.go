@@ -16,6 +16,11 @@ import (
 
 func newRestartCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Restart a cluster (prompts for confirmation)
+qcloud cluster restart 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Restart without confirmation and wait for healthy status
+qcloud cluster restart 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force --wait`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "restart <cluster-id>",
@@ -33,7 +38,7 @@ func newRestartCommand(s *state.State) *cobra.Command {
 			clusterID := args[0]
 
 			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to restart cluster %s?", clusterID)) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Are you sure you want to restart cluster %s?", clusterID)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
 			}

@@ -2,8 +2,9 @@ package cluster
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
+
+	"github.com/google/uuid"
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
@@ -14,11 +15,10 @@ func phaseString(phase clusterv1.ClusterPhase) string {
 	return strings.TrimPrefix(phase.String(), "CLUSTER_PHASE_")
 }
 
-// isUUID returns true if s looks like a UUID.
+// isUUID returns true if s is a valid UUID.
 func isUUID(s string) bool {
-	matched, _ := regexp.MatchString(
-		`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`, s)
-	return matched
+	_, err := uuid.Parse(s)
+	return err == nil
 }
 
 func nodeStateString(state clusterv1.ClusterNodeState) string {

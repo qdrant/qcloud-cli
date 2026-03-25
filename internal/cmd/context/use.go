@@ -12,6 +12,8 @@ import (
 
 func newUseCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Switch to another context
+qcloud context use production`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "use <name>",

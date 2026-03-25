@@ -21,6 +21,14 @@ import (
 
 func newScaleCommand(s *state.State) *cobra.Command {
 	cmd := base.UpdateCmd[*clusterv1.Cluster]{
+		Example: `# Scale up CPU and RAM
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --cpu 4 --ram 16Gi
+
+# Add more nodes
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --nodes 3
+
+# Increase disk and wait for completion
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 500Gi --wait`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "scale <cluster-id>",
@@ -259,7 +267,7 @@ match.`,
 				oldStorageTier,
 				newStorageTier,
 			)
-			if !util.ConfirmAction(force, prompt) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil, nil
 			}
@@ -293,7 +301,7 @@ match.`,
 			if updated == nil {
 				return
 			}
-			if updated.State.Phase != clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
+			if updated.GetState().GetPhase() != clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
 				fmt.Fprintf(out, "Cluster %s (%s) is scaling, it will take some time to take effect. Use 'cluster wait %s' to wait for it to become healthy\n", updated.GetId(), updated.GetName(), updated.GetId())
 				return
 			}
@@ -334,8 +342,8 @@ func scaleConfirmPrompt(
 		output.DiffValue(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
 		output.DiffValue(oldRC.GetCpu(), newRC.GetCpu()),
 		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
-		output.DiffValue(boolToYesNo(oldPkg.GetMultiAz()), boolToYesNo(newPkg.GetMultiAz())),
 		diskLine,
+		output.DiffValue(boolToYesNo(oldPkg.GetMultiAz()), boolToYesNo(newPkg.GetMultiAz())),
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
 		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(oldRC.GetGpu(), newRC.GetGpu()))

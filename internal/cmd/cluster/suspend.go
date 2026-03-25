@@ -15,6 +15,8 @@ import (
 
 func newSuspendCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Suspend a cluster
+qcloud cluster suspend 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "suspend <cluster-id>",
@@ -28,7 +30,7 @@ func newSuspendCommand(s *state.State) *cobra.Command {
 			clusterID := args[0]
 
 			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to suspend cluster %s?", clusterID)) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Are you sure you want to suspend cluster %s?", clusterID)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
 			}

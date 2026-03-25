@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -11,11 +12,12 @@ import (
 
 // ConfirmAction prompts the user for confirmation. Returns true if they confirm.
 // If force is true, skips the prompt and returns true.
-func ConfirmAction(force bool, prompt string) bool {
+// The prompt is written to w.
+func ConfirmAction(force bool, w io.Writer, prompt string) bool {
 	if force {
 		return true
 	}
-	fmt.Fprintf(os.Stderr, "%s [y/N]: ", prompt)
+	fmt.Fprintf(w, "%s [y/N]: ", prompt)
 	reader := bufio.NewReader(os.Stdin)
 	answer, _ := reader.ReadString('\n')
 	answer = strings.TrimSpace(strings.ToLower(answer))

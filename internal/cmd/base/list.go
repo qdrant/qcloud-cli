@@ -14,6 +14,7 @@ import (
 type ListCmd[T any] struct {
 	Use               string
 	Short             string
+	Example           string
 	Fetch             func(s *state.State, cmd *cobra.Command) (T, error)
 	PrintText         func(cmd *cobra.Command, out io.Writer, resp T) error
 	ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
@@ -22,9 +23,10 @@ type ListCmd[T any] struct {
 // CobraCommand builds a cobra.Command from this ListCmd.
 func (lc ListCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   lc.Use,
-		Short: lc.Short,
-		Args:  cobra.NoArgs,
+		Use:     lc.Use,
+		Short:   lc.Short,
+		Example: lc.Example,
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			resp, err := lc.Fetch(s, cmd)
 			if err != nil {

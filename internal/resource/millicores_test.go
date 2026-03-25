@@ -20,6 +20,14 @@ func TestParseMillicores(t *testing.T) {
 		{"1000m", 1000, false},
 		{"500m", 500, false},
 		{"4000m", 4000, false},
+		// Floating-point values that would truncate incorrectly without math.Round.
+		{"0.7", 700, false},
+		{"1.1", 1100, false},
+		{"2.3", 2300, false},
+		{"0.001", 1, false},
+		{"0.0005", 1, false}, // rounds up from 0.5
+		{"0.0004", 0, false}, // rounds down
+		{"99.999", 99999, false},
 		{"bad", 0, true},
 		{"badm", 0, true},
 	}

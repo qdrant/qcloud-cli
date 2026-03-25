@@ -29,7 +29,7 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 			backupID := args[0]
 
 			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to delete backup %s?", backupID)) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Are you sure you want to delete backup %s?", backupID)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
 			}

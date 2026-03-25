@@ -12,6 +12,11 @@ import (
 
 func newDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Delete a context
+qcloud context delete staging
+
+# Delete without confirmation
+qcloud context delete staging --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <name>",
@@ -29,7 +34,7 @@ func newDeleteCommand(s *state.State) *cobra.Command {
 			}
 
 			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to delete context %q?", name)) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Are you sure you want to delete context %q?", name)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
 			}

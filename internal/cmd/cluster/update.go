@@ -28,6 +28,17 @@ var dbConfigFlags = []string{
 
 func newUpdateCommand(s *state.State) *cobra.Command {
 	cmd := base.UpdateCmd[*clusterv1.Cluster]{
+		Example: `# Add a label to a cluster
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --label env=staging
+
+# Remove a label
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --label env-
+
+# Restrict access to specific IPs
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --allowed-ip 10.0.0.0/8
+
+# Change replication factor (triggers rolling restart)
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --replication-factor 3 --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <cluster-id>",
@@ -156,7 +167,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				// Confirmation prompt for rolling restart
 				force, _ := cmd.Flags().GetBool("force")
 				prompt := updateDBConfigPrompt(cluster, updated, cmd)
-				if !util.ConfirmAction(force, prompt) {
+				if !util.ConfirmAction(force, cmd.ErrOrStderr(), prompt) {
 					fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 					return nil, nil
 				}

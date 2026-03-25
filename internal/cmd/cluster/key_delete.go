@@ -15,6 +15,8 @@ import (
 
 func newKeyDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
+		Example: `# Delete an API key
+qcloud cluster key delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe a1b2c3d4-e5f6-7890-abcd-ef1234567890`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <cluster-id> <key-id>",
@@ -29,7 +31,7 @@ func newKeyDeleteCommand(s *state.State) *cobra.Command {
 			keyID := args[1]
 
 			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, fmt.Sprintf("Are you sure you want to delete API key %s?", keyID)) {
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Are you sure you want to delete API key %s?", keyID)) {
 				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
 				return nil
 			}

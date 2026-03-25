@@ -14,6 +14,7 @@ type DescribeCmd[T any] struct {
 	Use               string
 	Short             string
 	Long              string
+	Example           string
 	Args              cobra.PositionalArgs
 	Fetch             func(s *state.State, cmd *cobra.Command, args []string) (T, error)
 	PrintText         func(cmd *cobra.Command, out io.Writer, resource T) error
@@ -23,10 +24,11 @@ type DescribeCmd[T any] struct {
 // CobraCommand builds a cobra.Command from this DescribeCmd.
 func (dc DescribeCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   dc.Use,
-		Short: dc.Short,
-		Long:  dc.Long,
-		Args:  dc.Args,
+		Use:     dc.Use,
+		Short:   dc.Short,
+		Long:    dc.Long,
+		Example: dc.Example,
+		Args:    dc.Args,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			resource, err := dc.Fetch(s, cmd, args)
 			if err != nil {

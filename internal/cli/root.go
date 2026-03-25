@@ -24,7 +24,13 @@ func NewRootCommand(s *state.State) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "qcloud",
 		Short: "Qdrant Cloud CLI",
-		Long:  "The command-line interface for Qdrant Cloud",
+		Long: `The command-line interface for Qdrant Cloud.
+
+Get started:
+  qcloud context set default --api-key <KEY> --account-id <ID>
+  qcloud cluster list
+
+Documentation: https://github.com/qdrant/qcloud-cli`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := s.Config.Load(configPath); err != nil {
 				return err

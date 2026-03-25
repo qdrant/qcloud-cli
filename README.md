@@ -58,8 +58,8 @@ qcloud context set my-cloud \
   --account-id <YOUR_ACCOUNT_ID>
 
 # 2. List available cloud providers and regions
-qcloud cluster cloud-provider list
-qcloud cluster cloud-region list --cloud-provider aws
+qcloud cloud-provider list
+qcloud cloud-region list --cloud-provider aws
 
 # 3. Create a cluster by specifying resources (waits until healthy)
 #    Use --cpu, --ram, --disk to select
@@ -105,6 +105,15 @@ qcloud context show
 | `QDRANT_CLOUD_CONTEXT`    | Name of the context to use                  |
 
 Pass `--json` to any command for machine-readable output.
+
+
+## Getting Help
+
+Found a bug or something not working as expected? [Open an issue](https://github.com/qdrant/qcloud-cli/issues/new) on GitHub and include:
+
+- The `qcloud` version (`qcloud version`)
+- The command you ran and the output you got
+- Your OS and architecture
 
 
 ## Acknowledgements

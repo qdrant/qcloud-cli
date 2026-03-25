@@ -28,6 +28,8 @@ func newPackageListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*bookingv1.ListPackagesResponse]{
 		Use:   "list",
 		Short: "List available packages for cluster creation",
+		Example: `# List packages for a cloud provider and region
+qcloud cluster package list --cloud-provider aws --cloud-region eu-central-1`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*bookingv1.ListPackagesResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)

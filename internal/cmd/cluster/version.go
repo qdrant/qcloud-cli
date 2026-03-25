@@ -27,6 +27,8 @@ func newVersionListCommand(s *state.State) *cobra.Command {
 	return base.ListCmd[*clusterv1.ListQdrantReleasesResponse]{
 		Use:   "list",
 		Short: "List available Qdrant versions",
+		Example: `# List available Qdrant versions
+qcloud cluster version list`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*clusterv1.ListQdrantReleasesResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)

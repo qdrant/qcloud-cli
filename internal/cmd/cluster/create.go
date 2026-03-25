@@ -20,6 +20,18 @@ import (
 
 func newCreateCommand(s *state.State) *cobra.Command {
 	cmd := base.CreateCmd[*clusterv1.Cluster]{
+		Example: `# Create a free-tier cluster
+qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --package free
+
+# Create a cluster with specific resources
+qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 0.5 --ram 4Gi
+
+# Create a cluster and wait for it to become healthy
+qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 2 --ram 8Gi --wait
+
+# Create with labels and extra disk
+qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 --ram 32Gi \
+  --disk 200Gi --label env=production --label team=search`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create",

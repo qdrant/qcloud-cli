@@ -18,6 +18,12 @@ import (
 
 func newKeyCreateCommand(s *state.State) *cobra.Command {
 	return base.CreateCmd[*clusterauthv2.DatabaseApiKey]{
+		Example: `# Create an API key
+qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe --name my-key
+
+# Create a read-only key with expiration
+qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
+  --name read-key --access-type read-only --expires 2025-12-31`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create <cluster-id>",

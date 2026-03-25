@@ -52,10 +52,11 @@ func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts m
 	for _, name := range names {
 		vals := contexts[name]
 		fd.Contexts = append(fd.Contexts, config.ContextEntry{
-			Name:      name,
-			Endpoint:  vals["endpoint"],
-			APIKey:    vals["api_key"],
-			AccountID: vals["account_id"],
+			Name:          name,
+			Endpoint:      vals["endpoint"],
+			APIKey:        vals["api_key"],
+			APIKeyCommand: vals["api_key_command"],
+			AccountID:     vals["account_id"],
 		})
 	}
 
