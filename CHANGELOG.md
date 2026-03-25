@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.13.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.13.0)
+
+### Features
+
+- add --version flag to cluster update command (#69)
+
 ## [v0.12.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.12.1)
 
 ### Bug Fixes
