@@ -2,12 +2,18 @@ package state
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
+)
+
+var (
+	errNoAPIKey    = errors.New("no API Key configured — set QDRANT_CLOUD_API_KEY, use --api-key, or run \"qcloud context set\" to save credentials")
+	errNoAccountID = errors.New("no account ID configured — set QDRANT_CLOUD_ACCOUNT_ID, use --account-id, or run \"qcloud context set\" to save credentials")
 )
 
 // Updater checks for and applies CLI updates.
@@ -42,7 +48,7 @@ func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 
 	key := s.Config.APIKey()
 	if key == "" {
-		return nil, fmt.Errorf("no API Key configured — set QDRANT_CLOUD_API_KEY or use --api-key")
+		return nil, errNoAPIKey
 	}
 
 	c, err := qcloudapi.New(ctx, s.Config.Endpoint(), key, s.Version)
@@ -83,7 +89,7 @@ func (s *State) SetUpdater(u Updater) {
 func (s *State) AccountID() (string, error) {
 	id := s.Config.AccountID()
 	if id == "" {
-		return "", fmt.Errorf("no account ID configured — set QDRANT_CLOUD_ACCOUNT_ID or use --account-id")
+		return "", errNoAccountID
 	}
 	return id, nil
 }
