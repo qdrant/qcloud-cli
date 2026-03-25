@@ -107,6 +107,15 @@ qcloud context show
 Pass `--json` to any command for machine-readable output.
 
 
+## Getting Help
+
+Found a bug or something not working as expected? [Open an issue](https://github.com/qdrant/qcloud-cli/issues/new) on GitHub and include:
+
+- The `qcloud` version (`qcloud version`)
+- The command you ran and the output you got
+- Your OS and architecture
+
+
 ## Acknowledgements
 
 `qcloud` is inspired by and partially based on [hetznercloud/cli](https://github.com/hetznercloud/cli). Thank you to the Hetzner Cloud team and contributors for building such a well-designed CLI that we could learn from.
