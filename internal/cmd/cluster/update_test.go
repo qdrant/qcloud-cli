@@ -496,8 +496,8 @@ func TestUpdateCluster_VersionPromptShowsDiff(t *testing.T) {
 	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 		return &clusterv1.GetClusterResponse{
 			Cluster: &clusterv1.Cluster{
-				Id:   req.GetClusterId(),
-				Name: "my-cluster",
+				Id:            req.GetClusterId(),
+				Name:          "my-cluster",
 				Configuration: &clusterv1.ClusterConfiguration{},
 				State: &clusterv1.ClusterState{
 					Version: "v1.16.2",
@@ -600,8 +600,8 @@ func TestUpdateCluster_VersionAndDBConfigForceAppliesBoth(t *testing.T) {
 	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 		return &clusterv1.GetClusterResponse{
 			Cluster: &clusterv1.Cluster{
-				Id:   req.GetClusterId(),
-				Name: "my-cluster",
+				Id:            req.GetClusterId(),
+				Name:          "my-cluster",
 				Configuration: &clusterv1.ClusterConfiguration{},
 				State: &clusterv1.ClusterState{
 					Version: "v1.16.2",
