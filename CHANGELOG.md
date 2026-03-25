@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.12.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.12.1)
+
+### Bug Fixes
+
+- improve root command long help text and use more descriptive errors when account id or api key are missing (#66)
+
 ## [v0.12.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.12.0)
 
 ### Features
