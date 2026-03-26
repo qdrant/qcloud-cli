@@ -46,7 +46,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(w, "ID:        %s\n", b.GetId())
 			fmt.Fprintf(w, "Name:      %s\n", b.GetName())
 			fmt.Fprintf(w, "Cluster:   %s\n", b.GetClusterId())
-			fmt.Fprintf(w, "Status:    %s\n", backupStatusString(b.GetStatus()))
+			fmt.Fprintf(w, "Status:    %s\n", output.BackupStatus(b.GetStatus()))
 			if b.GetCreatedAt() != nil {
 				t := b.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:   %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))

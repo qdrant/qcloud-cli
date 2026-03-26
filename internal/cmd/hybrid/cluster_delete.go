@@ -27,12 +27,6 @@ func newClusterDeleteCommand(s *state.State) *cobra.Command {
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			clusterID := args[0]
 
-			force, _ := cmd.Flags().GetBool("force")
-			if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Are you sure you want to delete cluster %s?", clusterID)) {
-				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
-				return nil
-			}
-
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
 			if err != nil {
@@ -42,6 +36,24 @@ func newClusterDeleteCommand(s *state.State) *cobra.Command {
 			accountID, err := s.AccountID()
 			if err != nil {
 				return err
+			}
+
+			resp, err := client.Cluster().GetCluster(ctx, &clusterv1.GetClusterRequest{
+				AccountId: accountID,
+				ClusterId: clusterID,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to get cluster: %w", err)
+			}
+
+			if resp.GetCluster().GetCloudProviderId() != hybridCloudProviderID {
+				return fmt.Errorf("cluster %s is not a hybrid cloud cluster; use \"qcloud cluster delete\" instead", clusterID)
+			}
+
+			force, _ := cmd.Flags().GetBool("force")
+			if !util.ConfirmAction(force, cmd.ErrOrStderr(), fmt.Sprintf("Are you sure you want to delete cluster %s?", clusterID)) {
+				fmt.Fprintln(cmd.OutOrStdout(), "Aborted.")
+				return nil
 			}
 
 			_, err = client.Cluster().DeleteCluster(ctx, &clusterv1.DeleteClusterRequest{

@@ -2,31 +2,19 @@ package cluster
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 
-	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 )
 
-func phaseString(phase clusterv1.ClusterPhase) string {
-	return strings.TrimPrefix(phase.String(), "CLUSTER_PHASE_")
-}
+const hybridCloudProviderID = "hybrid"
 
 // isUUID returns true if s is a valid UUID.
 func isUUID(s string) bool {
 	_, err := uuid.Parse(s)
 	return err == nil
-}
-
-func nodeStateString(state clusterv1.ClusterNodeState) string {
-	return strings.TrimPrefix(state.String(), "CLUSTER_NODE_STATE_")
-}
-
-func packageTierString(tier bookingv1.PackageTier) string {
-	return strings.TrimPrefix(tier.String(), "PACKAGE_TIER_")
 }
 
 func boolToMark(v bool) string {

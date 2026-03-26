@@ -15,6 +15,9 @@ import (
 func TestHybridClusterDelete_WithForce(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-abc", Name: "my-cluster", CloudProviderId: "hybrid"},
+	}, nil)
 	env.Server.DeleteClusterCalls.Returns(&clusterv1.DeleteClusterResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "hybrid", "cluster", "delete", "cluster-abc", "--force")
@@ -30,6 +33,10 @@ func TestHybridClusterDelete_WithForce(t *testing.T) {
 
 func TestHybridClusterDelete_WithoutForce(t *testing.T) {
 	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-abc", Name: "my-cluster", CloudProviderId: "hybrid"},
+	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "hybrid", "cluster", "delete", "cluster-abc")
 	require.NoError(t, err)
@@ -48,6 +55,9 @@ func TestHybridClusterDelete_MissingArg(t *testing.T) {
 func TestHybridClusterDelete_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-abc", Name: "my-cluster", CloudProviderId: "hybrid"},
+	}, nil)
 	env.Server.DeleteClusterCalls.Returns(nil, fmt.Errorf("delete failed"))
 
 	_, _, err := testutil.Exec(t, env, "hybrid", "cluster", "delete", "cluster-abc", "--force")

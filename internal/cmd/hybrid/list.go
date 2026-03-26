@@ -47,7 +47,7 @@ func newListCommand(s *state.State) *cobra.Command {
 			})
 			t.AddField("STATUS", func(v *hybridv1.HybridCloudEnvironment) string {
 				if v.GetStatus() != nil {
-					return phaseString(v.GetStatus().GetPhase())
+					return output.HybridEnvironmentPhase(v.GetStatus().GetPhase())
 				}
 				return ""
 			})

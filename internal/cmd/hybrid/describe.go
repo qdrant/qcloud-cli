@@ -46,7 +46,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			fmt.Fprintf(w, "ID:                  %s\n", env.GetId())
 			fmt.Fprintf(w, "Name:                %s\n", env.GetName())
 			if env.GetStatus() != nil {
-				fmt.Fprintf(w, "Status:              %s\n", phaseString(env.GetStatus().GetPhase()))
+				fmt.Fprintf(w, "Status:              %s\n", output.HybridEnvironmentPhase(env.GetStatus().GetPhase()))
 			}
 			if env.GetCreatedAt() != nil {
 				t := env.GetCreatedAt().AsTime()
@@ -84,11 +84,11 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 					fmt.Fprintf(w, "  Distribution:         %s\n", dist)
 				}
 				fmt.Fprintf(w, "  Node Count:           %d\n", st.GetNumberOfNodes())
-				fmt.Fprintf(w, "  Cluster Creation:     %s\n", clusterCreationStatusString(st.GetClusterCreationReadiness()))
+				fmt.Fprintf(w, "  Cluster Creation:     %s\n", output.ClusterCreationStatus(st.GetClusterCreationReadiness()))
 				if len(st.GetComponentStatuses()) > 0 {
 					fmt.Fprintf(w, "  Components:\n")
 					for _, cs := range st.GetComponentStatuses() {
-						fmt.Fprintf(w, "    %-30s %s\n", cs.GetName(), componentPhaseString(cs.GetPhase()))
+						fmt.Fprintf(w, "    %-30s %s\n", cs.GetName(), output.HybridComponentPhase(cs.GetPhase()))
 					}
 				}
 			}

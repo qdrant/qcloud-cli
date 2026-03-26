@@ -66,7 +66,7 @@ qcloud cluster package list --cloud-provider aws --cloud-region eu-central-1`,
 				return p.GetId()
 			})
 			t.AddField("TIER", func(p *bookingv1.Package) string {
-				return packageTierString(p.GetTier())
+				return output.PackageTier(p.GetTier())
 			})
 			t.AddField("RAM", func(p *bookingv1.Package) string {
 				if rc := p.GetResourceConfiguration(); rc != nil {

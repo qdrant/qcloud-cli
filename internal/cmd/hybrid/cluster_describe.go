@@ -41,14 +41,17 @@ func newClusterDescribeCommand(s *state.State) *cobra.Command {
 				return nil, fmt.Errorf("failed to get cluster: %w", err)
 			}
 
-			return resp.GetCluster(), nil
+			cluster := resp.GetCluster()
+			if cluster.GetCloudProviderId() != hybridCloudProviderID {
+				return nil, fmt.Errorf("cluster %s is not a hybrid cloud cluster; use \"qcloud cluster describe\" instead", args[0])
+			}
+
+			return cluster, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, cluster *clusterv1.Cluster) error {
-			clusterPhase := strings.TrimPrefix(cluster.GetState().GetPhase().String(), "CLUSTER_PHASE_")
-
 			fmt.Fprintf(w, "ID:          %s\n", cluster.GetId())
 			fmt.Fprintf(w, "Name:        %s\n", cluster.GetName())
-			fmt.Fprintf(w, "Status:      %s\n", clusterPhase)
+			fmt.Fprintf(w, "Status:      %s\n", output.ClusterPhase(cluster.GetState().GetPhase()))
 			fmt.Fprintf(w, "Environment: %s\n", cluster.GetCloudProviderRegionId())
 
 			if cfg := cluster.GetConfiguration(); cfg != nil {
@@ -84,8 +87,7 @@ func newClusterDescribeCommand(s *state.State) *cobra.Command {
 					fmt.Fprintln(w)
 					fmt.Fprintln(w, "Hybrid Configuration:")
 					if cfg.ServiceType != nil {
-						st := strings.TrimPrefix(cfg.GetServiceType().String(), "CLUSTER_SERVICE_TYPE_")
-						fmt.Fprintf(w, "  Service Type:              %s\n", st)
+						fmt.Fprintf(w, "  Service Type:              %s\n", serviceTypeString(cfg.GetServiceType()))
 					}
 					if cfg.ReservedCpuPercentage != nil {
 						fmt.Fprintf(w, "  Reserved CPU %%:            %d\n", cfg.GetReservedCpuPercentage())
@@ -102,8 +104,8 @@ func newClusterDescribeCommand(s *state.State) *cobra.Command {
 					if tols := cfg.GetTolerations(); len(tols) > 0 {
 						fmt.Fprintf(w, "  Tolerations:\n")
 						for _, t := range tols {
-							op := strings.TrimPrefix(t.GetOperator().String(), "TOLERATION_OPERATOR_")
-							effect := strings.TrimPrefix(t.GetEffect().String(), "TOLERATION_EFFECT_")
+							op := output.TolerationOperator(t.GetOperator())
+							effect := output.TolerationEffect(t.GetEffect())
 							if t.GetOperator() == clusterv1.TolerationOperator_TOLERATION_OPERATOR_EXISTS {
 								fmt.Fprintf(w, "    key=%s operator=%s effect=%s\n", t.GetKey(), op, effect)
 							} else {

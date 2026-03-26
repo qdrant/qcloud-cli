@@ -20,6 +20,7 @@ func TestHybridClusterDescribe_FullOutput(t *testing.T) {
 		Cluster: &clusterv1.Cluster{
 			Id:                    "cluster-abc",
 			Name:                  "my-cluster",
+			CloudProviderId:       "hybrid",
 			CloudProviderRegionId: "env-123",
 			State:                 &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY},
 			Configuration: &clusterv1.ClusterConfiguration{

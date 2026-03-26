@@ -54,7 +54,7 @@ func newScheduleListCommand(s *state.State) *cobra.Command {
 				return v.GetSchedule()
 			})
 			t.AddField("STATUS", func(v *backupv1.BackupSchedule) string {
-				return scheduleStatusString(v.GetStatus())
+				return output.BackupScheduleStatus(v.GetStatus())
 			})
 			t.AddField("NEXT RUN", func(v *backupv1.BackupSchedule) string {
 				if next, ok := nextScheduleRun(v.GetSchedule()); ok {

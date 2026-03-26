@@ -3,7 +3,6 @@ package hybrid
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -30,15 +29,10 @@ func newClusterListCommand(s *state.State) *cobra.Command {
 				return nil, err
 			}
 
-			provider := "hybrid"
-			req := &clusterv1.ListClustersRequest{
-				AccountId:       accountID,
-				CloudProviderId: &provider,
-			}
+			envID, _ := cmd.Flags().GetString("env-id")
 
-			if cmd.Flags().Changed("env-id") {
-				envID, _ := cmd.Flags().GetString("env-id")
-				req.CloudProviderRegionId = &envID
+			req := &clusterv1.ListClustersRequest{
+				AccountId: accountID,
 			}
 
 			// Auto-paginate.
@@ -58,14 +52,28 @@ func newClusterListCommand(s *state.State) *cobra.Command {
 				}
 				nextToken = resp.NextPageToken
 			}
-			return &clusterv1.ListClustersResponse{Items: allItems}, nil
+
+			// Filter client-side: the API requires a valid region UUID when
+			// cloud_provider_id is "hybrid", so we fetch all clusters and
+			// filter here instead.
+			filtered := make([]*clusterv1.Cluster, 0, len(allItems))
+			for _, c := range allItems {
+				if c.GetCloudProviderId() != hybridCloudProviderID {
+					continue
+				}
+				if envID != "" && c.GetCloudProviderRegionId() != envID {
+					continue
+				}
+				filtered = append(filtered, c)
+			}
+			return &clusterv1.ListClustersResponse{Items: filtered}, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {
 			t := output.NewTable[*clusterv1.Cluster](w)
 			t.AddField("ID", func(v *clusterv1.Cluster) string { return v.GetId() })
 			t.AddField("NAME", func(v *clusterv1.Cluster) string { return v.GetName() })
 			t.AddField("STATUS", func(v *clusterv1.Cluster) string {
-				return strings.TrimPrefix(v.GetState().GetPhase().String(), "CLUSTER_PHASE_")
+				return output.ClusterPhase(v.GetState().GetPhase())
 			})
 			t.AddField("VERSION", func(v *clusterv1.Cluster) string {
 				return v.GetConfiguration().GetVersion()

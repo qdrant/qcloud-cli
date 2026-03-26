@@ -7,6 +7,7 @@ import (
 
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -291,7 +292,7 @@ func packageCompletion(s *state.State) func(*cobra.Command, []string, string) ([
 
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, p := range resp.GetItems() {
-			desc := packageTierString(p.GetTier())
+			desc := output.PackageTier(p.GetTier())
 			if rc := p.GetResourceConfiguration(); rc != nil {
 				desc += fmt.Sprintf(" | %s RAM / %s CPU / %s disk", rc.GetRam(), rc.GetCpu(), rc.GetDisk())
 			}

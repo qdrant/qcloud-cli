@@ -60,10 +60,8 @@ func hybridClusterIDCompletion(s *state.State) func(*cobra.Command, []string, st
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		provider := "hybrid"
 		resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{
-			AccountId:       accountID,
-			CloudProviderId: &provider,
+			AccountId: accountID,
 		})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
@@ -71,6 +69,9 @@ func hybridClusterIDCompletion(s *state.State) func(*cobra.Command, []string, st
 
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, c := range resp.GetItems() {
+			if c.GetCloudProviderId() != hybridCloudProviderID {
+				continue
+			}
 			completions = append(completions, c.GetId()+"\t"+c.GetName())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp

@@ -21,13 +21,20 @@ func TestHybridClusterList_TableOutput(t *testing.T) {
 			{
 				Id:                    "cluster-1",
 				Name:                  "my-cluster",
+				CloudProviderId:       "hybrid",
 				CloudProviderRegionId: "env-123",
 				State:                 &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY},
 				Configuration:         &clusterv1.ClusterConfiguration{Version: &version},
 			},
 			{
-				Id:   "cluster-2",
-				Name: "other-cluster",
+				Id:              "cluster-2",
+				Name:            "other-cluster",
+				CloudProviderId: "hybrid",
+			},
+			{
+				Id:              "cluster-3",
+				Name:            "non-hybrid",
+				CloudProviderId: "aws",
 			},
 		},
 	}, nil)
@@ -42,22 +49,47 @@ func TestHybridClusterList_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "env-123")
 	assert.Contains(t, stdout, "cluster-2")
 	assert.Contains(t, stdout, "other-cluster")
+	// Non-hybrid clusters should be filtered out.
+	assert.NotContains(t, stdout, "cluster-3")
+	assert.NotContains(t, stdout, "non-hybrid")
 }
 
 func TestHybridClusterList_WithEnvID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{
+		Items: []*clusterv1.Cluster{
+			{
+				Id:                    "cluster-1",
+				Name:                  "matching",
+				CloudProviderId:       "hybrid",
+				CloudProviderRegionId: "env-123",
+			},
+			{
+				Id:                    "cluster-2",
+				Name:                  "other-env",
+				CloudProviderId:       "hybrid",
+				CloudProviderRegionId: "env-456",
+			},
+			{
+				Id:                    "cluster-3",
+				Name:                  "not-hybrid",
+				CloudProviderId:       "aws",
+				CloudProviderRegionId: "env-123",
+			},
+		},
+	}, nil)
 
-	_, _, err := testutil.Exec(t, env, "hybrid", "cluster", "list", "--env-id", "env-123")
+	stdout, _, err := testutil.Exec(t, env, "hybrid", "cluster", "list", "--env-id", "env-123")
 	require.NoError(t, err)
 
-	req, ok := env.Server.ListClustersCalls.Last()
-	require.True(t, ok)
-	require.NotNil(t, req.CloudProviderRegionId)
-	assert.Equal(t, "env-123", *req.CloudProviderRegionId)
-	require.NotNil(t, req.CloudProviderId)
-	assert.Equal(t, "hybrid", *req.CloudProviderId)
+	// Only the hybrid cluster matching the env-id should appear.
+	assert.Contains(t, stdout, "cluster-1")
+	assert.Contains(t, stdout, "matching")
+	assert.NotContains(t, stdout, "cluster-2")
+	assert.NotContains(t, stdout, "other-env")
+	assert.NotContains(t, stdout, "cluster-3")
+	assert.NotContains(t, stdout, "not-hybrid")
 }
 
 func TestHybridClusterList_AutoPaginate(t *testing.T) {
@@ -67,13 +99,13 @@ func TestHybridClusterList_AutoPaginate(t *testing.T) {
 	env.Server.ListClustersCalls.
 		OnCall(0, func(_ context.Context, _ *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
 			return &clusterv1.ListClustersResponse{
-				Items:         []*clusterv1.Cluster{{Id: "cluster-1", Name: "first"}},
+				Items:         []*clusterv1.Cluster{{Id: "cluster-1", Name: "first", CloudProviderId: "hybrid"}},
 				NextPageToken: &token,
 			}, nil
 		}).
 		OnCall(1, func(_ context.Context, _ *clusterv1.ListClustersRequest) (*clusterv1.ListClustersResponse, error) {
 			return &clusterv1.ListClustersResponse{
-				Items: []*clusterv1.Cluster{{Id: "cluster-2", Name: "second"}},
+				Items: []*clusterv1.Cluster{{Id: "cluster-2", Name: "second", CloudProviderId: "hybrid"}},
 			}, nil
 		})
 
@@ -90,7 +122,7 @@ func TestHybridClusterList_JSONOutput(t *testing.T) {
 
 	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{
 		Items: []*clusterv1.Cluster{
-			{Id: "json-cluster", Name: "json-name"},
+			{Id: "json-cluster", Name: "json-name", CloudProviderId: "hybrid"},
 		},
 	}, nil)
 

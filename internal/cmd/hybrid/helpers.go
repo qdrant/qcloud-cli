@@ -8,16 +8,19 @@ import (
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
 )
 
-func phaseString(p hybridv1.HybridCloudEnvironmentStatusPhase) string {
-	return strings.TrimPrefix(p.String(), "HYBRID_CLOUD_ENVIRONMENT_STATUS_PHASE_")
-}
+const hybridCloudProviderID = "hybrid"
 
-func clusterCreationStatusString(s hybridv1.QdrantClusterCreationStatus) string {
-	return strings.TrimPrefix(s.String(), "QDRANT_CLUSTER_CREATION_STATUS_")
-}
-
-func componentPhaseString(p hybridv1.HybridCloudEnvironmentComponentStatusPhase) string {
-	return strings.TrimPrefix(p.String(), "HYBRID_CLOUD_ENVIRONMENT_COMPONENT_STATUS_PHASE_")
+func serviceTypeString(t clusterv1.ClusterServiceType) string {
+	switch t {
+	case clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_CLUSTER_IP:
+		return serviceTypeClusterIP
+	case clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_NODE_PORT:
+		return serviceTypeNodePort
+	case clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_LOAD_BALANCER:
+		return serviceTypeLoadBalancer
+	default:
+		return ""
+	}
 }
 
 const (

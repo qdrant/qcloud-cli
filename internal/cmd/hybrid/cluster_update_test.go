@@ -16,7 +16,7 @@ import (
 func setupHybridClusterUpdateHandlers(env *testutil.TestEnv) {
 	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
 		return &clusterv1.GetClusterResponse{
-			Cluster: &clusterv1.Cluster{Id: req.GetClusterId(), Name: "my-cluster"},
+			Cluster: &clusterv1.Cluster{Id: req.GetClusterId(), Name: "my-cluster", CloudProviderId: "hybrid"},
 		}, nil
 	})
 	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
@@ -95,7 +95,7 @@ func TestHybridClusterUpdate_APIError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
-		Cluster: &clusterv1.Cluster{Id: "cluster-abc", Name: "my-cluster"},
+		Cluster: &clusterv1.Cluster{Id: "cluster-abc", Name: "my-cluster", CloudProviderId: "hybrid"},
 	}, nil)
 	env.Server.UpdateClusterCalls.Returns(nil, fmt.Errorf("internal server error"))
 

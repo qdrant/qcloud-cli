@@ -46,13 +46,18 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 				return nil, fmt.Errorf("failed to get cluster: %w", err)
 			}
 
-			return resp.GetCluster(), nil
+			cluster := resp.GetCluster()
+			if cluster.GetCloudProviderId() == hybridCloudProviderID {
+				return nil, fmt.Errorf("cluster %s is a hybrid cloud cluster; use \"qcloud hybrid cluster describe\" instead", args[0])
+			}
+
+			return cluster, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, cluster *clusterv1.Cluster) error {
 			fmt.Fprintf(w, "ID:       %s\n", cluster.GetId())
 			fmt.Fprintf(w, "Name:     %s\n", cluster.GetName())
 			if cluster.GetState() != nil {
-				fmt.Fprintf(w, "Status:   %s\n", phaseString(cluster.GetState().GetPhase()))
+				fmt.Fprintf(w, "Status:   %s\n", output.ClusterPhase(cluster.GetState().GetPhase()))
 			}
 			if cluster.GetConfiguration() != nil {
 				cfg := cluster.GetConfiguration()
@@ -172,7 +177,7 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 							started = "started " + output.HumanTime(n.GetStartedAt().AsTime())
 						}
 						fmt.Fprintf(w, "  %-40s  %-12s  %-10s  %s\n",
-							n.GetName(), nodeStateString(n.GetState()), n.GetVersion(), started)
+							n.GetName(), output.ClusterNodeState(n.GetState()), n.GetVersion(), started)
 					}
 				}
 			}

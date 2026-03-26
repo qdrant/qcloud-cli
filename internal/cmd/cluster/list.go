@@ -49,6 +49,9 @@ qcloud cluster list --page-size 10`,
 			var cloudProvider, cloudRegion string
 			if cloudProviderChanged {
 				cloudProvider, _ = cmd.Flags().GetString("cloud-provider")
+				if cloudProvider == hybridCloudProviderID {
+					return nil, fmt.Errorf("hybrid clusters are not supported by this command, use \"qcloud hybrid cluster list\" instead")
+				}
 			}
 			if cloudRegionChanged {
 				cloudRegion, _ = cmd.Flags().GetString("cloud-region")
@@ -73,7 +76,11 @@ qcloud cluster list --page-size 10`,
 					if err != nil {
 						return nil, fmt.Errorf("failed to list clusters: %w", err)
 					}
-					allItems = append(allItems, resp.Items...)
+					for _, c := range resp.Items {
+						if c.GetCloudProviderId() != hybridCloudProviderID {
+							allItems = append(allItems, c)
+						}
+					}
 					if resp.NextPageToken == nil || *resp.NextPageToken == "" {
 						break
 					}
@@ -102,6 +109,13 @@ qcloud cluster list --page-size 10`,
 			if err != nil {
 				return nil, fmt.Errorf("failed to list clusters: %w", err)
 			}
+			var filtered []*clusterv1.Cluster
+			for _, c := range resp.Items {
+				if c.GetCloudProviderId() != hybridCloudProviderID {
+					filtered = append(filtered, c)
+				}
+			}
+			resp.Items = filtered
 			return resp, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {
@@ -114,7 +128,7 @@ qcloud cluster list --page-size 10`,
 			})
 			t.AddField("STATUS", func(v *clusterv1.Cluster) string {
 				if v.GetState() != nil {
-					return phaseString(v.GetState().GetPhase())
+					return output.ClusterPhase(v.GetState().GetPhase())
 				}
 				return ""
 			})
@@ -145,6 +159,9 @@ qcloud cluster list --page-size 10`,
 	}.CobraCommand(s)
 
 	cmd.Long = `List all clusters in the current account.
+
+Hybrid cloud clusters are excluded from the output. To list hybrid clusters, use
+"qcloud hybrid cluster list".
 
 By default, all clusters are fetched automatically across multiple pages.
 

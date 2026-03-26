@@ -69,7 +69,12 @@ func newClusterUpdateCommand(s *state.State) *cobra.Command {
 				return nil, fmt.Errorf("failed to get cluster: %w", err)
 			}
 
-			return resp.GetCluster(), nil
+			cluster := resp.GetCluster()
+			if cluster.GetCloudProviderId() != hybridCloudProviderID {
+				return nil, fmt.Errorf("cluster %s is not a hybrid cloud cluster; use \"qcloud cluster update\" instead", args[0])
+			}
+
+			return cluster, nil
 		},
 		Update: func(s *state.State, cmd *cobra.Command, cluster *clusterv1.Cluster) (*clusterv1.Cluster, error) {
 			ctx := cmd.Context()

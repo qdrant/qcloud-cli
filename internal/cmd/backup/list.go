@@ -54,7 +54,7 @@ func newListCommand(s *state.State) *cobra.Command {
 				return v.GetClusterId()
 			})
 			t.AddField("STATUS", func(v *backupv1.Backup) string {
-				return backupStatusString(v.GetStatus())
+				return output.BackupStatus(v.GetStatus())
 			})
 			t.AddField("CREATED", func(v *backupv1.Backup) string {
 				if v.GetCreatedAt() != nil {
