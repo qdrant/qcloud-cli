@@ -3,7 +3,6 @@ package hybrid
 import (
 	"github.com/spf13/cobra"
 
-	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -60,18 +59,13 @@ func hybridClusterIDCompletion(s *state.State) func(*cobra.Command, []string, st
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{
-			AccountId: accountID,
-		})
+		clusters, err := client.Cluster().ListHybridClusters(ctx, accountID)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		completions := make([]string, 0, len(resp.GetItems()))
-		for _, c := range resp.GetItems() {
-			if c.GetCloudProviderId() != hybridCloudProviderID {
-				continue
-			}
+		completions := make([]string, 0, len(clusters))
+		for _, c := range clusters {
 			completions = append(completions, c.GetId()+"\t"+c.GetName())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp

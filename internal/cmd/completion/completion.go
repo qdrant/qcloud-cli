@@ -10,7 +10,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-// CloudProviderCompletion returns a completion function for the --cloud-provider flag.
+// CloudProviderCompletion returns a completion function for the --cloud-provider flag. It skips the 'hybrid' cloud,
+// as this flag is meant to be used for cloud clusters, not hybrid ones.
 func CloudProviderCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
@@ -33,6 +34,9 @@ func CloudProviderCompletion(s *state.State) func(*cobra.Command, []string, stri
 
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, p := range resp.GetItems() {
+			if p.GetId() == "hybrid" {
+				continue
+			}
 			completions = append(completions, p.GetId()+"\t"+p.GetName())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
@@ -129,15 +133,13 @@ func ClusterIDCompletion(s *state.State) func(*cobra.Command, []string, string) 
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{
-			AccountId: accountID,
-		})
+		clusters, err := client.Cluster().ListCloudClusters(ctx, accountID)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		completions := make([]string, 0, len(resp.GetItems()))
-		for _, c := range resp.GetItems() {
+		completions := make([]string, 0, len(clusters))
+		for _, c := range clusters {
 			completions = append(completions, c.GetId()+"\t"+c.GetName())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp

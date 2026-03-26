@@ -18,7 +18,7 @@ import (
 // Client wraps a gRPC connection to the Qdrant Cloud API.
 type Client struct {
 	conn           *grpc.ClientConn
-	cluster        clusterv1.ClusterServiceClient
+	cluster        *ClusterClient
 	booking        bookingv1.BookingServiceClient
 	platform       platformv1.PlatformServiceClient
 	databaseApiKey clusterauthv2.DatabaseApiKeyServiceClient
@@ -48,7 +48,7 @@ func NewWithDialOptions(endpoint, apiKey string, opts ...grpc.DialOption) (*Clie
 func newFromConn(conn *grpc.ClientConn) *Client {
 	return &Client{
 		conn:           conn,
-		cluster:        clusterv1.NewClusterServiceClient(conn),
+		cluster:        &ClusterClient{ClusterServiceClient: clusterv1.NewClusterServiceClient(conn)},
 		booking:        bookingv1.NewBookingServiceClient(conn),
 		platform:       platformv1.NewPlatformServiceClient(conn),
 		databaseApiKey: clusterauthv2.NewDatabaseApiKeyServiceClient(conn),
@@ -58,7 +58,7 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 }
 
 // Cluster returns the ClusterService gRPC client.
-func (c *Client) Cluster() clusterv1.ClusterServiceClient {
+func (c *Client) Cluster() *ClusterClient {
 	return c.cluster
 }
 

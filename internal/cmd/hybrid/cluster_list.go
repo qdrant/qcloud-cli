@@ -1,7 +1,6 @@
 package hybrid
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -36,42 +35,21 @@ qcloud hybrid cluster list --env-id 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
 
 			envID, _ := cmd.Flags().GetString("env-id")
 
-			req := &clusterv1.ListClustersRequest{
-				AccountId: accountID,
+			clusters, err := client.Cluster().ListHybridClusters(ctx, accountID)
+			if err != nil {
+				return nil, err
 			}
 
-			// Auto-paginate.
-			var allItems []*clusterv1.Cluster
-			var nextToken *string
-			for {
-				if nextToken != nil {
-					req.PageToken = nextToken
+			if envID != "" {
+				filtered := make([]*clusterv1.Cluster, 0, len(clusters))
+				for _, c := range clusters {
+					if c.GetCloudProviderRegionId() == envID {
+						filtered = append(filtered, c)
+					}
 				}
-				resp, err := client.Cluster().ListClusters(ctx, req)
-				if err != nil {
-					return nil, fmt.Errorf("failed to list clusters: %w", err)
-				}
-				allItems = append(allItems, resp.Items...)
-				if resp.NextPageToken == nil || *resp.NextPageToken == "" {
-					break
-				}
-				nextToken = resp.NextPageToken
+				clusters = filtered
 			}
-
-			// Filter client-side: the API requires a valid region UUID when
-			// cloud_provider_id is "hybrid", so we fetch all clusters and
-			// filter here instead.
-			filtered := make([]*clusterv1.Cluster, 0, len(allItems))
-			for _, c := range allItems {
-				if c.GetCloudProviderId() != hybridCloudProviderID {
-					continue
-				}
-				if envID != "" && c.GetCloudProviderRegionId() != envID {
-					continue
-				}
-				filtered = append(filtered, c)
-			}
-			return &clusterv1.ListClustersResponse{Items: filtered}, nil
+			return &clusterv1.ListClustersResponse{Items: clusters}, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {
 			t := output.NewTable[*clusterv1.Cluster](w)

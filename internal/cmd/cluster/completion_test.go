@@ -26,6 +26,7 @@ func TestClusterIDCompletion(t *testing.T) {
 		Items: []*clusterv1.Cluster{
 			{Id: "cluster-abc", Name: "my-cluster"},
 			{Id: "cluster-xyz", Name: "other-cluster"},
+			{Id: "cluster-hybrid", Name: "hybrid-cluster", CloudProviderId: "hybrid"},
 		},
 	}, nil)
 
@@ -34,6 +35,7 @@ func TestClusterIDCompletion(t *testing.T) {
 	assert.Contains(t, stdout, "cluster-abc")
 	assert.Contains(t, stdout, "my-cluster")
 	assert.Contains(t, stdout, "cluster-xyz")
+	assert.NotContains(t, stdout, "cluster-hybrid")
 }
 
 func TestCloudProviderCompletion(t *testing.T) {
@@ -43,6 +45,7 @@ func TestCloudProviderCompletion(t *testing.T) {
 		Items: []*platformv1.CloudProvider{
 			{Id: "aws", Name: "Amazon Web Services"},
 			{Id: "gcp", Name: "Google Cloud"},
+			{Id: "hybrid", Name: "Hybrid Cloud"},
 		},
 	}, nil)
 
@@ -51,6 +54,7 @@ func TestCloudProviderCompletion(t *testing.T) {
 	assert.Contains(t, stdout, "aws")
 	assert.Contains(t, stdout, "Amazon Web Services")
 	assert.Contains(t, stdout, "gcp")
+	assert.NotContains(t, stdout, "hybrid")
 }
 
 func TestCloudRegionCompletion(t *testing.T) {
