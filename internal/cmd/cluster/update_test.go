@@ -473,6 +473,188 @@ func TestUpdateCluster_PreservesExistingConfig(t *testing.T) {
 	assert.Equal(t, clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_ROLLING, cfg.GetRestartPolicy())
 }
 
+func TestUpdateCluster_VersionUpgrade(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	stdout, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--version", "v1.17.0",
+		"--force",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "updated successfully")
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "v1.17.0", req.GetCluster().GetConfiguration().GetVersion())
+}
+
+func TestUpdateCluster_VersionPromptShowsDiff(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:            req.GetClusterId(),
+				Name:          "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{},
+				State: &clusterv1.ClusterState{
+					Version: "v1.16.2",
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--version", "v1.17.0",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Aborted.")
+	assert.Contains(t, stderr, "v1.16.2 => v1.17.0")
+	assert.Contains(t, stderr, "rolling restart")
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestUpdateCluster_DBConfigPromptShowsDiff(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	rf := uint32(1)
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{
+					DatabaseConfiguration: &clusterv1.DatabaseConfiguration{
+						Collection: &clusterv1.DatabaseConfigurationCollection{
+							ReplicationFactor: &rf,
+						},
+					},
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--replication-factor", "3",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Aborted.")
+	assert.Contains(t, stderr, "1 => 3")
+	assert.Contains(t, stderr, "rolling restart")
+	assert.NotContains(t, stderr, "Version:")
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestUpdateCluster_VersionAndDBConfigShowSinglePrompt(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	rf := uint32(1)
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{
+					DatabaseConfiguration: &clusterv1.DatabaseConfiguration{
+						Collection: &clusterv1.DatabaseConfigurationCollection{
+							ReplicationFactor: &rf,
+						},
+					},
+				},
+				State: &clusterv1.ClusterState{
+					Version: "v1.16.2",
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--version", "v1.17.0",
+		"--replication-factor", "3",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Aborted.")
+	assert.Contains(t, stderr, "v1.16.2 => v1.17.0")
+	assert.Contains(t, stderr, "1 => 3")
+	assert.Contains(t, stderr, "rolling restart")
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestUpdateCluster_VersionAndDBConfigForceAppliesBoth(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:            req.GetClusterId(),
+				Name:          "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{},
+				State: &clusterv1.ClusterState{
+					Version: "v1.16.2",
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	stdout, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--version", "v1.17.0",
+		"--replication-factor", "3",
+		"--force",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "updated successfully")
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "v1.17.0", req.GetCluster().GetConfiguration().GetVersion())
+	assert.Equal(t, uint32(3), req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetCollection().GetReplicationFactor())
+}
+
+func TestUpdateCluster_VersionFallsBackToConfigVersion(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	v := "v1.15.0"
+	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id:   req.GetClusterId(),
+				Name: "my-cluster",
+				Configuration: &clusterv1.ClusterConfiguration{
+					Version: &v,
+				},
+			},
+		}, nil
+	})
+	env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+		return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+	})
+
+	_, stderr, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--version", "v1.17.0",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stderr, "v1.15.0 => v1.17.0")
+}
+
 // setupUpdateHandlers configures the standard Get/Update handlers for update tests.
 func setupUpdateHandlers(env *testutil.TestEnv) {
 	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
