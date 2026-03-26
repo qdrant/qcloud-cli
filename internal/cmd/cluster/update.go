@@ -239,7 +239,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
-	_ = cmd.RegisterFlagCompletionFunc("version", versionCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("version", completion.VersionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("restart-mode", restartModeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("rebalance-strategy", rebalanceStrategyCompletion())
 	return cmd
