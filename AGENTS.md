@@ -18,6 +18,7 @@ internal/
   cmd/                   # one sub-package per top-level subcommand
     cluster/             # cluster.go (parent) + list/describe/create/delete
     version/             # version subcommand
+    clusterutil/         # shared cluster helpers (e.g. wait-for-healthy)
     output/              # shared output formatting helpers
     util/                # shared command utilities
   qcloudapi/             # gRPC client wrapper for the Qdrant Cloud API
@@ -185,7 +186,6 @@ Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "
 **Rules:**
 - Never inline `strings.TrimPrefix(x.String(), "PREFIX_")` in a cmd package. Add a function to the appropriate `output/*.go` file instead.
 - Never define a private `phaseString` / `statusString` / etc. helper in a cmd package for TrimPrefix formatting. These belong in `output`.
-- Exception: `internal/qcloudapi/` must not import `internal/cmd/output/` (layering violation). The one inline TrimPrefix in `qcloudapi/cluster_wait.go` is intentional.
 - Switch-based format/parse pairs (`storageTierString`, `restartPolicyString`, etc.) encode semantic mappings paired with parse functions and belong with their cmd package, not in `output`.
 
 ### Inline pointer literals

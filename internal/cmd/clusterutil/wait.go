@@ -1,16 +1,17 @@
-package qcloudapi
+package clusterutil
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 )
 
 var clusterFailurePhases = map[clusterv1.ClusterPhase]bool{
@@ -51,7 +52,7 @@ func WaitForClusterHealthy(
 		cluster := resp.GetCluster()
 		phase := cluster.GetState().GetPhase()
 		elapsed := time.Since(start).Round(time.Second)
-		phaseStr := strings.TrimPrefix(phase.String(), "CLUSTER_PHASE_")
+		phaseStr := output.ClusterPhase(phase)
 		fmt.Fprintf(out, "phase=%s (%s)\n", phaseStr, elapsed)
 
 		if phase == clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {

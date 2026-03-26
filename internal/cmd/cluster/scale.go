@@ -12,6 +12,7 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/clusterutil"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
@@ -287,7 +288,7 @@ match.`,
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Scaling Cluster %s (%s)...\n", resp.GetCluster().GetId(), resp.GetCluster().GetName())
-			return waitForHealthyWithInterval(
+			return clusterutil.WaitForClusterHealthy(
 				ctx,
 				client.Cluster(),
 				cmd.ErrOrStderr(),
