@@ -14,6 +14,15 @@ import (
 
 func newCreateCommand(s *state.State) *cobra.Command {
 	cmd := base.CreateCmd[*hybridv1.HybridCloudEnvironment]{
+		Example: `# Create a hybrid cloud environment
+qcloud hybrid create --name my-hybrid-env
+
+# Create with a custom namespace
+qcloud hybrid create --name my-hybrid-env --namespace qdrant-hybrid
+
+# Create with storage classes
+qcloud hybrid create --name my-hybrid-env \
+  --database-storage-class premium-rwo --snapshot-storage-class standard`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create",
@@ -21,10 +30,10 @@ func newCreateCommand(s *state.State) *cobra.Command {
 				Args:  cobra.NoArgs,
 			}
 			cmd.Flags().String("name", "", "Name of the hybrid cloud environment (required)")
-			cmd.Flags().String("namespace", "", "Kubernetes namespace where Qdrant components are deployed")
-			cmd.Flags().String("database-storage-class", "", "Default database storage class")
-			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class")
-			cmd.Flags().String("log-level", "", `Log level ("debug", "info", "warn", "error")`)
+			cmd.Flags().String("namespace", "", "Kubernetes namespace where Qdrant components are deployed (read-only after bootstrapping)")
+			cmd.Flags().String("database-storage-class", "", "Default database storage class (uses cluster default if omitted)")
+			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class (uses cluster default if omitted)")
+			cmd.Flags().String("log-level", "", `Log level for deployed components ("debug", "info", "warn", "error")`)
 			_ = cmd.MarkFlagRequired("name")
 			return cmd
 		},

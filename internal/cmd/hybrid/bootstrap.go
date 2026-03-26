@@ -15,6 +15,11 @@ import (
 func newBootstrapCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
 		ValidArgsFunction: envIDCompletion(s),
+		Example: `# Generate bootstrap commands for an environment
+qcloud hybrid bootstrap 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Pipe directly to a shell
+qcloud hybrid bootstrap 7b2ea926-724b-4de2-b73a-8675c42a6ebe | bash`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "bootstrap <env-id>",

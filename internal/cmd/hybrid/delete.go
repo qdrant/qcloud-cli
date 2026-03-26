@@ -15,6 +15,11 @@ import (
 func newDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
 		ValidArgsFunction: envIDCompletion(s),
+		Example: `# Delete a hybrid cloud environment (prompts for confirmation)
+qcloud hybrid delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Delete without confirmation
+qcloud hybrid delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <env-id>",

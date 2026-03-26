@@ -28,6 +28,14 @@ var hybridClusterDBConfigFlags = []string{
 func newClusterUpdateCommand(s *state.State) *cobra.Command {
 	cmd := base.UpdateCmd[*clusterv1.Cluster]{
 		ValidArgsFunction: hybridClusterIDCompletion(s),
+		Example: `# Add a label to a cluster
+qcloud hybrid cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --label env=staging
+
+# Change the service type
+qcloud hybrid cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --service-type load-balancer
+
+# Update database configuration (triggers rolling restart)
+qcloud hybrid cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --optimizer-cpu-budget 4`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <cluster-id>",
@@ -45,7 +53,7 @@ func newClusterUpdateCommand(s *state.State) *cobra.Command {
 			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
 			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
-			cmd.Flags().Int32("optimizer-cpu-budget", 0, "CPU threads for optimization (0=auto, negative=subtract from available, positive=exact)")
+			cmd.Flags().Int32("optimizer-cpu-budget", 0, "CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)")
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt for database configuration changes")
 			return cmd
 		},

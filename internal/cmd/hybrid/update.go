@@ -17,17 +17,26 @@ import (
 func newUpdateCommand(s *state.State) *cobra.Command {
 	cmd := base.UpdateCmd[*hybridv1.HybridCloudEnvironment]{
 		ValidArgsFunction: envIDCompletion(s),
+		Example: `# Rename a hybrid cloud environment
+qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --name new-name
+
+# Update the default storage classes
+qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
+  --database-storage-class premium-rwo --snapshot-storage-class standard
+
+# Change the log level
+qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <env-id>",
 				Short: "Update a hybrid cloud environment",
 				Args:  util.ExactArgs(1, "a hybrid cloud environment ID"),
 			}
-			cmd.Flags().String("name", "", "New name for the environment")
-			cmd.Flags().String("namespace", "", "Kubernetes namespace where Qdrant components are deployed")
-			cmd.Flags().String("database-storage-class", "", "Default database storage class")
-			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class")
-			cmd.Flags().String("log-level", "", `Log level ("debug", "info", "warn", "error")`)
+			cmd.Flags().String("name", "", "New name for the hybrid cloud environment")
+			cmd.Flags().String("namespace", "", "Kubernetes namespace where Qdrant components are deployed (read-only after bootstrapping)")
+			cmd.Flags().String("database-storage-class", "", "Default database storage class (uses cluster default if omitted)")
+			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class (uses cluster default if omitted)")
+			cmd.Flags().String("log-level", "", `Log level for deployed components ("debug", "info", "warn", "error")`)
 			return cmd
 		},
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*hybridv1.HybridCloudEnvironment, error) {

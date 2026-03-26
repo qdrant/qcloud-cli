@@ -15,6 +15,11 @@ import (
 func newClusterDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
 		ValidArgsFunction: hybridClusterIDCompletion(s),
+		Example: `# Delete a hybrid cloud cluster (prompts for confirmation)
+qcloud hybrid cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Delete without confirmation
+qcloud hybrid cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <cluster-id>",

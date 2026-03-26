@@ -20,15 +20,22 @@ import (
 func newClusterCreateCommand(s *state.State) *cobra.Command {
 	cmd := base.CreateCmd[*clusterv1.Cluster]{
 		ValidArgsFunction: envIDCompletion(s),
+		Example: `# Create a cluster with defaults
+qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Create a named 3-node cluster and wait for it to become healthy
+qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
+  --name my-cluster --nodes 3 --wait
+
+# Create with node selectors and tolerations
+qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
+  --node-selector dedicated=qdrant --toleration dedicated=qdrant:NoSchedule`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create <env-id>",
 				Short: "Create a cluster in a hybrid cloud environment",
-				Long: `Create a new Qdrant cluster inside a hybrid cloud environment.
-
-The environment ID is the target hybrid cloud environment where the cluster will run.
-The cloud provider and region are fixed to "hybrid" and the environment ID respectively.`,
-				Args: util.ExactArgs(1, "a hybrid cloud environment ID"),
+				Long:  "Create a new Qdrant cluster inside a hybrid cloud environment.",
+				Args:  util.ExactArgs(1, "a hybrid cloud environment ID"),
 			}
 			cmd.Flags().String("name", "", "Cluster name (auto-generated if not provided)")
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes")
@@ -38,8 +45,8 @@ The cloud provider and region are fixed to "hybrid" and the environment ID respe
 			cmd.Flags().StringArray("annotation", nil, "Annotation ('key=value'), can be specified multiple times (max 10)")
 			cmd.Flags().StringArray("pod-label", nil, "Pod label ('key=value'), can be specified multiple times (max 10)")
 			cmd.Flags().StringArray("service-annotation", nil, "Service annotation ('key=value'), can be specified multiple times (max 64)")
-			cmd.Flags().Uint32("reserved-cpu-percentage", 0, "Reserved CPU percentage (1-80)")
-			cmd.Flags().Uint32("reserved-memory-percentage", 0, "Reserved memory percentage (1-80)")
+			cmd.Flags().Uint32("reserved-cpu-percentage", 0, "Percentage of CPU reserved for system components, 1-80 (default 20)")
+			cmd.Flags().Uint32("reserved-memory-percentage", 0, "Percentage of memory reserved for system components, 1-80 (default 20)")
 			cmd.Flags().StringArray("toleration", nil, "Toleration ('key=value:Effect' or 'key:Exists:Effect'), can be specified multiple times")
 			cmd.Flags().StringArray("label", nil, "Cluster label ('key=value'), can be specified multiple times")
 			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")

@@ -16,7 +16,12 @@ import (
 func newClusterListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*clusterv1.ListClustersResponse]{
 		Use:   "list",
-		Short: "List clusters in hybrid cloud environments",
+		Short: "List all clusters in hybrid cloud environments",
+		Example: `# List all hybrid cloud clusters
+qcloud hybrid cluster list
+
+# Filter by environment
+qcloud hybrid cluster list --env-id 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*clusterv1.ListClustersResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
