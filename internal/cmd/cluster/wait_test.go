@@ -56,6 +56,58 @@ func TestWaitCluster_Success(t *testing.T) {
 	assert.Contains(t, stderr, "phase=CREATING")
 }
 
+func TestWaitCluster_HealthyButNoEndpoint(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.
+		OnCall(0, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:    "cluster-ep",
+					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
+				},
+			}, nil
+		}).
+		OnCall(1, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:    "cluster-ep",
+					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY},
+				},
+			}, nil
+		}).
+		OnCall(2, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:    "cluster-ep",
+					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY, Endpoint: &clusterv1.ClusterEndpoint{}},
+				},
+			}, nil
+		}).
+		Always(func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:   "cluster-ep",
+					Name: "my-cluster",
+					State: &clusterv1.ClusterState{
+						Phase:    clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+						Endpoint: &clusterv1.ClusterEndpoint{Url: "https://ep.aws.cloud.qdrant.io"},
+					},
+				},
+			}, nil
+		})
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"cluster", "wait", "cluster-ep",
+		"--timeout", "30s",
+		"--poll-interval", "10ms",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "cluster-ep")
+	assert.Contains(t, stdout, "https://ep.aws.cloud.qdrant.io")
+	assert.Contains(t, stderr, "endpoint not yet available")
+}
+
 func TestWaitCluster_Failure(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 

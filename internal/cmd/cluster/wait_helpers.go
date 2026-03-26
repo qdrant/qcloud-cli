@@ -51,6 +51,10 @@ func waitForHealthyWithInterval(
 		fmt.Fprintf(out, "phase=%s (%s)\n", phaseString(phase), elapsed)
 
 		if phase == clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
+			if ep := cluster.GetState().GetEndpoint(); ep == nil || ep.GetUrl() == "" {
+				fmt.Fprintf(out, "healthy but endpoint not yet available, waiting...\n")
+				return nil, nil //nolint:nilnil
+			}
 			return cluster, nil
 		}
 		if failurePhases[phase] {

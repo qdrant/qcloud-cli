@@ -356,7 +356,8 @@ func TestScale_WaitSuccess(t *testing.T) {
 				Id:   "cluster-123",
 				Name: "test-cluster",
 				State: &clusterv1.ClusterState{
-					Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+					Phase:    clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+					Endpoint: &clusterv1.ClusterEndpoint{Url: "https://cluster-123.aws.cloud.qdrant.io"},
 				},
 			}}, nil
 		})
