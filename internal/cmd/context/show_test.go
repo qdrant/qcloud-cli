@@ -31,6 +31,25 @@ func TestContextShow_ResolvedValues(t *testing.T) {
 	assert.NotContains(t, stdout, "sk")
 }
 
+func TestContextShow_BackendURL(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "staging", map[string]map[string]string{
+		"staging": {
+			"endpoint":    "grpc.staging.qdrant.io:443",
+			"backend_url": "https://staging.cloud.qdrant.io",
+			"account_id":  "stage-acct",
+			"api_key":     "sk",
+		},
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "show")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "https://staging.cloud.qdrant.io")
+}
+
 func TestContextShow_FlagOverridesCurrentContext(t *testing.T) {
 	env := newEnv(t)
 	t.Cleanup(env.Cleanup)

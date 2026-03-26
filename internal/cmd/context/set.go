@@ -69,6 +69,7 @@ still take precedence over the command at runtime.`,
 				Args: util.ExactArgs(1, "a context name"),
 			}
 			cmd.Flags().String("endpoint", "", "API endpoint for this context")
+			cmd.Flags().String("backend-url", "", "Backend URL for this context")
 			cmd.Flags().String("api-key", "", "API key for this context")
 			cmd.Flags().String("api-key-command", "", "Shell command that outputs the API key (e.g. 'op read op://vault/qdrant/api-key')")
 			cmd.Flags().String("api-key-helper", "", "Named credential helper (1password, vault, pass, keychain)")
@@ -98,6 +99,12 @@ still take precedence over the command at runtime.`,
 				ctx.Endpoint = ep
 			} else {
 				ctx.Endpoint = s.Config.Endpoint()
+			}
+
+			if bu, ok := flagChangedWithValue(cmd, "backend-url"); ok {
+				ctx.BackendURL = bu
+			} else if existing := s.Config.BackendURL(); existing != "" {
+				ctx.BackendURL = existing
 			}
 
 			apiKeyCommand, err := resolveAPIKeyFlags(cmd)

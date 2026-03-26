@@ -54,6 +54,7 @@ func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts m
 		fd.Contexts = append(fd.Contexts, config.ContextEntry{
 			Name:          name,
 			Endpoint:      vals["endpoint"],
+			BackendURL:    vals["backend_url"],
 			APIKey:        vals["api_key"],
 			APIKeyCommand: vals["api_key_command"],
 			AccountID:     vals["account_id"],

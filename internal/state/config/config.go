@@ -18,6 +18,7 @@ import (
 
 const (
 	defaultAPIEndpoint = "grpc.cloud.qdrant.io:443"
+	defaultBackendURL  = "https://cloud.qdrant.io"
 	envPrefix          = "QDRANT_CLOUD"
 
 	// KeyAPIKey is the config key for the Management API key.
@@ -26,12 +27,15 @@ const (
 	KeyAccountID = "account_id"
 	// KeyEndpoint is the config key for the API endpoint.
 	KeyEndpoint = "endpoint"
+	// KeyBackendURL is the config key for the backend URL.
+	KeyBackendURL = "backend_url"
 )
 
 // ContextEntry holds the configuration for a single named context.
 type ContextEntry struct {
 	Name          string `mapstructure:"name"            yaml:"name"                          json:"name"`
 	Endpoint      string `mapstructure:"endpoint"        yaml:"endpoint,omitempty"            json:"endpoint,omitempty"`
+	BackendURL    string `mapstructure:"backend_url"     yaml:"backend_url,omitempty"         json:"backend_url,omitempty"`
 	APIKey        string `mapstructure:"api_key"         yaml:"api_key,omitempty"             json:"api_key,omitempty"`
 	APIKeyCommand string `mapstructure:"api_key_command" yaml:"api_key_command,omitempty"     json:"api_key_command,omitempty"`
 	AccountID     string `mapstructure:"account_id"      yaml:"account_id,omitempty"          json:"account_id,omitempty"`
@@ -67,6 +71,7 @@ func New() *Config {
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	v.AutomaticEnv()
 	v.SetDefault(KeyEndpoint, defaultAPIEndpoint)
+	v.SetDefault(KeyBackendURL, defaultBackendURL)
 	return &Config{v: v}
 }
 
@@ -113,6 +118,9 @@ func (c *Config) Load(configPath string) error {
 			flat := map[string]any{}
 			if ctx.Endpoint != "" {
 				flat[KeyEndpoint] = ctx.Endpoint
+			}
+			if ctx.BackendURL != "" {
+				flat[KeyBackendURL] = ctx.BackendURL
 			}
 			if ctx.APIKey != "" {
 				flat[KeyAPIKey] = ctx.APIKey
@@ -166,6 +174,11 @@ func (c *Config) SetAccountID(id string) {
 // Endpoint returns the API endpoint from config/env/flags.
 func (c *Config) Endpoint() string {
 	return c.v.GetString(KeyEndpoint)
+}
+
+// BackendURL returns the backend URL from config/env/flags.
+func (c *Config) BackendURL() string {
+	return c.v.GetString(KeyBackendURL)
 }
 
 // JSONOutput returns whether JSON output is enabled.

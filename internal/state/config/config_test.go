@@ -133,6 +133,49 @@ func TestLoad_ContextFormat_InjectsActiveContextValues(t *testing.T) {
 	assert.Equal(t, "staging", c.CurrentContext())
 }
 
+func TestLoad_ContextFormat_BackendURL(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "staging", map[string]map[string]string{
+		"staging": {
+			"endpoint":    "grpc.staging.qdrant.io:443",
+			"backend_url": "https://staging.cloud.qdrant.io",
+			"api_key":     "staging-key",
+			"account_id":  "staging-acct",
+		},
+	})
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Equal(t, "https://staging.cloud.qdrant.io", c.BackendURL())
+}
+
+func TestLoad_BackendURL_DefaultValue(t *testing.T) {
+	t.Setenv("QDRANT_CLOUD_CONFIG", "")
+	t.Setenv("HOME", t.TempDir())
+
+	c := config.New()
+	require.NoError(t, c.Load(""))
+
+	assert.Equal(t, "https://cloud.qdrant.io", c.BackendURL())
+}
+
+func TestLoad_BackendURL_EnvVarOverride(t *testing.T) {
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "prod", map[string]map[string]string{
+		"prod": {
+			"backend_url": "https://prod.cloud.qdrant.io",
+			"api_key":     "pk",
+			"account_id":  "pa",
+		},
+	})
+
+	t.Setenv("QDRANT_CLOUD_BACKEND_URL", "https://dev.cloud.qdrant.io")
+
+	c := config.New()
+	require.NoError(t, c.Load(cfgPath))
+
+	assert.Equal(t, "https://dev.cloud.qdrant.io", c.BackendURL())
+}
+
 func TestLoad_ContextFormat_NoCurrentContext(t *testing.T) {
 	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "", map[string]map[string]string{
 		"prod": {"api_key": "pk", "account_id": "pa"},

@@ -34,6 +34,32 @@ func TestContextSet_CreatesNewContext(t *testing.T) {
 	assert.Equal(t, "test-acct", testCtx.AccountID)
 }
 
+func TestContextSet_CreatesNewContextWithBackendURL(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	dir := t.TempDir()
+	cfgPath := testutil.WriteContextConfigFile(t, dir, "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk"},
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "test",
+		"--endpoint", "grpc.test.qdrant.io:443",
+		"--backend-url", "https://dev.cloud.qdrant.io",
+		"--api-key", "test-key",
+		"--account-id", "test-acct",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "test")
+
+	testCtx := testutil.FindContextEntry(t, cfgPath, "test")
+	require.NotNil(t, testCtx)
+	assert.Equal(t, "grpc.test.qdrant.io:443", testCtx.Endpoint)
+	assert.Equal(t, "https://dev.cloud.qdrant.io", testCtx.BackendURL)
+	assert.Equal(t, "test-key", testCtx.APIKey)
+	assert.Equal(t, "test-acct", testCtx.AccountID)
+}
+
 func TestContextSet_PartialUpdate(t *testing.T) {
 	env := newEnv(t)
 	t.Cleanup(env.Cleanup)
@@ -173,6 +199,26 @@ func TestContextSet_InheritsValuesFromEnvVarsOrDefaultsIfMissing(t *testing.T) {
 		assert.Equal(t, "thekey", ctxE.APIKey)
 		assert.Equal(t, "grpc.test-cloud.qdrant.io:443", ctxE.Endpoint)
 		assert.Equal(t, "780c7589-f3e8-4567-808f-60a54d43ae10", ctxE.AccountID)
+	})
+
+	t.Run("backend-url", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("HOME", dir)
+
+		env := newEnv(t)
+		t.Cleanup(env.Cleanup)
+
+		t.Setenv("QDRANT_CLOUD_BACKEND_URL", "https://dev.cloud.qdrant.io")
+		_, _, err := testutil.Exec(t, env, "context", "set", "test",
+			"--api-key", "thekey",
+			"--account-id", "780c7589-f3e8-4567-808f-60a54d43ae10",
+		)
+		require.NoError(t, err)
+
+		cfgPath := path.Join(dir, ".config", "qcloud", "config.yaml")
+		ctxE := testutil.FindContextEntry(t, cfgPath, "test")
+		require.NotNil(t, ctxE)
+		assert.Equal(t, "https://dev.cloud.qdrant.io", ctxE.BackendURL)
 	})
 
 	t.Run("api-key-command", func(t *testing.T) {

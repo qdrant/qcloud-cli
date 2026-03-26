@@ -11,6 +11,7 @@ import (
 type showOutput struct {
 	Context       string `json:"context"`
 	Endpoint      string `json:"endpoint"`
+	BackendURL    string `json:"backend_url,omitempty"`
 	AccountID     string `json:"account_id"`
 	APIKeyCommand string `json:"api_key_command,omitempty"`
 }
@@ -29,6 +30,7 @@ qcloud context show`,
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			activeCtx := s.Config.ActiveContext()
 			endpoint := s.Config.Endpoint()
+			backendURL := s.Config.BackendURL()
 			accountID := s.Config.AccountID()
 
 			var apiKeyCommand string
@@ -40,6 +42,7 @@ qcloud context show`,
 				return output.PrintJSON(cmd.OutOrStdout(), showOutput{
 					Context:       activeCtx,
 					Endpoint:      endpoint,
+					BackendURL:    backendURL,
 					AccountID:     accountID,
 					APIKeyCommand: apiKeyCommand,
 				})
@@ -48,6 +51,7 @@ qcloud context show`,
 			rows := [][]string{
 				{"Context", activeCtx},
 				{"Endpoint", endpoint},
+				{"Backend URL", backendURL},
 				{"Account ID", accountID},
 			}
 			if apiKeyCommand != "" {
