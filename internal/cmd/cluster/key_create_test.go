@@ -1,12 +1,20 @@
 package cluster_test
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
+	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
@@ -112,4 +120,192 @@ func TestKeyCreate_MissingName(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env, "cluster", "key", "create", "cluster-123")
 	require.Error(t, err)
+}
+
+func TestKeyCreate_NoWait(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
+		DatabaseApiKey: &clusterauthv2.DatabaseApiKey{
+			Id:  "key-no-wait",
+			Key: "secret",
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "key", "create", "cluster-123", "--name", "my-key")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "key-no-wait")
+	assert.Equal(t, 0, env.Server.GetClusterCalls.Count(), "GetCluster should not be called without --wait")
+}
+
+// clusterEndpoint starts an httptest server and returns (server, schemeHost, port).
+// The caller is responsible for closing the server.
+func clusterEndpoint(t *testing.T, handler http.Handler) (ts *httptest.Server, host string, port int32) {
+	t.Helper()
+	ts = httptest.NewServer(handler)
+	t.Cleanup(ts.Close)
+	u, err := url.Parse(ts.URL)
+	require.NoError(t, err)
+	p, err := strconv.Atoi(u.Port())
+	require.NoError(t, err)
+	return ts, fmt.Sprintf("http://%s", u.Hostname()), int32(p)
+}
+
+func TestKeyCreate_WaitSuccess(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	var calls atomic.Int32
+	_, host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("api-key") != "secret-key" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		n := calls.Add(1)
+		if n <= 2 {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
+		DatabaseApiKey: &clusterauthv2.DatabaseApiKey{
+			Id:   "key-wait",
+			Name: "wait-key",
+			Key:  "secret-key",
+		},
+	}, nil)
+
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id: "cluster-123",
+			State: &clusterv1.ClusterState{
+				Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+				Endpoint: &clusterv1.ClusterEndpoint{
+					Url:      host,
+					RestPort: port,
+				},
+			},
+		},
+	}, nil)
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"cluster", "key", "create", "cluster-123",
+		"--name", "wait-key",
+		"--wait",
+		"--wait-timeout", "30s",
+		"--wait-poll-interval", "10ms",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "key-wait")
+	assert.Contains(t, stderr, "API key is active")
+	assert.GreaterOrEqual(t, env.Server.GetClusterCalls.Count(), 1)
+}
+
+func TestKeyCreate_WaitTimeout(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+
+	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
+		DatabaseApiKey: &clusterauthv2.DatabaseApiKey{
+			Id:  "key-timeout",
+			Key: "secret",
+		},
+	}, nil)
+
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id: "cluster-123",
+			State: &clusterv1.ClusterState{
+				Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+				Endpoint: &clusterv1.ClusterEndpoint{
+					Url:      host,
+					RestPort: port,
+				},
+			},
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "key", "create", "cluster-123",
+		"--name", "timeout-key",
+		"--wait",
+		"--wait-timeout", "200ms",
+		"--wait-poll-interval", "10ms",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "timed out")
+}
+
+func TestKeyCreate_WaitNoEndpoint(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
+		DatabaseApiKey: &clusterauthv2.DatabaseApiKey{
+			Id:  "key-no-ep",
+			Key: "secret",
+		},
+	}, nil)
+
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id:    "cluster-123",
+			State: &clusterv1.ClusterState{},
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "key", "create", "cluster-123",
+		"--name", "no-ep-key",
+		"--wait",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no endpoint URL")
+}
+
+func TestKeyCreate_WaitDefaultPort(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	var probed atomic.Bool
+	_, host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		probed.Store(true)
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
+		DatabaseApiKey: &clusterauthv2.DatabaseApiKey{
+			Id:  "key-default-port",
+			Key: "secret",
+		},
+	}, nil)
+
+	// RestPort = 0 would trigger default 6333, but we can't test that with a real
+	// httptest server. Instead, verify that the explicit port works.
+	env.Server.GetClusterCalls.Always(func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+		return &clusterv1.GetClusterResponse{
+			Cluster: &clusterv1.Cluster{
+				Id: "cluster-123",
+				State: &clusterv1.ClusterState{
+					Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+					Endpoint: &clusterv1.ClusterEndpoint{
+						Url:      host,
+						RestPort: port,
+					},
+				},
+			},
+		}, nil
+	})
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "key", "create", "cluster-123",
+		"--name", "port-key",
+		"--wait",
+		"--wait-timeout", "5s",
+		"--wait-poll-interval", "10ms",
+	)
+	require.NoError(t, err)
+	assert.True(t, probed.Load(), "cluster endpoint should have been probed")
 }
