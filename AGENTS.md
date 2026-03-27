@@ -18,6 +18,7 @@ internal/
   cmd/                   # one sub-package per top-level subcommand
     cluster/             # cluster.go (parent) + list/describe/create/delete
     version/             # version subcommand
+    clusterutil/         # shared cluster helpers (e.g. wait-for-healthy)
     output/              # shared output formatting helpers
     util/                # shared command utilities
   qcloudapi/             # gRPC client wrapper for the Qdrant Cloud API
@@ -168,4 +169,34 @@ base.Cmd{
 - JSON output is handled automatically by all base types — never call `output.PrintJSON` yourself.
 - Always read flags via `cmd.Flags().GetString()` etc. in `Run`/`Update`; do not use cobra bound variables.
 - Use `util.ExactArgs(n, "description")` instead of `cobra.ExactArgs` for better error messages.
+
+### Proto enum pretty printing (`internal/cmd/output/`)
+
+All TrimPrefix-based enum formatters live in `internal/cmd/output/`, grouped by proto package:
+
+| File | Functions |
+|------|-----------|
+| `output/cluster.go` | `ClusterPhase`, `ClusterNodeState`, `TolerationOperator`, `TolerationEffect` |
+| `output/booking.go` | `PackageTier` |
+| `output/hybrid.go` | `HybridEnvironmentPhase`, `ClusterCreationStatus`, `HybridComponentPhase` |
+| `output/backup.go` | `BackupStatus`, `BackupScheduleStatus`, `BackupRestoreStatus` |
+
+Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "PREFIX_")`. Functions are named after the type they format, without a redundant `String` suffix, since the package qualifier already provides context (`output.ClusterPhase(...)`).
+
+**Rules:**
+- Never inline `strings.TrimPrefix(x.String(), "PREFIX_")` in a cmd package. Add a function to the appropriate `output/*.go` file instead.
+- Never define a private `phaseString` / `statusString` / etc. helper in a cmd package for TrimPrefix formatting. These belong in `output`.
+- Switch-based format/parse pairs (`storageTierString`, `restartPolicyString`, etc.) encode semantic mappings paired with parse functions and belong with their cmd package, not in `output`.
+
+### Inline pointer literals
+
+Go 1.26 allows passing a literal directly to `new`, which returns a pointer to it. Use this wherever a pointer to a constant value is needed inline:
+
+```go
+req.MultiAz = new(true)
+req.Gpu    = new(false)
+cfg.Version = new("1.13.0")
+```
+
+Never add helper functions (`boolPtr`, `stringPtr`, `intPtr`, etc.) for this purpose — they are redundant.
 

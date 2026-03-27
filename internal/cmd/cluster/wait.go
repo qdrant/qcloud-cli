@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/clusterutil"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -44,7 +45,7 @@ qcloud cluster wait 7b2ea926-724b-4de2-b73a-8675c42a6ebe --timeout 30m`,
 
 			timeout, _ := cmd.Flags().GetDuration("timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("poll-interval")
-			cluster, err := waitForHealthyWithInterval(
+			cluster, err := clusterutil.WaitForClusterHealthy(
 				ctx, client.Cluster(), cmd.ErrOrStderr(),
 				accountID, args[0], timeout, pollInterval,
 			)

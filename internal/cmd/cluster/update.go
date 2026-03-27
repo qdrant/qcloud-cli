@@ -100,7 +100,12 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				return nil, fmt.Errorf("failed to get cluster: %w", err)
 			}
 
-			return resp.GetCluster(), nil
+			cluster := resp.GetCluster()
+			if cluster.GetCloudProviderId() == hybridCloudProviderID {
+				return nil, fmt.Errorf("cluster %s is a hybrid cloud cluster; use \"qcloud hybrid cluster update\" instead", args[0])
+			}
+
+			return cluster, nil
 		},
 		Update: func(s *state.State, cmd *cobra.Command, cluster *clusterv1.Cluster) (*clusterv1.Cluster, error) {
 			ctx := cmd.Context()
@@ -234,7 +239,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
-	_ = cmd.RegisterFlagCompletionFunc("version", versionCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("version", completion.VersionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("restart-mode", restartModeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("rebalance-strategy", rebalanceStrategyCompletion())
 	return cmd

@@ -65,7 +65,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			if next, ok := nextScheduleRun(sched.GetSchedule()); ok {
 				fmt.Fprintf(w, "Next Run:  %s  (%s)\n", output.HumanTime(next), output.FullDateTime(next))
 			}
-			fmt.Fprintf(w, "Status:    %s\n", scheduleStatusString(sched.GetStatus()))
+			fmt.Fprintf(w, "Status:    %s\n", output.BackupScheduleStatus(sched.GetStatus()))
 			if sched.GetCreatedAt() != nil {
 				t := sched.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:   %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))

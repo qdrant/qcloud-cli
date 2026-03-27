@@ -35,6 +35,14 @@ func DiffValue(oldVal, newVal string) string {
 	return oldVal + " => " + newVal
 }
 
+// BoolYesNo formats a bool as "yes" or "no".
+func BoolYesNo(v bool) string {
+	if v {
+		return "yes"
+	}
+	return "no"
+}
+
 // OptionalValue formats an optional pointer value as a string.
 // Returns fallback for nil pointers. Supports any pointer type.
 // Booleans are formatted as "yes"/"no"; all other types use their default format.

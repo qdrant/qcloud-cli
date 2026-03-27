@@ -10,7 +10,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-// CloudProviderCompletion returns a completion function for the --cloud-provider flag.
+// CloudProviderCompletion returns a completion function for the --cloud-provider flag. It skips the 'hybrid' cloud,
+// as this flag is meant to be used for cloud clusters, not hybrid ones.
 func CloudProviderCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		ctx := cmd.Context()
@@ -33,6 +34,9 @@ func CloudProviderCompletion(s *state.State) func(*cobra.Command, []string, stri
 
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, p := range resp.GetItems() {
+			if p.GetId() == "hybrid" {
+				continue
+			}
 			completions = append(completions, p.GetId()+"\t"+p.GetName())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
@@ -129,7 +133,34 @@ func ClusterIDCompletion(s *state.State) func(*cobra.Command, []string, string) 
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{
+		clusters, err := client.Cluster().ListCloudClusters(ctx, accountID)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(clusters))
+		for _, c := range clusters {
+			completions = append(completions, c.GetId()+"\t"+c.GetName())
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// VersionCompletion returns a completion function for the --version flag.
+func VersionCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.Cluster().ListQdrantReleases(ctx, &clusterv1.ListQdrantReleasesRequest{
 			AccountId: accountID,
 		})
 		if err != nil {
@@ -137,8 +168,31 @@ func ClusterIDCompletion(s *state.State) func(*cobra.Command, []string, string) 
 		}
 
 		completions := make([]string, 0, len(resp.GetItems()))
-		for _, c := range resp.GetItems() {
-			completions = append(completions, c.GetId()+"\t"+c.GetName())
+		for _, r := range resp.GetItems() {
+			if r.GetUnavailable() {
+				continue
+			}
+			desc := ""
+			if r.GetDefault() {
+				desc += "(default)"
+			}
+			if r.GetEndOfLife() {
+				if desc != "" {
+					desc += " "
+				}
+				desc += "(end of life)"
+			}
+			if remarks := r.GetRemarks(); remarks != "" {
+				if desc != "" {
+					desc += " "
+				}
+				desc += remarks
+			}
+			entry := r.GetVersion()
+			if desc != "" {
+				entry += "\t" + desc
+			}
+			completions = append(completions, entry)
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}

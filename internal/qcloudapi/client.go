@@ -11,17 +11,19 @@ import (
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 )
 
 // Client wraps a gRPC connection to the Qdrant Cloud API.
 type Client struct {
 	conn           *grpc.ClientConn
-	cluster        clusterv1.ClusterServiceClient
+	cluster        *ClusterClient
 	booking        bookingv1.BookingServiceClient
 	platform       platformv1.PlatformServiceClient
 	databaseApiKey clusterauthv2.DatabaseApiKeyServiceClient
 	backup         backupv1.BackupServiceClient
+	hybrid         hybridv1.HybridCloudServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -46,16 +48,17 @@ func NewWithDialOptions(endpoint, apiKey string, opts ...grpc.DialOption) (*Clie
 func newFromConn(conn *grpc.ClientConn) *Client {
 	return &Client{
 		conn:           conn,
-		cluster:        clusterv1.NewClusterServiceClient(conn),
+		cluster:        &ClusterClient{ClusterServiceClient: clusterv1.NewClusterServiceClient(conn)},
 		booking:        bookingv1.NewBookingServiceClient(conn),
 		platform:       platformv1.NewPlatformServiceClient(conn),
 		databaseApiKey: clusterauthv2.NewDatabaseApiKeyServiceClient(conn),
 		backup:         backupv1.NewBackupServiceClient(conn),
+		hybrid:         hybridv1.NewHybridCloudServiceClient(conn),
 	}
 }
 
 // Cluster returns the ClusterService gRPC client.
-func (c *Client) Cluster() clusterv1.ClusterServiceClient {
+func (c *Client) Cluster() *ClusterClient {
 	return c.cluster
 }
 
@@ -77,6 +80,11 @@ func (c *Client) DatabaseApiKey() clusterauthv2.DatabaseApiKeyServiceClient {
 // Backup returns the BackupService gRPC client.
 func (c *Client) Backup() backupv1.BackupServiceClient {
 	return c.backup
+}
+
+// Hybrid returns the HybridCloudService gRPC client.
+func (c *Client) Hybrid() hybridv1.HybridCloudServiceClient {
+	return c.hybrid
 }
 
 // Close closes the underlying gRPC connection.

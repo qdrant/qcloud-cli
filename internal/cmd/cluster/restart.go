@@ -9,6 +9,7 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/clusterutil"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -71,7 +72,7 @@ qcloud cluster restart 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force --wait`,
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			waitPollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Cluster %s restarting, waiting for it to become healthy...\n", clusterID)
-			cluster, err := waitForHealthyWithInterval(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, clusterID, waitTimeout, waitPollInterval)
+			cluster, err := clusterutil.WaitForClusterHealthy(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, clusterID, waitTimeout, waitPollInterval)
 			if err != nil {
 				return err
 			}

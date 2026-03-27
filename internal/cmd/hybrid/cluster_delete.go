@@ -1,4 +1,4 @@
-package cluster
+package hybrid
 
 import (
 	"fmt"
@@ -8,22 +8,22 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
-	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-func newDeleteCommand(s *state.State) *cobra.Command {
+func newClusterDeleteCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
-		Example: `# Delete a cluster (prompts for confirmation)
-qcloud cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+		ValidArgsFunction: hybridClusterIDCompletion(s),
+		Example: `# Delete a hybrid cloud cluster (prompts for confirmation)
+qcloud hybrid cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe
 
 # Delete without confirmation
-qcloud cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
+qcloud hybrid cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <cluster-id>",
-				Short: "Delete a cluster",
+				Short: "Delete a cluster in a hybrid cloud environment",
 				Args:  util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
@@ -51,8 +51,8 @@ qcloud cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 				return fmt.Errorf("failed to get cluster: %w", err)
 			}
 
-			if resp.GetCluster().GetCloudProviderId() == hybridCloudProviderID {
-				return fmt.Errorf("cluster %s is a hybrid cloud cluster; use \"qcloud hybrid cluster delete\" instead", clusterID)
+			if resp.GetCluster().GetCloudProviderId() != hybridCloudProviderID {
+				return fmt.Errorf("cluster %s is not a hybrid cloud cluster; use \"qcloud cluster delete\" instead", clusterID)
 			}
 
 			force, _ := cmd.Flags().GetBool("force")
@@ -72,6 +72,5 @@ qcloud cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 			fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s deleted.\n", clusterID)
 			return nil
 		},
-		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 }
