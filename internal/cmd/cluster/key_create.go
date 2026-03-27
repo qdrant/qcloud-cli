@@ -141,6 +141,14 @@ func newKeyProbe(
 	clusterSvc clusterv1.ClusterServiceClient,
 	accountID, clusterID, apiKey string,
 ) func(ctx context.Context) error {
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 5 * time.Second,
+		},
+	}
+
 	return func(ctx context.Context) error {
 		clusterResp, err := clusterSvc.GetCluster(ctx, &clusterv1.GetClusterRequest{
 			AccountId: accountID,
@@ -166,7 +174,7 @@ func newKeyProbe(
 			return err
 		}
 		req.Header.Set("api-key", apiKey)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := httpClient.Do(req)
 		if err != nil {
 			return err
 		}
