@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.14.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.14.0)
+
+### Features
+
+- add --wait flag to cluster key create command (#73)
+
 ## [v0.13.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.13.0)
 
 ### Features
