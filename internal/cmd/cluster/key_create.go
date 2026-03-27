@@ -135,6 +135,8 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 	}.CobraCommand(s)
 }
 
+const defaultQdrantRESTPort = 6333
+
 func newKeyProbe(
 	clusterSvc clusterv1.ClusterServiceClient,
 	accountID, clusterID, apiKey string,
@@ -155,7 +157,7 @@ func newKeyProbe(
 
 		port := ep.GetRestPort()
 		if port == 0 {
-			port = 6333
+			port = defaultQdrantRESTPort
 		}
 		endpointURL := fmt.Sprintf("%s:%d", ep.GetUrl(), port)
 
