@@ -41,10 +41,10 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().Uint32("nodes", 1, "Number of nodes")
 			cmd.Flags().String("version", "", "Qdrant version (default latest)")
 			cmd.Flags().String("service-type", "", `Kubernetes service type ("cluster-ip", "node-port", "load-balancer")`)
-			cmd.Flags().StringArray("node-selector", nil, "Node selector label ('key=value'), can be specified multiple times (max 10)")
-			cmd.Flags().StringArray("annotation", nil, "Annotation ('key=value'), can be specified multiple times (max 10)")
-			cmd.Flags().StringArray("pod-label", nil, "Pod label ('key=value'), can be specified multiple times (max 10)")
-			cmd.Flags().StringArray("service-annotation", nil, "Service annotation ('key=value'), can be specified multiple times (max 64)")
+			cmd.Flags().StringArray("node-selector", nil, "Node selector label ('key=value'), can be specified multiple times")
+			cmd.Flags().StringArray("annotation", nil, "Annotation ('key=value'), can be specified multiple times")
+			cmd.Flags().StringArray("pod-label", nil, "Pod label ('key=value'), can be specified multiple times")
+			cmd.Flags().StringArray("service-annotation", nil, "Service annotation ('key=value'), can be specified multiple times")
 			cmd.Flags().Uint32("reserved-cpu-percentage", 0, "Percentage of CPU reserved for system components, 1-80 (default 20)")
 			cmd.Flags().Uint32("reserved-memory-percentage", 0, "Percentage of memory reserved for system components, 1-80 (default 20)")
 			cmd.Flags().StringArray("toleration", nil, "Toleration ('key=value:Effect' or 'key:Exists:Effect'), can be specified multiple times")
@@ -127,9 +127,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			// Hybrid-specific cluster configuration fields (set directly on ClusterConfiguration)
 			if cmd.Flags().Changed("node-selector") {
 				raw, _ := cmd.Flags().GetStringArray("node-selector")
-				if len(raw) > 10 {
-					return nil, fmt.Errorf("--node-selector: maximum 10 entries allowed, got %d", len(raw))
-				}
 				changes, err := util.ParseLabels(raw)
 				if err != nil {
 					return nil, fmt.Errorf("--node-selector: %w", err)
@@ -141,9 +138,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 
 			if cmd.Flags().Changed("annotation") {
 				raw, _ := cmd.Flags().GetStringArray("annotation")
-				if len(raw) > 10 {
-					return nil, fmt.Errorf("--annotation: maximum 10 entries allowed, got %d", len(raw))
-				}
 				changes, err := util.ParseLabels(raw)
 				if err != nil {
 					return nil, fmt.Errorf("--annotation: %w", err)
@@ -155,9 +149,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 
 			if cmd.Flags().Changed("pod-label") {
 				raw, _ := cmd.Flags().GetStringArray("pod-label")
-				if len(raw) > 10 {
-					return nil, fmt.Errorf("--pod-label: maximum 10 entries allowed, got %d", len(raw))
-				}
 				changes, err := util.ParseLabels(raw)
 				if err != nil {
 					return nil, fmt.Errorf("--pod-label: %w", err)
@@ -169,9 +160,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 
 			if cmd.Flags().Changed("service-annotation") {
 				raw, _ := cmd.Flags().GetStringArray("service-annotation")
-				if len(raw) > 64 {
-					return nil, fmt.Errorf("--service-annotation: maximum 64 entries allowed, got %d", len(raw))
-				}
 				changes, err := util.ParseLabels(raw)
 				if err != nil {
 					return nil, fmt.Errorf("--service-annotation: %w", err)
