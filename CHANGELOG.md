@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.15.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.15.0)
+
+### Features
+
+- hybrid cloud environments command initial implementation (#68)
+
 ## [v0.14.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.14.0)
 
 ### Features
