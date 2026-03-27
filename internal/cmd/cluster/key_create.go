@@ -142,7 +142,6 @@ func newKeyProbe(
 	accountID, clusterID, apiKey string,
 ) func(ctx context.Context) error {
 	httpClient := &http.Client{
-		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
 			TLSHandshakeTimeout:   5 * time.Second,
 			ResponseHeaderTimeout: 5 * time.Second,
