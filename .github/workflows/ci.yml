@@ -21,7 +21,7 @@ jobs:
       - name: Set up tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
         with:
-          version: 2026.3.8 # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.3.8
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
@@ -38,7 +38,7 @@ jobs:
       - name: Set up tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
         with:
-          version: 2026.3.8 # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.3.8
 
       - name: Run tests
         run: go test -coverpkg=./internal/... -coverprofile=build/coverage.txt -v -race ./...
@@ -52,7 +52,7 @@ jobs:
       - name: Set up tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
         with:
-          version: 2026.3.8 # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.3.8
 
       - name: Run go mod tidy
         run: go mod tidy
