@@ -140,22 +140,22 @@ func TestKeyCreate_NoWait(t *testing.T) {
 
 // clusterEndpoint starts an httptest server and returns (server, schemeHost, port).
 // The caller is responsible for closing the server.
-func clusterEndpoint(t *testing.T, handler http.Handler) (ts *httptest.Server, host string, port int32) {
+func clusterEndpoint(t *testing.T, handler http.Handler) (host string, port int32) {
 	t.Helper()
-	ts = httptest.NewServer(handler)
+	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 	u, err := url.Parse(ts.URL)
 	require.NoError(t, err)
 	p, err := strconv.Atoi(u.Port())
 	require.NoError(t, err)
-	return ts, fmt.Sprintf("http://%s", u.Hostname()), int32(p)
+	return fmt.Sprintf("http://%s", u.Hostname()), int32(p)
 }
 
 func TestKeyCreate_WaitSuccess(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	var calls atomic.Int32
-	_, host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("api-key") != "secret-key" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -205,7 +205,7 @@ func TestKeyCreate_WaitSuccess(t *testing.T) {
 func TestKeyCreate_WaitTimeout(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	_, host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 	}))
 
@@ -270,7 +270,7 @@ func TestKeyCreate_WaitDefaultPort(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	var probed atomic.Bool
-	_, host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		probed.Store(true)
 		w.WriteHeader(http.StatusOK)
 	}))

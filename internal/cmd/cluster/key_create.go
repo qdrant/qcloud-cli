@@ -165,7 +165,7 @@ func newKeyProbe(endpointURL, apiKey string) func(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck // best-effort close on a read-only probe
 		_, _ = io.Copy(io.Discard, resp.Body)
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return nil
