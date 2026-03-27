@@ -240,7 +240,7 @@ func TestKeyCreate_WaitTimeout(t *testing.T) {
 	assert.Contains(t, err.Error(), "timed out")
 }
 
-func TestKeyCreate_WaitNoEndpoint(t *testing.T) {
+func TestKeyCreate_WaitNoEndpoint_TimesOut(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
@@ -257,13 +257,77 @@ func TestKeyCreate_WaitNoEndpoint(t *testing.T) {
 		},
 	}, nil)
 
-	_, _, err := testutil.Exec(t, env,
+	_, stderr, err := testutil.Exec(t, env,
 		"cluster", "key", "create", "cluster-123",
 		"--name", "no-ep-key",
 		"--wait",
+		"--wait-timeout", "200ms",
+		"--wait-poll-interval", "10ms",
 	)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no endpoint URL")
+	assert.Contains(t, err.Error(), "timed out")
+	assert.Contains(t, stderr, "waiting for API key")
+}
+
+func TestKeyCreate_WaitEndpointAppearsMidPoll(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	host, port := clusterEndpoint(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
+		DatabaseApiKey: &clusterauthv2.DatabaseApiKey{
+			Id:   "key-delayed-ep",
+			Name: "delayed-ep-key",
+			Key:  "secret",
+		},
+	}, nil)
+
+	// First two GetCluster calls return no endpoint, then it appears.
+	env.Server.GetClusterCalls.
+		OnCall(0, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:    "cluster-123",
+					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
+				},
+			}, nil
+		}).
+		OnCall(1, func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:    "cluster-123",
+					State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_CREATING},
+				},
+			}, nil
+		}).
+		Always(func(_ context.Context, _ *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id: "cluster-123",
+					State: &clusterv1.ClusterState{
+						Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY,
+						Endpoint: &clusterv1.ClusterEndpoint{
+							Url:      host,
+							RestPort: port,
+						},
+					},
+				},
+			}, nil
+		})
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"cluster", "key", "create", "cluster-123",
+		"--name", "delayed-ep-key",
+		"--wait",
+		"--wait-timeout", "30s",
+		"--wait-poll-interval", "10ms",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "key-delayed-ep")
+	assert.Contains(t, stderr, "API key is active")
+	assert.GreaterOrEqual(t, env.Server.GetClusterCalls.Count(), 3)
 }
 
 func TestKeyCreate_WaitDefaultPort(t *testing.T) {

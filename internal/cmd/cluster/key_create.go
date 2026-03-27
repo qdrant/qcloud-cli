@@ -112,30 +112,11 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 				return resp.GetDatabaseApiKey(), nil
 			}
 
-			clusterResp, err := client.Cluster().GetCluster(ctx, &clusterv1.GetClusterRequest{
-				AccountId: accountID,
-				ClusterId: clusterID,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to get cluster endpoint: %w", err)
-			}
-
-			ep := clusterResp.GetCluster().GetState().GetEndpoint()
-			if ep == nil || ep.GetUrl() == "" {
-				return nil, fmt.Errorf("cluster %s has no endpoint URL", clusterID)
-			}
-
-			port := ep.GetRestPort()
-			if port == 0 {
-				port = 6333
-			}
-			endpointURL := fmt.Sprintf("%s:%d", ep.GetUrl(), port)
-
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 
 			fmt.Fprintf(cmd.ErrOrStderr(), "API key created, waiting for it to become active on the cluster...\n")
-			probe := newKeyProbe(endpointURL, resp.GetDatabaseApiKey().GetKey())
+			probe := newKeyProbe(client.Cluster(), accountID, clusterID, resp.GetDatabaseApiKey().GetKey())
 			if err := waitForKeyReady(ctx, cmd.ErrOrStderr(), probe, waitTimeout, pollInterval); err != nil {
 				return nil, err
 			}
@@ -154,8 +135,30 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 	}.CobraCommand(s)
 }
 
-func newKeyProbe(endpointURL, apiKey string) func(ctx context.Context) error {
+func newKeyProbe(
+	clusterSvc clusterv1.ClusterServiceClient,
+	accountID, clusterID, apiKey string,
+) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
+		clusterResp, err := clusterSvc.GetCluster(ctx, &clusterv1.GetClusterRequest{
+			AccountId: accountID,
+			ClusterId: clusterID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to get cluster: %w", err)
+		}
+
+		ep := clusterResp.GetCluster().GetState().GetEndpoint()
+		if ep == nil || ep.GetUrl() == "" {
+			return fmt.Errorf("cluster %s has no endpoint yet", clusterID)
+		}
+
+		port := ep.GetRestPort()
+		if port == 0 {
+			port = 6333
+		}
+		endpointURL := fmt.Sprintf("%s:%d", ep.GetUrl(), port)
+
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpointURL, nil)
 		if err != nil {
 			return err
