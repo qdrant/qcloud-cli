@@ -45,11 +45,13 @@ func waitForKeyReady(
 		}
 
 		elapsed := time.Since(start).Round(time.Second)
-		if err := probe(ctx); err == nil {
-			fmt.Fprintf(out, "API key is active (%s)\n", elapsed)
-			return nil
+		err := probe(ctx)
+		if err != nil {
+			fmt.Fprintf(out, "waiting for API key... %v (%s)\n", err, elapsed)
+			continue
 		}
-		fmt.Fprintf(out, "waiting for API key... (%s)\n", elapsed)
+		fmt.Fprintf(out, "API key is active (%s)\n", elapsed)
+		return nil
 	}
 }
 

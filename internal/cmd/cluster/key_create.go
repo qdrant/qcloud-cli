@@ -173,6 +173,6 @@ func newKeyProbe(
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return nil
 		}
-		return fmt.Errorf("HTTP %d", resp.StatusCode)
+		return fmt.Errorf("cluster endpoint responded with HTTP %d at %s", resp.StatusCode, endpointURL)
 	}
 }
