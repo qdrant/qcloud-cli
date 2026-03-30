@@ -2,3 +2,6 @@
 go = "1.26.0"
 "github:golangci/golangci-lint" = "2.11.3"
 "github:goreleaser/goreleaser" = "v2.14.3"
+
+[settings]
+lockfile = true

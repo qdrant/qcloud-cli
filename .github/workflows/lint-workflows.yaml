@@ -20,4 +20,3 @@ jobs:
         with:
           persona: regular
           min-severity: medium
-          config: .zizmor.yml
