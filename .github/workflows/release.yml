@@ -17,6 +17,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # zizmor: ignore[cache-poisoning] -- mise verifies tool checksums via mise.lock
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           version: 2026.3.8
