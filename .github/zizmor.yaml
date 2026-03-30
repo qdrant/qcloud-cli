@@ -1,0 +1,4 @@
+rules:
+  cache-poisoning:
+    ignore:
+      - release.yml # cache poisoning on mise is handled with a lockfile
