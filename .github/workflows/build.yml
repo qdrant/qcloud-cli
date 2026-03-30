@@ -23,7 +23,7 @@ jobs:
       - name: Set up tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
         with:
-          version: 2026.3.8 # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.3.8
 
       - name: Run GoReleaser
         run: goreleaser release --clean --snapshot
