@@ -24,4 +24,4 @@ jobs:
       - name: Run GoReleaser
         run: goreleaser release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
