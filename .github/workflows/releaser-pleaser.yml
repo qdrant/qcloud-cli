@@ -3,7 +3,7 @@ name: releaser-pleaser
 on:
   push:
     branches: [main]
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types:
       - edited
       - labeled
@@ -23,6 +23,6 @@ jobs:
       - name: releaser-pleaser
         uses: apricote/releaser-pleaser@a1ce9493fd3f3abe60f22c37249d257bc10081dc # v0.8.0
         with:
-          token: ${{ secrets.RELEASER_PLEASER_TOKEN }}
+          token: ${{ secrets.RELEASER_PLEASER_TOKEN }} # zizmor: ignore[secrets-outside-env]
           extra-files: |
             cmd/qcloud/main.go
