@@ -61,9 +61,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().Uint32("reserved-memory-percentage", 0, "Percentage of memory reserved for system components, 1-80 (default 20)")
 			cmd.Flags().StringArray("toleration", nil, "Toleration ('key=value:Effect' or 'key:Exists:Effect'), can be specified multiple times")
 			cmd.Flags().StringArray("label", nil, "Cluster label ('key=value'), can be specified multiple times")
-			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
 			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
 			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
@@ -71,7 +68,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().StringArray("allowed-ip", nil, "Allowed client IP CIDR ranges; max 20")
 			cmd.Flags().String("restart-policy", "", `Restart policy ("rolling", "parallel", "automatic")`)
 			cmd.Flags().String("rebalance-strategy", "", `Rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
-			cmd.Flags().String("gpu-type", "", `GPU type ("nvidia", "amd")`)
 			cmd.Flags().StringArray("topology-spread-constraint", nil, "Topology spread constraint ('topologyKey[:maxSkew[:whenUnsatisfiable]]'), can be specified multiple times")
 			cmd.Flags().String("database-storage-class", "", "Kubernetes storage class for database volumes")
 			cmd.Flags().String("snapshot-storage-class", "", "Kubernetes storage class for snapshot volumes")
@@ -93,6 +89,9 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().Uint32("audit-log-max-files", 0, "Maximum number of audit log files (1-1000)")
 			cmd.Flags().Bool("audit-log-trust-forwarded-headers", false, "Trust forwarded headers in audit logs")
 			cmd.Flags().String("cost-allocation-label", "", "Label for billing reports")
+			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
+			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
+			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
 			_ = cmd.Flags().MarkHidden("wait-poll-interval")
 			return cmd
 		},
@@ -149,43 +148,41 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 
 			var pkg *bookingv1.Package
 
-			if packageValue != "" || cpuChanged || ramChanged {
-				if packageValue != "" {
-					if util.IsUUID(packageValue) {
-						cluster.Configuration.PackageId = packageValue
-						if cmd.Flags().Changed("disk") {
-							pkg, err = clusterutil.ResolvePackageByID(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, packageValue)
-							if err != nil {
-								return nil, err
-							}
-						}
-					} else {
-						pkg, err = clusterutil.ResolvePackageByName(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, packageValue)
+			if packageValue != "" {
+				if util.IsUUID(packageValue) {
+					cluster.Configuration.PackageId = packageValue
+					if cmd.Flags().Changed("disk") {
+						pkg, err = clusterutil.ResolvePackageByID(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, packageValue)
 						if err != nil {
 							return nil, err
 						}
-						cluster.Configuration.PackageId = pkg.GetId()
 					}
 				} else {
-					var cpu resource.Millicores
-					var ram resource.ByteQuantity
-					if cpuChanged {
-						cpu = *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
-					}
-					if ramChanged {
-						ram = *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
-					}
-					pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), clusterutil.PackageResourceQuery{
-						AccountID:     accountID,
-						CloudProvider: qcloudapi.HybridCloudProviderID,
-						CPU:           cpu,
-						RAM:           ram,
-					})
+					pkg, err = clusterutil.ResolvePackageByName(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, packageValue)
 					if err != nil {
 						return nil, err
 					}
 					cluster.Configuration.PackageId = pkg.GetId()
 				}
+			} else {
+				var cpu resource.Millicores
+				var ram resource.ByteQuantity
+				if cpuChanged {
+					cpu = *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
+				}
+				if ramChanged {
+					ram = *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
+				}
+				pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), clusterutil.PackageResourceQuery{
+					AccountID:     accountID,
+					CloudProvider: qcloudapi.HybridCloudProviderID,
+					CPU:           cpu,
+					RAM:           ram,
+				})
+				if err != nil {
+					return nil, err
+				}
+				cluster.Configuration.PackageId = pkg.GetId()
 			}
 
 			// Disk calculation
