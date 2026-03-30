@@ -187,14 +187,13 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 			}
 
 			// Database configuration flags
-			if cmd.Flags().Changed("replication-factor") || cmd.Flags().Changed("write-consistency-factor") ||
-				cmd.Flags().Changed("async-scorer") || cmd.Flags().Changed("optimizer-cpu-budget") {
+			if util.AnyFlagChanged(cmd, []string{"replication-factor", "write-consistency-factor", "async-scorer", "optimizer-cpu-budget"}) {
 				if cluster.Configuration.DatabaseConfiguration == nil {
 					cluster.Configuration.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}
 				}
 				dbCfg := cluster.Configuration.DatabaseConfiguration
 
-				if cmd.Flags().Changed("replication-factor") || cmd.Flags().Changed("write-consistency-factor") {
+				if util.AnyFlagChanged(cmd, []string{"replication-factor", "write-consistency-factor"}) {
 					if dbCfg.Collection == nil {
 						dbCfg.Collection = &clusterv1.DatabaseConfigurationCollection{}
 					}
@@ -208,7 +207,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					}
 				}
 
-				if cmd.Flags().Changed("async-scorer") || cmd.Flags().Changed("optimizer-cpu-budget") {
+				if util.AnyFlagChanged(cmd, []string{"async-scorer", "optimizer-cpu-budget"}) {
 					if dbCfg.Storage == nil {
 						dbCfg.Storage = &clusterv1.DatabaseConfigurationStorage{}
 					}
