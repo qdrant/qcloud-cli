@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -22,6 +23,13 @@ func ConfirmAction(force bool, w io.Writer, prompt string) bool {
 	answer, _ := reader.ReadString('\n')
 	answer = strings.TrimSpace(strings.ToLower(answer))
 	return answer == "y" || answer == "yes"
+}
+
+// AnyFlagChanged reports whether any flag in the given list was set by the user.
+func AnyFlagChanged(cmd *cobra.Command, flags []string) bool {
+	return slices.ContainsFunc(flags, func(f string) bool {
+		return cmd.Flags().Changed(f)
+	})
 }
 
 // ExactArgs returns a PositionalArgs that requires exactly n args with a descriptive error.
