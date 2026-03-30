@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/clusterutil"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
+	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
+	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -22,6 +25,15 @@ func newClusterCreateCommand(s *state.State) *cobra.Command {
 		ValidArgsFunction: envIDCompletion(s),
 		Example: `# Create a cluster with defaults
 qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Create a cluster with a specific package
+qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe --package my-package
+
+# Create a cluster by CPU and RAM
+qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe --cpu 2 --ram 8Gi
+
+# Create with extra disk beyond the package default
+qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe --cpu 4 --ram 32Gi --disk 200Gi
 
 # Create a named 3-node cluster and wait for it to become healthy
 qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
@@ -65,7 +77,11 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().String("snapshot-storage-class", "", "Kubernetes storage class for snapshot volumes")
 			cmd.Flags().String("volume-snapshot-class", "", "Kubernetes volume snapshot class")
 			cmd.Flags().String("volume-attributes-class", "", "Kubernetes volume attributes class")
-			cmd.Flags().Uint32("additional-disk", 0, "Additional disk in GiB")
+			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list --cloud-provider hybrid')")
+			cmd.Flags().Var(new(resource.Millicores), "cpu", `CPU to select a package (e.g. "1", "0.5", or "1000m")`)
+			cmd.Flags().Var(new(resource.ByteQuantity), "ram", `RAM to select a package (e.g. "8", "8G", "8Gi", or "8GiB")`)
+			cmd.Flags().Var(new(resource.ByteQuantity), "disk", `Total disk size (e.g. "200GiB"); if larger than the package's included disk, the difference is provisioned as additional storage`)
+			cmd.Flags().Var(new(resource.Millicores), "gpu", `Number of GPUs to select a package (e.g. "1", "2", or "1000m")`)
 			cmd.Flags().String("db-log-level", "", `Database log level ("trace", "debug", "info", "warn", "error", "off")`)
 			cmd.Flags().Bool("vectors-on-disk", false, "Store vectors in memmap storage")
 			cmd.Flags().Bool("enable-tls", false, "Enable TLS for the database service")
@@ -112,7 +128,7 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cluster := &clusterv1.Cluster{
 				AccountId:             accountID,
 				Name:                  name,
-				CloudProviderId:       "hybrid",
+				CloudProviderId:       qcloudapi.HybridCloudProviderID,
 				CloudProviderRegionId: envID,
 				Configuration: &clusterv1.ClusterConfiguration{
 					NumberOfNodes: nodes,
@@ -121,6 +137,69 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 
 			if version != "" {
 				cluster.Configuration.Version = &version
+			}
+
+			// Package resolution
+			packageValue, _ := cmd.Flags().GetString("package")
+			cpuChanged := cmd.Flags().Changed("cpu")
+			ramChanged := cmd.Flags().Changed("ram")
+
+			if packageValue != "" && (cpuChanged || ramChanged) {
+				return nil, fmt.Errorf("--package and --cpu/--ram are mutually exclusive")
+			}
+
+			var pkg *bookingv1.Package
+
+			if packageValue != "" || cpuChanged || ramChanged {
+				if packageValue != "" {
+					if util.IsUUID(packageValue) {
+						cluster.Configuration.PackageId = packageValue
+						if cmd.Flags().Changed("disk") {
+							pkg, err = clusterutil.ResolvePackageByID(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, packageValue)
+							if err != nil {
+								return nil, err
+							}
+						}
+					} else {
+						pkg, err = clusterutil.ResolvePackageByName(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, packageValue)
+						if err != nil {
+							return nil, err
+						}
+						cluster.Configuration.PackageId = pkg.GetId()
+					}
+				} else {
+					var cpu resource.Millicores
+					var ram resource.ByteQuantity
+					var gpu resource.Millicores
+					if cpuChanged {
+						cpu = *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
+					}
+					if ramChanged {
+						ram = *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
+					}
+					if cmd.Flags().Changed("gpu") {
+						gpu = *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
+					}
+					pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, cpu, gpu, ram, false)
+					if err != nil {
+						return nil, err
+					}
+					cluster.Configuration.PackageId = pkg.GetId()
+				}
+			}
+
+			// Disk calculation
+			if cmd.Flags().Changed("disk") && pkg != nil {
+				requestedDisk := *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
+				additionalDisk, err := clusterutil.CalculateAdditionalDisk(requestedDisk, pkg)
+				if err != nil {
+					return nil, err
+				}
+				if additionalDisk > 0 {
+					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
+						Disk: additionalDisk,
+					}
+				}
 			}
 
 			// Labels
@@ -271,11 +350,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 					v, _ := cmd.Flags().GetString("volume-attributes-class")
 					sc.VolumeAttributesClass = &v
 				}
-			}
-
-			if cmd.Flags().Changed("additional-disk") {
-				v, _ := cmd.Flags().GetUint32("additional-disk")
-				cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{Disk: v}
 			}
 
 			if cmd.Flags().Changed("cost-allocation-label") {
@@ -445,6 +519,12 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			fmt.Fprintf(out, "Cluster %s (%s) created.\n", created.GetId(), created.GetName())
 		},
 	}.CobraCommand(s)
+	hybridProviderFn := func(_ *cobra.Command) (string, *string) { return qcloudapi.HybridCloudProviderID, nil }
+	_ = cmd.RegisterFlagCompletionFunc("package", completion.PackageNameCompletion(s, hybridProviderFn))
+	_ = cmd.RegisterFlagCompletionFunc("cpu", completion.CPUCompletion(s, hybridProviderFn))
+	_ = cmd.RegisterFlagCompletionFunc("ram", completion.RAMCompletion(s, hybridProviderFn))
+	_ = cmd.RegisterFlagCompletionFunc("disk", completion.DiskCompletion(s, hybridProviderFn))
+	_ = cmd.RegisterFlagCompletionFunc("gpu", completion.GPUCompletion(s, hybridProviderFn))
 	_ = cmd.RegisterFlagCompletionFunc("service-type", serviceTypeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("version", completion.VersionCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("restart-policy", restartPolicyCompletion())

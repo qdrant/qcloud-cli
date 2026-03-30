@@ -14,6 +14,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
+	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -91,7 +92,7 @@ qcloud hybrid cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --optimizer-cp
 			}
 
 			cluster := resp.GetCluster()
-			if cluster.GetCloudProviderId() != hybridCloudProviderID {
+			if cluster.GetCloudProviderId() != qcloudapi.HybridCloudProviderID {
 				return nil, fmt.Errorf("cluster %s is not a hybrid cloud cluster; use \"qcloud cluster update\" instead", args[0])
 			}
 

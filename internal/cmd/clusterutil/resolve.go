@@ -1,25 +1,101 @@
-package cluster
+package clusterutil
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/resource"
+	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-// resolvePackageByID fetches a single package by its UUID.
-func resolvePackageByID(
+// PackageFilter holds the parameters for filtering packages.
+// Zero values for CPU/RAM/GPU mean "do not filter on that dimension".
+type PackageFilter struct {
+	CPU        resource.Millicores
+	RAM        resource.ByteQuantity
+	GPU        resource.Millicores
+	IncludeGPU bool
+	MultiAz    bool
+}
+
+// FilteredPackages fetches active packages matching the given filter.
+func FilteredPackages(
+	cmd *cobra.Command,
+	s *state.State,
+	cloudProvider string,
+	cloudRegion *string,
+	f PackageFilter,
+) ([]*bookingv1.Package, error) {
+	ctx := cmd.Context()
+	client, err := s.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	accountID, err := s.AccountID()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &bookingv1.ListPackagesRequest{
+		AccountId:             accountID,
+		CloudProviderId:       cloudProvider,
+		CloudProviderRegionId: cloudRegion,
+		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
+		Gpu:                   &f.IncludeGPU,
+	}
+	if f.MultiAz {
+		req.MultiAz = new(true)
+	}
+
+	resp, err := client.Booking().ListPackages(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*bookingv1.Package
+	for _, p := range resp.GetItems() {
+		rc := p.GetResourceConfiguration()
+		if f.CPU != 0 {
+			pkgCPU, _ := resource.ParseMillicores(rc.GetCpu())
+			if pkgCPU != f.CPU {
+				continue
+			}
+		}
+		if f.RAM != 0 {
+			pkgRAM, _ := resource.ParseByteQuantity(rc.GetRam())
+			if pkgRAM != f.RAM {
+				continue
+			}
+		}
+		if f.GPU != 0 {
+			pkgGPU, _ := resource.ParseMillicores(rc.GetGpu())
+			if pkgGPU != f.GPU {
+				continue
+			}
+		}
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+// ResolvePackageByID fetches a single package by its UUID.
+func ResolvePackageByID(
 	ctx context.Context,
 	booking bookingv1.BookingServiceClient,
-	accountID, cloudProvider, cloudRegion, id string,
+	accountID, cloudProvider string,
+	cloudRegion *string,
+	id string,
 ) (*bookingv1.Package, error) {
 	resp, err := booking.GetPackage(ctx, &bookingv1.GetPackageRequest{
 		AccountId:             accountID,
 		CloudProviderId:       cloudProvider,
-		CloudProviderRegionId: &cloudRegion,
+		CloudProviderRegionId: cloudRegion,
 		Id:                    id,
 	})
 	if err != nil {
@@ -29,16 +105,18 @@ func resolvePackageByID(
 	return resp.GetPackage(), nil
 }
 
-// resolvePackageByName lists active packages and returns the first matching by name.
-func resolvePackageByName(
+// ResolvePackageByName lists active packages and returns the first matching by name.
+func ResolvePackageByName(
 	ctx context.Context,
 	booking bookingv1.BookingServiceClient,
-	accountID, cloudProvider, cloudRegion, name string,
+	accountID, cloudProvider string,
+	cloudRegion *string,
+	name string,
 ) (*bookingv1.Package, error) {
 	resp, err := booking.ListPackages(ctx, &bookingv1.ListPackagesRequest{
 		AccountId:             accountID,
 		CloudProviderId:       cloudProvider,
-		CloudProviderRegionId: &cloudRegion,
+		CloudProviderRegionId: cloudRegion,
 		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
 	})
 	if err != nil {
@@ -50,16 +128,17 @@ func resolvePackageByName(
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("package %q not found for provider=%s region=%s", name, cloudProvider, cloudRegion)
+	return nil, fmt.Errorf("package %q not found for provider=%s", name, cloudProvider)
 }
 
-// resolvePackageByResources lists active packages and returns the unique one matching
+// ResolvePackageByResources lists active packages and returns the unique one matching
 // all non-zero resource dimensions (cpu, ram, gpu) and the multiAz flag.
 // Returns an error if zero or more than one package matches.
-func resolvePackageByResources(
+func ResolvePackageByResources(
 	ctx context.Context,
 	booking bookingv1.BookingServiceClient,
-	accountID, cloudProvider, cloudRegion string,
+	accountID, cloudProvider string,
+	cloudRegion *string,
 	cpu, gpu resource.Millicores,
 	ram resource.ByteQuantity,
 	multiAz bool,
@@ -67,7 +146,7 @@ func resolvePackageByResources(
 	req := &bookingv1.ListPackagesRequest{
 		AccountId:             accountID,
 		CloudProviderId:       cloudProvider,
-		CloudProviderRegionId: &cloudRegion,
+		CloudProviderRegionId: cloudRegion,
 		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
 	}
 	if multiAz {
@@ -133,4 +212,22 @@ func resolvePackageByResources(
 		}
 		return nil, fmt.Errorf("multiple packages match %s: %s; use 'cluster package list' to see available packages", desc, strings.Join(names, ", "))
 	}
+}
+
+// CalculateAdditionalDisk returns the additional disk (in GiB) needed beyond
+// what the package includes. Returns 0 if the requested disk is not larger
+// than the package's included disk.
+func CalculateAdditionalDisk(requestedDisk resource.ByteQuantity, pkg *bookingv1.Package) (uint32, error) {
+	pkgDiskStr := pkg.GetResourceConfiguration().GetDisk()
+	if pkgDiskStr == "" {
+		return 0, nil
+	}
+	pkgDisk, err := resource.ParseByteQuantity(pkgDiskStr)
+	if err != nil {
+		return 0, err
+	}
+	if requestedDisk > pkgDisk {
+		return uint32(requestedDisk.GiB() - pkgDisk.GiB()), nil
+	}
+	return 0, nil
 }

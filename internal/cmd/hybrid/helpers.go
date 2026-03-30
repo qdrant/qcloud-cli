@@ -11,8 +11,6 @@ import (
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
 )
 
-const hybridCloudProviderID = "hybrid"
-
 // Flag groups used to guard struct initialization in create/update.
 
 var collectionFlags = []string{

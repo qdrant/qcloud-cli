@@ -7,7 +7,8 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 )
 
-const hybridCloudProviderID = "hybrid"
+// HybridCloudProviderID is the cloud provider identifier for hybrid cloud environments.
+const HybridCloudProviderID = "hybrid"
 
 // ClusterClient wraps the generated ClusterServiceClient with convenience methods.
 type ClusterClient struct {
@@ -37,7 +38,7 @@ func (c *ClusterClient) listFiltered(ctx context.Context, accountID string, hybr
 			return nil, fmt.Errorf("failed to list clusters: %w", err)
 		}
 		for _, cluster := range resp.Items {
-			isHybrid := cluster.GetCloudProviderId() == hybridCloudProviderID
+			isHybrid := cluster.GetCloudProviderId() == HybridCloudProviderID
 			if isHybrid == hybrid {
 				all = append(all, cluster)
 			}
