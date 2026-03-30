@@ -137,7 +137,15 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					packageID = pkg.GetId()
 				}
 			} else {
-				pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, &cloudRegion, cpu, gpu, ram, multiAz)
+				pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), clusterutil.PackageResourceQuery{
+					AccountID:     accountID,
+					CloudProvider: cloudProvider,
+					CloudRegion:   &cloudRegion,
+					CPU:           cpu,
+					GPU:           gpu,
+					RAM:           ram,
+					MultiAz:       multiAz,
+				})
 				if err != nil {
 					return nil, err
 				}

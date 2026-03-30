@@ -131,29 +131,36 @@ func ResolvePackageByName(
 	return nil, fmt.Errorf("package %q not found for provider=%s", name, cloudProvider)
 }
 
+// PackageResourceQuery holds the parameters for resolving a package by resources.
+type PackageResourceQuery struct {
+	AccountID     string
+	CloudProvider string
+	CloudRegion   *string
+	CPU           resource.Millicores
+	GPU           resource.Millicores
+	RAM           resource.ByteQuantity
+	MultiAz       bool
+}
+
 // ResolvePackageByResources lists active packages and returns the unique one matching
 // all non-zero resource dimensions (cpu, ram, gpu) and the multiAz flag.
 // Returns an error if zero or more than one package matches.
 func ResolvePackageByResources(
 	ctx context.Context,
 	booking bookingv1.BookingServiceClient,
-	accountID, cloudProvider string,
-	cloudRegion *string,
-	cpu, gpu resource.Millicores,
-	ram resource.ByteQuantity,
-	multiAz bool,
+	q PackageResourceQuery,
 ) (*bookingv1.Package, error) {
 	req := &bookingv1.ListPackagesRequest{
-		AccountId:             accountID,
-		CloudProviderId:       cloudProvider,
-		CloudProviderRegionId: cloudRegion,
+		AccountId:             q.AccountID,
+		CloudProviderId:       q.CloudProvider,
+		CloudProviderRegionId: q.CloudRegion,
 		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
 	}
-	if multiAz {
+	if q.MultiAz {
 		req.MultiAz = new(true)
 	}
 
-	if gpu != 0 {
+	if q.GPU != 0 {
 		req.Gpu = new(true)
 	} else {
 		req.Gpu = new(false)
@@ -167,21 +174,21 @@ func ResolvePackageByResources(
 	var matches []*bookingv1.Package
 	for _, p := range resp.GetItems() {
 		rc := p.GetResourceConfiguration()
-		if cpu != 0 {
+		if q.CPU != 0 {
 			pkgCPU, _ := resource.ParseMillicores(rc.GetCpu())
-			if pkgCPU != cpu {
+			if pkgCPU != q.CPU {
 				continue
 			}
 		}
-		if ram != 0 {
+		if q.RAM != 0 {
 			pkgRAM, _ := resource.ParseByteQuantity(rc.GetRam())
-			if pkgRAM != ram {
+			if pkgRAM != q.RAM {
 				continue
 			}
 		}
-		if gpu != 0 {
+		if q.GPU != 0 {
 			pkgGPU, _ := resource.ParseMillicores(rc.GetGpu())
-			if pkgGPU != gpu {
+			if pkgGPU != q.GPU {
 				continue
 			}
 		}
@@ -189,14 +196,14 @@ func ResolvePackageByResources(
 	}
 
 	var filterDesc []string
-	if cpu != 0 {
-		filterDesc = append(filterDesc, fmt.Sprintf("cpu=%q", cpu.String()))
+	if q.CPU != 0 {
+		filterDesc = append(filterDesc, fmt.Sprintf("cpu=%q", q.CPU.String()))
 	}
-	if ram != 0 {
-		filterDesc = append(filterDesc, fmt.Sprintf("ram=%q", ram.String()))
+	if q.RAM != 0 {
+		filterDesc = append(filterDesc, fmt.Sprintf("ram=%q", q.RAM.String()))
 	}
-	if gpu != 0 {
-		filterDesc = append(filterDesc, fmt.Sprintf("gpu=%q", gpu.String()))
+	if q.GPU != 0 {
+		filterDesc = append(filterDesc, fmt.Sprintf("gpu=%q", q.GPU.String()))
 	}
 	desc := strings.Join(filterDesc, " ")
 

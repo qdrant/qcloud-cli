@@ -81,7 +81,6 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().Var(new(resource.Millicores), "cpu", `CPU to select a package (e.g. "1", "0.5", or "1000m")`)
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", `RAM to select a package (e.g. "8", "8G", "8Gi", or "8GiB")`)
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", `Total disk size (e.g. "200GiB"); if larger than the package's included disk, the difference is provisioned as additional storage`)
-			cmd.Flags().Var(new(resource.Millicores), "gpu", `Number of GPUs to select a package (e.g. "1", "2", or "1000m")`)
 			cmd.Flags().String("db-log-level", "", `Database log level ("trace", "debug", "info", "warn", "error", "off")`)
 			cmd.Flags().Bool("vectors-on-disk", false, "Store vectors in memmap storage")
 			cmd.Flags().Bool("enable-tls", false, "Enable TLS for the database service")
@@ -170,17 +169,18 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 				} else {
 					var cpu resource.Millicores
 					var ram resource.ByteQuantity
-					var gpu resource.Millicores
 					if cpuChanged {
 						cpu = *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 					}
 					if ramChanged {
 						ram = *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
 					}
-					if cmd.Flags().Changed("gpu") {
-						gpu = *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
-					}
-					pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), accountID, qcloudapi.HybridCloudProviderID, nil, cpu, gpu, ram, false)
+					pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), clusterutil.PackageResourceQuery{
+						AccountID:     accountID,
+						CloudProvider: qcloudapi.HybridCloudProviderID,
+						CPU:           cpu,
+						RAM:           ram,
+					})
 					if err != nil {
 						return nil, err
 					}

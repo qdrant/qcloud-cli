@@ -49,7 +49,6 @@ qcloud hybrid cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --optimizer-cp
 			cmd.Flags().Int32("optimizer-cpu-budget", 0, "CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)")
 			cmd.Flags().String("restart-policy", "", `Restart policy ("rolling", "parallel", "automatic")`)
 			cmd.Flags().String("rebalance-strategy", "", `Rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
-			cmd.Flags().String("gpu-type", "", `GPU type ("nvidia", "amd")`)
 			cmd.Flags().StringArray("topology-spread-constraint", nil, "Topology spread constraint ('topologyKey[:maxSkew[:whenUnsatisfiable]]'), replaces existing constraints")
 			cmd.Flags().String("database-storage-class", "", "Kubernetes storage class for database volumes")
 			cmd.Flags().String("snapshot-storage-class", "", "Kubernetes storage class for snapshot volumes")
@@ -218,15 +217,6 @@ qcloud hybrid cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --optimizer-cp
 					return nil, err
 				}
 				cfg.RebalanceStrategy = rs.Enum()
-			}
-
-			if cmd.Flags().Changed("gpu-type") {
-				v, _ := cmd.Flags().GetString("gpu-type")
-				gt, err := parseGpuType(v)
-				if err != nil {
-					return nil, err
-				}
-				cfg.GpuType = gt.Enum()
 			}
 
 			if cmd.Flags().Changed("topology-spread-constraint") {
