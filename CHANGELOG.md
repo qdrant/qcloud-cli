@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.16.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.16.0)
+
+### Features
+
+- add zizmor security scanner (#78)
+
 ## [v0.15.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.15.0)
 
 ### Features
