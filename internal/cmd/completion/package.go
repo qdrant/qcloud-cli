@@ -16,9 +16,9 @@ import (
 // CPUCompletion returns a completion function for a --cpu flag.
 func CPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region, err := getCloudValuesFromFlags(cmd)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
+		provider, region := getCloudValuesFromFlags(cmd)
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
 		ram := *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
@@ -54,10 +54,11 @@ func CPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 // RAMCompletion returns a completion function for a --ram flag.
 func RAMCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region, err := getCloudValuesFromFlags(cmd)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
+		provider, region := getCloudValuesFromFlags(cmd)
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 		gpu := *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
@@ -92,10 +93,11 @@ func RAMCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 // DiskCompletion returns a completion function for a --disk flag.
 func DiskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region, err := getCloudValuesFromFlags(cmd)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
+		provider, region := getCloudValuesFromFlags(cmd)
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 		ram := *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
@@ -132,9 +134,9 @@ func DiskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 // GPUCompletion returns a completion function for a --gpu flag.
 func GPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region, err := getCloudValuesFromFlags(cmd)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
+		provider, region := getCloudValuesFromFlags(cmd)
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
@@ -169,9 +171,9 @@ func GPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 // PackageNameCompletion returns a completion function for a --package flag.
 func PackageNameCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region, err := getCloudValuesFromFlags(cmd)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
+		provider, region := getCloudValuesFromFlags(cmd)
+		if provider == "" {
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
 		ctx := cmd.Context()
@@ -209,19 +211,11 @@ func PackageNameCompletion(s *state.State) func(*cobra.Command, []string, string
 	}
 }
 
-// getCloudValuesFromFlags returns (cloud, region, error) for completion of package related values. 
+// getCloudValuesFromFlags returns (cloud, region, error) for completion of package related values.
 // Region can be nil when the cloud is 'hybrid'.
-func getCloudValuesFromFlags(cmd *cobra.Command) (string, *string, error) {
-	cloud, err := cmd.Flags().GetString("cloud-provider")
-	if err != nil {
-		return "", nil, err
-	}
+func getCloudValuesFromFlags(cmd *cobra.Command) (string, *string) {
+	provider, _ := cmd.Flags().GetString("cloud-provider")
+	r, _ := cmd.Flags().GetString("cloud-region")
 
-	r, err := cmd.Flags().GetString("cloud-region")
-	if err != nil {
-		return "", nil, err
-	}
-
-
-	return cloud, &r, nil
+	return provider, &r
 }

@@ -181,10 +181,12 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 			if packageID != "" {
 				cluster.Configuration.PackageId = packageID
 			}
+
 			labelChanges, err := util.ParseLabels(rawLabels)
 			if err != nil {
 				return nil, err
 			}
+
 			for k, v := range labelChanges.Set {
 				cluster.Labels = append(cluster.Labels, &commonv1.KeyValue{Key: k, Value: v})
 			}
@@ -195,6 +197,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				if err != nil {
 					return nil, err
 				}
+
 				cluster.Configuration.ClusterStorageConfiguration = &clusterv1.ClusterStorageConfiguration{
 					StorageTierType: tierType,
 				}

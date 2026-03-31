@@ -56,7 +56,7 @@ func TestCloudProviderCompletion(t *testing.T) {
 	assert.Contains(t, stdout, "aws")
 	assert.Contains(t, stdout, "Amazon Web Services")
 	assert.Contains(t, stdout, "gcp")
-	assert.NotContains(t, stdout, "hybrid")
+	assert.Contains(t, stdout, "hybrid")
 }
 
 func TestCloudRegionCompletion(t *testing.T) {

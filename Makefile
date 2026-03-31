@@ -14,6 +14,10 @@ debug-run: debug
 test:
 	go test ./...
 
+coverage:
+	go test -coverpkg=./internal/... -coverprofile=build/coverage.txt -v -race ./...
+	go tool cover -html=build/coverage.txt
+
 lint:
 	golangci-lint run
 
