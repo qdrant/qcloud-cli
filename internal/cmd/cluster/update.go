@@ -32,7 +32,20 @@ qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --allowed-ip 10.0.0.0
 qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --version v1.17.0
 
 # Change replication factor (triggers rolling restart)
-qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --replication-factor 3 --force`,
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --replication-factor 3 --force
+
+# Set service type to load balancer (hybrid only, triggers rolling restart)
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --service-type load-balancer
+
+# Add a node selector and toleration (hybrid only, triggers rolling restart)
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
+  --node-selector disktype=ssd --toleration "dedicated=qdrant:NoSchedule"
+
+# Remove a node selector (hybrid only)
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --node-selector disktype-
+
+# Change database storage class (hybrid only, triggers rolling restart)
+qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --database-storage-class fast-ssd`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <cluster-id>",

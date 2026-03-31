@@ -31,7 +31,19 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 2 -
 
 # Create with labels and extra disk
 qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 --ram 32Gi \
-  --disk 200Gi --label env=production --label team=search`,
+  --disk 200Gi --label env=production --label team=search
+
+# Create a hybrid cloud cluster with a load balancer service type
+qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 2 --ram 8Gi \
+  --service-type load-balancer
+
+# Create a hybrid cluster with node selectors and tolerations
+qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 2 --ram 8Gi \
+  --node-selector disktype=ssd --toleration "dedicated=qdrant:NoSchedule"
+
+# Create a hybrid cluster with custom storage classes
+qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ram 16Gi \
+  --database-storage-class fast-ssd --snapshot-storage-class standard`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "create",
