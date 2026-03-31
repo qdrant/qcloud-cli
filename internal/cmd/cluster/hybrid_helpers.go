@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -10,82 +9,7 @@ import (
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 )
 
-// Flag groups used to guard struct initialization in create/update.
-
-var collectionFlags = []string{
-	"replication-factor",
-	"write-consistency-factor",
-	"vectors-on-disk",
-}
-
-var performanceFlags = []string{
-	"async-scorer",
-	"optimizer-cpu-budget",
-}
-
-var serviceFlags = []string{
-	"enable-tls",
-	"api-key-secret",
-	"read-only-api-key-secret",
-}
-
-var tlsFlags = []string{
-	"tls-cert-secret",
-	"tls-key-secret",
-}
-
-var auditLoggingFlags = []string{
-	"audit-logging",
-	"audit-log-rotation",
-	"audit-log-max-files",
-	"audit-log-trust-forwarded-headers",
-}
-
-var storageConfigFlags = []string{
-	"database-storage-class",
-	"snapshot-storage-class",
-	"volume-snapshot-class",
-	"volume-attributes-class",
-}
-
-// allDBConfigFlags lists all flags that affect DatabaseConfiguration and trigger
-// a rolling restart. This includes both universal and hybrid-only DB flags.
-var allDBConfigFlags = slices.Concat(
-	collectionFlags,
-	performanceFlags,
-	serviceFlags,
-	tlsFlags,
-	auditLoggingFlags,
-	[]string{"db-log-level"},
-)
-
-// hybridOnlyFlags lists flags that are only valid when --cloud-provider is "hybrid".
-var hybridOnlyFlags = []string{
-	"env-id",
-	"service-type",
-	"node-selector",
-	"annotation",
-	"pod-label",
-	"service-annotation",
-	"reserved-cpu-percentage",
-	"reserved-memory-percentage",
-	"toleration",
-	"topology-spread-constraint",
-	"database-storage-class",
-	"snapshot-storage-class",
-	"volume-snapshot-class",
-	"volume-attributes-class",
-	"db-log-level",
-	"enable-tls",
-	"api-key-secret",
-	"read-only-api-key-secret",
-	"tls-cert-secret",
-	"tls-key-secret",
-	"cost-allocation-label",
-}
-
 // Service type
-
 const (
 	serviceTypeClusterIP    = "cluster-ip"
 	serviceTypeNodePort     = "node-port"

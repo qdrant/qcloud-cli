@@ -3,7 +3,6 @@ package cluster
 import (
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,14 +16,6 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
-
-// dbConfigFlags lists flags that trigger a rolling restart.
-var dbConfigFlags = []string{
-	"replication-factor",
-	"write-consistency-factor",
-	"async-scorer",
-	"optimizer-cpu-budget",
-}
 
 func newUpdateCommand(s *state.State) *cobra.Command {
 	cmd := base.UpdateCmd[*clusterv1.Cluster]{
@@ -134,11 +125,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				cfg.Version = &newVersion
 			}
 
-			// --- Apply database configuration flags ---
-			dbChanged := slices.ContainsFunc(dbConfigFlags, func(f string) bool {
-				return cmd.Flags().Changed(f)
-			})
-
+			dbChanged := util.AnyFlagChanged(cmd, dbConfigFlags)
 			if dbChanged {
 				if cfg.DatabaseConfiguration == nil {
 					cfg.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}

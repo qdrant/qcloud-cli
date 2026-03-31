@@ -51,9 +51,6 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs to select a package (e.g. \"1\", \"2\", or \"1000m\")")
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
 			cmd.Flags().StringArray("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
-			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
 			cmd.Flags().String("disk-performance", "", `Disk performance tier ("balanced", "cost-optimised", "performance")`)
 			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
 			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
@@ -62,6 +59,40 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 			cmd.Flags().StringArray("allowed-ip", nil, "Allowed client IP CIDR ranges; max 20")
 			cmd.Flags().String("restart-mode", "", `Restart policy ("rolling", "parallel", "automatic")`)
 			cmd.Flags().String("rebalance-strategy", "", `Shard rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
+			cmd.Flags().Bool("vectors-on-disk", false, "Store vectors in memmap storage")
+
+			// Audit logging
+			cmd.Flags().Bool("audit-logging", false, "Enable audit logging")
+			cmd.Flags().String("audit-log-rotation", "", `Audit log rotation ("daily", "hourly")`)
+			cmd.Flags().Uint32("audit-log-max-files", 0, "Maximum number of audit log files (1-1000)")
+			cmd.Flags().Bool("audit-log-trust-forwarded-headers", false, "Trust forwarded headers in audit logs")
+
+			cmd.Flags().String("cost-allocation-label", "", "Label for billing reports")
+
+			// Hybrid Cluster flags
+			cmd.Flags().String("service-type", "", `(cloud-provider: hybrid) Kubernetes service type ("cluster-ip", "node-port", "load-balancer")`)
+			cmd.Flags().StringArray("node-selector", nil, "Node selector label ('key=value'), can be specified multiple times")
+			cmd.Flags().StringArray("toleration", nil, "Toleration ('key=value:Effect' or 'key:Exists:Effect'), can be specified multiple times")
+			cmd.Flags().StringArray("topology-spread-constraint", nil, "Topology spread constraint ('topologyKey[:maxSkew[:whenUnsatisfiable]]'), can be specified multiple times")
+			cmd.Flags().StringArray("annotation", nil, "Annotation ('key=value'), can be specified multiple times")
+			cmd.Flags().StringArray("pod-label", nil, "Pod label ('key=value'), can be specified multiple times")
+			cmd.Flags().StringArray("service-annotation", nil, "Service annotation ('key=value'), can be specified multiple times")
+			cmd.Flags().Uint32("reserved-cpu-percentage", 0, "Percentage of CPU reserved for system components, 1-80 (default 20)")
+			cmd.Flags().Uint32("reserved-memory-percentage", 0, "Percentage of memory reserved for system components, 1-80 (default 20)")
+			cmd.Flags().String("database-storage-class", "", "Kubernetes storage class for database volumes")
+			cmd.Flags().String("snapshot-storage-class", "", "Kubernetes storage class for snapshot volumes")
+			cmd.Flags().String("volume-snapshot-class", "", "Kubernetes volume snapshot class")
+			cmd.Flags().String("volume-attributes-class", "", "Kubernetes volume attributes class")
+			cmd.Flags().String("db-log-level", "", `Database log level ("trace", "debug", "info", "warn", "error", "off")`)
+			cmd.Flags().String("api-key-secret", "", "API key Kubernetes secret ('secretName:key')")
+			cmd.Flags().String("read-only-api-key-secret", "", "Read-only API key Kubernetes secret ('secretName:key')")
+			cmd.Flags().Bool("enable-tls", false, "Enable TLS for the database service")
+			cmd.Flags().String("tls-cert-secret", "", "TLS certificate Kubernetes secret ('secretName:key')")
+			cmd.Flags().String("tls-key-secret", "", "TLS private key Kubernetes secret ('secretName:key')")
+
+			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
+			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
+			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
 			_ = cmd.Flags().MarkHidden("wait-poll-interval")
 			_ = cmd.MarkFlagRequired("cloud-provider")
 			_ = cmd.MarkFlagRequired("cloud-region")
@@ -203,8 +234,37 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				}
 			}
 
+			if cmd.Flags().Changed("cost-allocation-label") {
+				v, _ := cmd.Flags().GetString("cost-allocation-label")
+				cluster.CostAllocationLabel = &v
+			}
+
+			// Storage configuration
+			if util.AnyFlagChanged(cmd, storageConfigFlags) {
+				if cluster.Configuration.ClusterStorageConfiguration == nil {
+					cluster.Configuration.ClusterStorageConfiguration = &clusterv1.ClusterStorageConfiguration{}
+				}
+				sc := cluster.Configuration.ClusterStorageConfiguration
+				if cmd.Flags().Changed("database-storage-class") {
+					v, _ := cmd.Flags().GetString("database-storage-class")
+					sc.DatabaseStorageClass = &v
+				}
+				if cmd.Flags().Changed("snapshot-storage-class") {
+					v, _ := cmd.Flags().GetString("snapshot-storage-class")
+					sc.SnapshotStorageClass = &v
+				}
+				if cmd.Flags().Changed("volume-snapshot-class") {
+					v, _ := cmd.Flags().GetString("volume-snapshot-class")
+					sc.VolumeSnapshotClass = &v
+				}
+				if cmd.Flags().Changed("volume-attributes-class") {
+					v, _ := cmd.Flags().GetString("volume-attributes-class")
+					sc.VolumeAttributesClass = &v
+				}
+			}
+
 			// Database configuration flags
-			if util.AnyFlagChanged(cmd, []string{"replication-factor", "write-consistency-factor", "async-scorer", "optimizer-cpu-budget"}) {
+			if util.AnyFlagChanged(cmd, allDBConfigFlags) {
 				if cluster.Configuration.DatabaseConfiguration == nil {
 					cluster.Configuration.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}
 				}
@@ -238,6 +298,110 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					if cmd.Flags().Changed("optimizer-cpu-budget") {
 						v, _ := cmd.Flags().GetInt32("optimizer-cpu-budget")
 						dbCfg.Storage.Performance.OptimizerCpuBudget = &v
+					}
+				}
+
+				if util.AnyFlagChanged(cmd, collectionFlags) {
+					if dbCfg.Collection == nil {
+						dbCfg.Collection = &clusterv1.DatabaseConfigurationCollection{}
+					}
+					if cmd.Flags().Changed("replication-factor") {
+						v, _ := cmd.Flags().GetUint32("replication-factor")
+						dbCfg.Collection.ReplicationFactor = &v
+					}
+					if cmd.Flags().Changed("write-consistency-factor") {
+						v, _ := cmd.Flags().GetInt32("write-consistency-factor")
+						dbCfg.Collection.WriteConsistencyFactor = &v
+					}
+					if cmd.Flags().Changed("vectors-on-disk") {
+						v, _ := cmd.Flags().GetBool("vectors-on-disk")
+						if dbCfg.Collection.Vectors == nil {
+							dbCfg.Collection.Vectors = &clusterv1.DatabaseConfigurationCollectionVectors{}
+						}
+						dbCfg.Collection.Vectors.OnDisk = &v
+					}
+				}
+
+				if cmd.Flags().Changed("db-log-level") {
+					v, _ := cmd.Flags().GetString("db-log-level")
+					ll, err := parseDBLogLevel(v)
+					if err != nil {
+						return nil, err
+					}
+					dbCfg.LogLevel = ll.Enum()
+				}
+
+				if util.AnyFlagChanged(cmd, serviceFlags) {
+					if dbCfg.Service == nil {
+						dbCfg.Service = &clusterv1.DatabaseConfigurationService{}
+					}
+					if cmd.Flags().Changed("enable-tls") {
+						v, _ := cmd.Flags().GetBool("enable-tls")
+						dbCfg.Service.EnableTls = &v
+					}
+					if cmd.Flags().Changed("api-key-secret") {
+						v, _ := cmd.Flags().GetString("api-key-secret")
+						ref, err := parseSecretKeyRef(v)
+						if err != nil {
+							return nil, fmt.Errorf("--api-key-secret: %w", err)
+						}
+						dbCfg.Service.ApiKey = ref
+					}
+					if cmd.Flags().Changed("read-only-api-key-secret") {
+						v, _ := cmd.Flags().GetString("read-only-api-key-secret")
+						ref, err := parseSecretKeyRef(v)
+						if err != nil {
+							return nil, fmt.Errorf("--read-only-api-key-secret: %w", err)
+						}
+						dbCfg.Service.ReadOnlyApiKey = ref
+					}
+				}
+
+				if util.AnyFlagChanged(cmd, tlsFlags) {
+					if dbCfg.Tls == nil {
+						dbCfg.Tls = &clusterv1.DatabaseConfigurationTls{}
+					}
+					if cmd.Flags().Changed("tls-cert-secret") {
+						v, _ := cmd.Flags().GetString("tls-cert-secret")
+						ref, err := parseSecretKeyRef(v)
+						if err != nil {
+							return nil, fmt.Errorf("--tls-cert-secret: %w", err)
+						}
+						dbCfg.Tls.Cert = ref
+					}
+					if cmd.Flags().Changed("tls-key-secret") {
+						v, _ := cmd.Flags().GetString("tls-key-secret")
+						ref, err := parseSecretKeyRef(v)
+						if err != nil {
+							return nil, fmt.Errorf("--tls-key-secret: %w", err)
+						}
+						dbCfg.Tls.Key = ref
+					}
+				}
+
+				if util.AnyFlagChanged(cmd, auditLoggingFlags) {
+					if dbCfg.AuditLogging == nil {
+						dbCfg.AuditLogging = &clusterv1.DatabaseConfigurationAuditLogging{}
+					}
+					if cmd.Flags().Changed("audit-logging") {
+						v, _ := cmd.Flags().GetBool("audit-logging")
+						dbCfg.AuditLogging.Enabled = v
+					}
+					if cmd.Flags().Changed("audit-log-rotation") {
+						v, _ := cmd.Flags().GetString("audit-log-rotation")
+						r, err := parseAuditLogRotation(v)
+						if err != nil {
+							return nil, err
+						}
+						dbCfg.AuditLogging.Rotation = r.Enum()
+					}
+					if cmd.Flags().Changed("audit-log-max-files") {
+						v, _ := cmd.Flags().GetUint32("audit-log-max-files")
+						dbCfg.AuditLogging.MaxLogFiles = &v
+					}
+					if cmd.Flags().Changed("audit-log-trust-forwarded-headers") {
+						v, _ := cmd.Flags().GetBool("audit-log-trust-forwarded-headers")
+						dbCfg.AuditLogging.TrustForwardedHeaders = &v
 					}
 				}
 			}
@@ -280,6 +444,83 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
 						Disk: additionalDisk,
 					}
+				}
+			}
+
+			// Hybrid Cloud flags
+			if cmd.Flags().Changed("node-selector") {
+				raw, _ := cmd.Flags().GetStringArray("node-selector")
+				changes, err := util.ParseLabels(raw)
+				if err != nil {
+					return nil, fmt.Errorf("--node-selector: %w", err)
+				}
+				for k, v := range changes.Set {
+					cluster.Configuration.NodeSelector = append(cluster.Configuration.NodeSelector, &commonv1.KeyValue{Key: k, Value: v})
+				}
+			}
+
+			if cmd.Flags().Changed("annotation") {
+				raw, _ := cmd.Flags().GetStringArray("annotation")
+				changes, err := util.ParseLabels(raw)
+				if err != nil {
+					return nil, fmt.Errorf("--annotation: %w", err)
+				}
+				for k, v := range changes.Set {
+					cluster.Configuration.Annotations = append(cluster.Configuration.Annotations, &commonv1.KeyValue{Key: k, Value: v})
+				}
+			}
+
+			if cmd.Flags().Changed("pod-label") {
+				raw, _ := cmd.Flags().GetStringArray("pod-label")
+				changes, err := util.ParseLabels(raw)
+				if err != nil {
+					return nil, fmt.Errorf("--pod-label: %w", err)
+				}
+				for k, v := range changes.Set {
+					cluster.Configuration.PodLabels = append(cluster.Configuration.PodLabels, &commonv1.KeyValue{Key: k, Value: v})
+				}
+			}
+
+			if cmd.Flags().Changed("service-annotation") {
+				raw, _ := cmd.Flags().GetStringArray("service-annotation")
+				changes, err := util.ParseLabels(raw)
+				if err != nil {
+					return nil, fmt.Errorf("--service-annotation: %w", err)
+				}
+				for k, v := range changes.Set {
+					cluster.Configuration.ServiceAnnotations = append(cluster.Configuration.ServiceAnnotations, &commonv1.KeyValue{Key: k, Value: v})
+				}
+			}
+
+			if cmd.Flags().Changed("reserved-cpu-percentage") {
+				v, _ := cmd.Flags().GetUint32("reserved-cpu-percentage")
+				cluster.Configuration.ReservedCpuPercentage = &v
+			}
+
+			if cmd.Flags().Changed("reserved-memory-percentage") {
+				v, _ := cmd.Flags().GetUint32("reserved-memory-percentage")
+				cluster.Configuration.ReservedMemoryPercentage = &v
+			}
+
+			if cmd.Flags().Changed("toleration") {
+				rawTols, _ := cmd.Flags().GetStringArray("toleration")
+				for _, raw := range rawTols {
+					tol, err := parseToleration(raw)
+					if err != nil {
+						return nil, err
+					}
+					cluster.Configuration.Tolerations = append(cluster.Configuration.Tolerations, tol)
+				}
+			}
+
+			if cmd.Flags().Changed("topology-spread-constraint") {
+				raw, _ := cmd.Flags().GetStringArray("topology-spread-constraint")
+				for _, r := range raw {
+					tsc, err := parseTopologySpreadConstraint(r)
+					if err != nil {
+						return nil, err
+					}
+					cluster.Configuration.TopologySpreadConstraints = append(cluster.Configuration.TopologySpreadConstraints, tsc)
 				}
 			}
 
