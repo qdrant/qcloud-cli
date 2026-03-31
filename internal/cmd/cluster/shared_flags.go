@@ -3,9 +3,11 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/qdrant/qcloud-cli/internal/cmd/util"
-	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	"github.com/spf13/cobra"
+
+	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
+
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 )
 
 // addSharedClusterFlags registers all cluster flags shared between the create and
