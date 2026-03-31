@@ -37,7 +37,7 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 			cmd.Flags().String("database-storage-class", "", "Default database storage class (uses cluster default if omitted)")
 			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class (uses cluster default if omitted)")
 			cmd.Flags().String("log-level", "", `Log level for deployed components ("debug", "info", "warn", "error")`)
-			cmd.RegisterFlagCompletionFunc("log-level", logLevelCompletion())
+			_ = cmd.RegisterFlagCompletionFunc("log-level", logLevelCompletion())
 			return cmd
 		},
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*hybridv1.HybridCloudEnvironment, error) {

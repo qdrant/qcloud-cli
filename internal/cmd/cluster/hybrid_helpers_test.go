@@ -141,3 +141,97 @@ func TestSecretKeyRefString(t *testing.T) {
 	assert.Equal(t, "name:key", secretKeyRefString(&commonv1.SecretKeyRef{Name: "name", Key: "key"}))
 	assert.Empty(t, secretKeyRefString(nil))
 }
+
+func TestParseServiceType(t *testing.T) {
+	tests := []struct {
+		input   string
+		want    clusterv1.ClusterServiceType
+		wantErr bool
+	}{
+		{"cluster-ip", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_CLUSTER_IP, false},
+		{"node-port", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_NODE_PORT, false},
+		{"load-balancer", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_LOAD_BALANCER, false},
+		{"invalid", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_UNSPECIFIED, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := parseServiceType(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+				assert.Equal(t, tt.input, serviceTypeString(got))
+			}
+		})
+	}
+}
+
+func TestParseToleration(t *testing.T) {
+	opEqual := clusterv1.TolerationOperator_TOLERATION_OPERATOR_EQUAL
+	opExists := clusterv1.TolerationOperator_TOLERATION_OPERATOR_EXISTS
+	effectNoSchedule := clusterv1.TolerationEffect_TOLERATION_EFFECT_NO_SCHEDULE
+	effectPreferNoSchedule := clusterv1.TolerationEffect_TOLERATION_EFFECT_PREFER_NO_SCHEDULE
+	effectNoExecute := clusterv1.TolerationEffect_TOLERATION_EFFECT_NO_EXECUTE
+
+	t.Run("key=value:Effect", func(t *testing.T) {
+		tol, err := parseToleration("env=prod:NoSchedule")
+		require.NoError(t, err)
+		assert.Equal(t, "env", tol.GetKey())
+		assert.Equal(t, "prod", tol.GetValue())
+		assert.Equal(t, opEqual, tol.GetOperator())
+		assert.Equal(t, effectNoSchedule, tol.GetEffect())
+	})
+
+	t.Run("key=value no effect", func(t *testing.T) {
+		tol, err := parseToleration("env=prod")
+		require.NoError(t, err)
+		assert.Equal(t, "env", tol.GetKey())
+		assert.Equal(t, "prod", tol.GetValue())
+		assert.Equal(t, opEqual, tol.GetOperator())
+		assert.Nil(t, tol.Effect)
+	})
+
+	t.Run("key:Exists:Effect", func(t *testing.T) {
+		tol, err := parseToleration("dedicated:Exists:NoExecute")
+		require.NoError(t, err)
+		assert.Equal(t, "dedicated", tol.GetKey())
+		assert.Equal(t, opExists, tol.GetOperator())
+		assert.Equal(t, effectNoExecute, tol.GetEffect())
+	})
+
+	t.Run("key:Exists no effect", func(t *testing.T) {
+		tol, err := parseToleration("dedicated:Exists")
+		require.NoError(t, err)
+		assert.Equal(t, "dedicated", tol.GetKey())
+		assert.Equal(t, opExists, tol.GetOperator())
+		assert.Nil(t, tol.Effect)
+	})
+
+	t.Run("prefer-no-schedule effect", func(t *testing.T) {
+		tol, err := parseToleration("tier=spot:PreferNoSchedule")
+		require.NoError(t, err)
+		assert.Equal(t, effectPreferNoSchedule, tol.GetEffect())
+	})
+
+	t.Run("no-execute alias", func(t *testing.T) {
+		tol, err := parseToleration("node.kubernetes.io/not-ready:Exists:no-execute")
+		require.NoError(t, err)
+		assert.Equal(t, effectNoExecute, tol.GetEffect())
+	})
+
+	t.Run("empty key with equals", func(t *testing.T) {
+		_, err := parseToleration("=value:NoSchedule")
+		require.Error(t, err)
+	})
+
+	t.Run("empty key without equals", func(t *testing.T) {
+		_, err := parseToleration(":Exists")
+		require.Error(t, err)
+	})
+
+	t.Run("invalid effect", func(t *testing.T) {
+		_, err := parseToleration("env=prod:Bogus")
+		require.Error(t, err)
+	})
+}

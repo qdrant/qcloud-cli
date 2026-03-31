@@ -2,6 +2,7 @@ package hybrid
 
 import (
 	"fmt"
+
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
 )
 

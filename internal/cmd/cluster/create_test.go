@@ -897,3 +897,241 @@ func TestCreateCluster_InvalidRebalanceStrategy(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid rebalance strategy")
 }
+
+func TestCreateCluster_HybridKubernetesPlacement(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "hybrid-placement"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-hybrid",
+		"--cloud-provider", "hybrid",
+		"--cloud-region", "00000000-0000-0000-0000-000000000099",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--service-type", "load-balancer",
+		"--node-selector", "disktype=ssd",
+		"--node-selector", "zone=us-east",
+		"--toleration", "dedicated=qdrant:NoSchedule",
+		"--toleration", "node.kubernetes.io/not-ready:Exists:NoExecute",
+		"--topology-spread-constraint", "topology.kubernetes.io/zone:1:do-not-schedule",
+		"--annotation", "prometheus.io/scrape=true",
+		"--pod-label", "app=qdrant",
+		"--service-annotation", "service.beta.kubernetes.io/aws-load-balancer-type=nlb",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	cfg := req.GetCluster().GetConfiguration()
+
+	assert.Equal(t, clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_LOAD_BALANCER, cfg.GetServiceType())
+
+	nodeSelectors := make(map[string]string)
+	for _, kv := range cfg.GetNodeSelector() {
+		nodeSelectors[kv.GetKey()] = kv.GetValue()
+	}
+	assert.Equal(t, map[string]string{"disktype": "ssd", "zone": "us-east"}, nodeSelectors)
+
+	require.Len(t, cfg.GetTolerations(), 2)
+	assert.Equal(t, "dedicated", cfg.GetTolerations()[0].GetKey())
+	assert.Equal(t, "qdrant", cfg.GetTolerations()[0].GetValue())
+	assert.Equal(t, clusterv1.TolerationEffect_TOLERATION_EFFECT_NO_SCHEDULE, cfg.GetTolerations()[0].GetEffect())
+	assert.Equal(t, "node.kubernetes.io/not-ready", cfg.GetTolerations()[1].GetKey())
+	assert.Equal(t, clusterv1.TolerationOperator_TOLERATION_OPERATOR_EXISTS, cfg.GetTolerations()[1].GetOperator())
+	assert.Equal(t, clusterv1.TolerationEffect_TOLERATION_EFFECT_NO_EXECUTE, cfg.GetTolerations()[1].GetEffect())
+
+	require.Len(t, cfg.GetTopologySpreadConstraints(), 1)
+	assert.Equal(t, "topology.kubernetes.io/zone", cfg.GetTopologySpreadConstraints()[0].GetTopologyKey())
+	assert.Equal(t, int32(1), cfg.GetTopologySpreadConstraints()[0].GetMaxSkew())
+
+	annotations := make(map[string]string)
+	for _, kv := range cfg.GetAnnotations() {
+		annotations[kv.GetKey()] = kv.GetValue()
+	}
+	assert.Equal(t, map[string]string{"prometheus.io/scrape": "true"}, annotations)
+
+	podLabels := make(map[string]string)
+	for _, kv := range cfg.GetPodLabels() {
+		podLabels[kv.GetKey()] = kv.GetValue()
+	}
+	assert.Equal(t, map[string]string{"app": "qdrant"}, podLabels)
+
+	svcAnnotations := make(map[string]string)
+	for _, kv := range cfg.GetServiceAnnotations() {
+		svcAnnotations[kv.GetKey()] = kv.GetValue()
+	}
+	assert.Equal(t, map[string]string{"service.beta.kubernetes.io/aws-load-balancer-type": "nlb"}, svcAnnotations)
+}
+
+func TestCreateCluster_HybridResourceReservation(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "hybrid-reservation"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-hybrid",
+		"--cloud-provider", "hybrid",
+		"--cloud-region", "00000000-0000-0000-0000-000000000099",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--reserved-cpu-percentage", "30",
+		"--reserved-memory-percentage", "25",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	cfg := req.GetCluster().GetConfiguration()
+	assert.Equal(t, uint32(30), cfg.GetReservedCpuPercentage())
+	assert.Equal(t, uint32(25), cfg.GetReservedMemoryPercentage())
+}
+
+func TestCreateCluster_StorageClasses(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "hybrid-storage"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-hybrid",
+		"--cloud-provider", "hybrid",
+		"--cloud-region", "00000000-0000-0000-0000-000000000099",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--database-storage-class", "fast-nvme",
+		"--snapshot-storage-class", "standard",
+		"--volume-snapshot-class", "csi-snapclass",
+		"--volume-attributes-class", "iops-class",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	sc := req.GetCluster().GetConfiguration().GetClusterStorageConfiguration()
+	assert.Equal(t, "fast-nvme", sc.GetDatabaseStorageClass())
+	assert.Equal(t, "standard", sc.GetSnapshotStorageClass())
+	assert.Equal(t, "csi-snapclass", sc.GetVolumeSnapshotClass())
+	assert.Equal(t, "iops-class", sc.GetVolumeAttributesClass())
+}
+
+func TestCreateCluster_DBService(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "hybrid-service"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-hybrid",
+		"--cloud-provider", "hybrid",
+		"--cloud-region", "00000000-0000-0000-0000-000000000099",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--enable-tls",
+		"--api-key-secret", "my-secret:api-key",
+		"--read-only-api-key-secret", "my-secret:ro-key",
+		"--db-log-level", "warn",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	dbCfg := req.GetCluster().GetConfiguration().GetDatabaseConfiguration()
+	assert.True(t, dbCfg.GetService().GetEnableTls())
+	assert.Equal(t, "my-secret", dbCfg.GetService().GetApiKey().GetName())
+	assert.Equal(t, "api-key", dbCfg.GetService().GetApiKey().GetKey())
+	assert.Equal(t, "my-secret", dbCfg.GetService().GetReadOnlyApiKey().GetName())
+	assert.Equal(t, "ro-key", dbCfg.GetService().GetReadOnlyApiKey().GetKey())
+	assert.Equal(t, clusterv1.DatabaseConfigurationLogLevel_DATABASE_CONFIGURATION_LOG_LEVEL_WARN, dbCfg.GetLogLevel())
+}
+
+func TestCreateCluster_TLSSecrets(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "hybrid-tls"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-hybrid",
+		"--cloud-provider", "hybrid",
+		"--cloud-region", "00000000-0000-0000-0000-000000000099",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--tls-cert-secret", "tls-secret:tls.crt",
+		"--tls-key-secret", "tls-secret:tls.key",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	tls := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetTls()
+	assert.Equal(t, "tls-secret", tls.GetCert().GetName())
+	assert.Equal(t, "tls.crt", tls.GetCert().GetKey())
+	assert.Equal(t, "tls-secret", tls.GetKey().GetName())
+	assert.Equal(t, "tls.key", tls.GetKey().GetKey())
+}
+
+func TestCreateCluster_AuditLogging(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-audit"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--audit-logging",
+		"--audit-log-rotation", "hourly",
+		"--audit-log-max-files", "14",
+		"--audit-log-trust-forwarded-headers",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	al := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetAuditLogging()
+	assert.True(t, al.GetEnabled())
+	assert.Equal(t, clusterv1.AuditLogRotation_AUDIT_LOG_ROTATION_HOURLY, al.GetRotation())
+	assert.Equal(t, uint32(14), al.GetMaxLogFiles())
+	assert.True(t, al.GetTrustForwardedHeaders())
+}
+
+func TestCreateCluster_MiscFlags(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-misc"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--cost-allocation-label", "team:platform",
+		"--vectors-on-disk",
+		"--version", "v1.13.0",
+		"--nodes", "3",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	cluster := req.GetCluster()
+	assert.Equal(t, "team:platform", cluster.GetCostAllocationLabel())
+	assert.True(t, cluster.GetConfiguration().GetDatabaseConfiguration().GetCollection().GetVectors().GetOnDisk())
+	assert.Equal(t, "v1.13.0", cluster.GetConfiguration().GetVersion())
+	assert.Equal(t, uint32(3), cluster.GetConfiguration().GetNumberOfNodes())
+}

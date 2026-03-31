@@ -47,4 +47,3 @@ func logLevelCompletion() func(*cobra.Command, []string, string) ([]string, cobr
 		return []string{logLevelDebug, logLevelInfo, logLevelWarn, logLevelError}, cobra.ShellCompDirectiveNoFileComp
 	}
 }
-

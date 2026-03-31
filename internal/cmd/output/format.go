@@ -35,10 +35,12 @@ func DiffValue(oldVal, newVal string) string {
 	return oldVal + " => " + newVal
 }
 
+const boolYes = "yes"
+
 // BoolYesNo formats a bool as "yes" or "no".
 func BoolYesNo(v bool) string {
 	if v {
-		return "yes"
+		return boolYes
 	}
 	return "no"
 }
@@ -46,7 +48,7 @@ func BoolYesNo(v bool) string {
 // BoolMark formats a bool as "yes" or empty string ("").
 func BoolMark(v bool) string {
 	if v {
-		return "yes"
+		return boolYes
 	}
 	return ""
 }
@@ -63,7 +65,7 @@ func OptionalValue(v any, fallback string) string {
 	elem := rv.Elem().Interface()
 	if b, ok := elem.(bool); ok {
 		if b {
-			return "yes"
+			return boolYes
 		}
 		return "no"
 	}

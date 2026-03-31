@@ -59,7 +59,6 @@ func RAMCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 		gpu := *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
 		multiAz, _ := cmd.Flags().GetBool("multi-az")
@@ -97,7 +96,6 @@ func DiskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 		if provider == "" {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-
 
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 		ram := *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)

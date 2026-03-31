@@ -9,7 +9,7 @@ import (
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 )
 
-// Service type
+// Service type.
 const (
 	serviceTypeClusterIP    = "cluster-ip"
 	serviceTypeNodePort     = "node-port"
@@ -121,7 +121,6 @@ func parseTolerationEffect(s string) (clusterv1.TolerationEffect, error) {
 			fmt.Errorf("invalid effect %q: must be one of NoSchedule, PreferNoSchedule, NoExecute", s)
 	}
 }
-
 
 // Database log level
 
@@ -248,8 +247,7 @@ func parseWhenUnsatisfiable(s string) (commonv1.TopologySpreadConstraintWhenUnsa
 	}
 }
 
-// SecretKeyRef
-// Format: secretName:key
+// SecretKeyRef format: secretName:key.
 func parseSecretKeyRef(s string) (*commonv1.SecretKeyRef, error) {
 	name, key, ok := strings.Cut(s, ":")
 	if !ok || name == "" || key == "" {
@@ -264,4 +262,3 @@ func secretKeyRefString(ref *commonv1.SecretKeyRef) string {
 	}
 	return ref.GetName() + ":" + ref.GetKey()
 }
-

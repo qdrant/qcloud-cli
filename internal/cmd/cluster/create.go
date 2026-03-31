@@ -206,9 +206,11 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					NumberOfNodes: nodes,
 				},
 			}
+
 			if version != "" {
 				cluster.Configuration.Version = &version
 			}
+
 			if packageID != "" {
 				cluster.Configuration.PackageId = packageID
 			}
@@ -269,20 +271,6 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					cluster.Configuration.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}
 				}
 				dbCfg := cluster.Configuration.DatabaseConfiguration
-
-				if util.AnyFlagChanged(cmd, []string{"replication-factor", "write-consistency-factor"}) {
-					if dbCfg.Collection == nil {
-						dbCfg.Collection = &clusterv1.DatabaseConfigurationCollection{}
-					}
-					if cmd.Flags().Changed("replication-factor") {
-						v, _ := cmd.Flags().GetUint32("replication-factor")
-						dbCfg.Collection.ReplicationFactor = &v
-					}
-					if cmd.Flags().Changed("write-consistency-factor") {
-						v, _ := cmd.Flags().GetInt32("write-consistency-factor")
-						dbCfg.Collection.WriteConsistencyFactor = &v
-					}
-				}
 
 				if util.AnyFlagChanged(cmd, []string{"async-scorer", "optimizer-cpu-budget"}) {
 					if dbCfg.Storage == nil {
@@ -524,6 +512,15 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				}
 			}
 
+			if cmd.Flags().Changed("service-type") {
+				v, _ := cmd.Flags().GetString("service-type")
+				st, err := parseServiceType(v)
+				if err != nil {
+					return nil, err
+				}
+				cluster.Configuration.ServiceType = st.Enum()
+			}
+
 			resp, err := client.Cluster().CreateCluster(ctx, &clusterv1.CreateClusterRequest{
 				Cluster: cluster,
 			})
@@ -562,5 +559,8 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 	_ = cmd.RegisterFlagCompletionFunc("disk-performance", diskPerformanceCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("restart-mode", restartModeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("rebalance-strategy", rebalanceStrategyCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("service-type", serviceTypeCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("db-log-level", dbLogLevelCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("audit-log-rotation", auditLogRotationCompletion())
 	return cmd
 }

@@ -63,32 +63,6 @@ var allDBConfigFlags = slices.Concat(
 	[]string{"db-log-level"},
 )
 
-// hybridOnlyFlags lists flags that are only valid when --cloud-provider is "hybrid".
-var hybridOnlyFlags = []string{
-	"env-id",
-	"service-type",
-	"node-selector",
-	"annotation",
-	"pod-label",
-	"service-annotation",
-	"reserved-cpu-percentage",
-	"reserved-memory-percentage",
-	"toleration",
-	"topology-spread-constraint",
-	"database-storage-class",
-	"snapshot-storage-class",
-	"volume-snapshot-class",
-	"volume-attributes-class",
-	"db-log-level",
-	"enable-tls",
-	"api-key-secret",
-	"read-only-api-key-secret",
-	"tls-cert-secret",
-	"tls-key-secret",
-	"cost-allocation-label",
-}
-
-
 func formatGiB(v float64) string {
 	return fmt.Sprintf("%.2f GiB", v)
 }
