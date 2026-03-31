@@ -52,22 +52,23 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
 			cmd.Flags().StringArray("label", nil, "Label to apply to the cluster ('key=value'), can be specified multiple times")
 			cmd.Flags().String("disk-performance", "", `Disk performance tier ("balanced", "cost-optimised", "performance")`)
-			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
-			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
 			cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
 			cmd.Flags().Int32("optimizer-cpu-budget", 0, `CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)`)
 			cmd.Flags().StringArray("allowed-ip", nil, "Allowed client IP CIDR ranges; max 20")
 			cmd.Flags().String("restart-mode", "", `Restart policy ("rolling", "parallel", "automatic")`)
 			cmd.Flags().String("rebalance-strategy", "", `Shard rebalance strategy ("by-count", "by-size", "by-count-and-size")`)
-			cmd.Flags().Bool("vectors-on-disk", false, "Store vectors in memmap storage")
+			cmd.Flags().String("cost-allocation-label", "", "Label for billing reports")
+
+			// Collection
+			cmd.Flags().Uint32("replication-factor", 0, "Default replication factor for new collections")
+			cmd.Flags().Int32("write-consistency-factor", 0, "Default write consistency factor for new collections")
+			cmd.Flags().Bool("vectors-on-disk", false, "Store vectors in memmap storage for new collections")
 
 			// Audit logging
 			cmd.Flags().Bool("audit-logging", false, "Enable audit logging")
 			cmd.Flags().String("audit-log-rotation", "", `Audit log rotation ("daily", "hourly")`)
 			cmd.Flags().Uint32("audit-log-max-files", 0, "Maximum number of audit log files (1-1000)")
 			cmd.Flags().Bool("audit-log-trust-forwarded-headers", false, "Trust forwarded headers in audit logs")
-
-			cmd.Flags().String("cost-allocation-label", "", "Label for billing reports")
 
 			// Hybrid Cluster flags
 			cmd.Flags().String("service-type", "", `(cloud-provider: hybrid) Kubernetes service type ("cluster-ip", "node-port", "load-balancer")`)
@@ -442,6 +443,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				if err != nil {
 					return nil, fmt.Errorf("--node-selector: %w", err)
 				}
+
 				for k, v := range changes.Set {
 					cluster.Configuration.NodeSelector = append(cluster.Configuration.NodeSelector, &commonv1.KeyValue{Key: k, Value: v})
 				}
@@ -453,6 +455,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				if err != nil {
 					return nil, fmt.Errorf("--annotation: %w", err)
 				}
+
 				for k, v := range changes.Set {
 					cluster.Configuration.Annotations = append(cluster.Configuration.Annotations, &commonv1.KeyValue{Key: k, Value: v})
 				}
@@ -464,6 +467,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				if err != nil {
 					return nil, fmt.Errorf("--pod-label: %w", err)
 				}
+
 				for k, v := range changes.Set {
 					cluster.Configuration.PodLabels = append(cluster.Configuration.PodLabels, &commonv1.KeyValue{Key: k, Value: v})
 				}
@@ -475,6 +479,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				if err != nil {
 					return nil, fmt.Errorf("--service-annotation: %w", err)
 				}
+
 				for k, v := range changes.Set {
 					cluster.Configuration.ServiceAnnotations = append(cluster.Configuration.ServiceAnnotations, &commonv1.KeyValue{Key: k, Value: v})
 				}
@@ -497,6 +502,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					if err != nil {
 						return nil, err
 					}
+
 					cluster.Configuration.Tolerations = append(cluster.Configuration.Tolerations, tol)
 				}
 			}
@@ -508,6 +514,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					if err != nil {
 						return nil, err
 					}
+
 					cluster.Configuration.TopologySpreadConstraints = append(cluster.Configuration.TopologySpreadConstraints, tsc)
 				}
 			}
@@ -518,6 +525,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				if err != nil {
 					return nil, err
 				}
+
 				cluster.Configuration.ServiceType = st.Enum()
 			}
 
