@@ -309,10 +309,10 @@ match.`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
-	_ = cmd.RegisterFlagCompletionFunc("cpu", cpuCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("ram", ramCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cpu", completion.CPUCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("ram", completion.RAMCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("disk", completion.DiskCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("gpu", completion.GPUCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk-performance", diskPerformanceCompletion())
 	return cmd
 }

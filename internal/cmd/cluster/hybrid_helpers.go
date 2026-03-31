@@ -326,7 +326,6 @@ func parseWhenUnsatisfiable(s string) (commonv1.TopologySpreadConstraintWhenUnsa
 
 // SecretKeyRef
 // Format: secretName:key
-
 func parseSecretKeyRef(s string) (*commonv1.SecretKeyRef, error) {
 	name, key, ok := strings.Cut(s, ":")
 	if !ok || name == "" || key == "" {
@@ -341,6 +340,4 @@ func secretKeyRefString(ref *commonv1.SecretKeyRef) string {
 	}
 	return ref.GetName() + ":" + ref.GetKey()
 }
-
-// Completion functions for hybrid-specific flags
 

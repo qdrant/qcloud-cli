@@ -127,7 +127,7 @@ qcloud cluster list --page-size 10`,
 			t.AddField("CLOUD", func(v *clusterv1.Cluster) string {
 				return v.GetCloudProviderId()
 			})
-			t.AddField("REGION", func(v *clusterv1.Cluster) string {
+			t.AddField("REGION / ENV", func(v *clusterv1.Cluster) string {
 				return v.GetCloudProviderRegionId()
 			})
 			t.AddField("CREATED", func(v *clusterv1.Cluster) string {
