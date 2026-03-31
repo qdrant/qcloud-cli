@@ -60,6 +60,20 @@ var allDBConfigFlags = slices.Concat(
 	[]string{"db-log-level"},
 )
 
+// undiffableFlags lists flags whose restart-prompt entry can only say
+// "(changed)" because they hold complex nested values with no scalar diff.
+var undiffableFlags = slices.Concat(
+	[]string{
+		"node-selector",
+		"toleration",
+		"topology-spread-constraint",
+		"annotation",
+		"pod-label",
+		"service-annotation",
+	},
+	storageConfigFlags,
+)
+
 // hybridConfigFlags lists hybrid-cluster flags that trigger a rolling restart.
 var hybridConfigFlags = []string{
 	"service-type",

@@ -303,12 +303,7 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 			}
 			lines = append(lines, fmt.Sprintf("  Reserved memory %%:               %s", output.DiffValue(output.OptionalValue(oldPct, notSet), fmt.Sprintf("%d", updated.GetConfiguration().GetReservedMemoryPercentage()))))
 		}
-		for _, flag := range []string{"node-selector", "toleration", "topology-spread-constraint", "annotation", "pod-label", "service-annotation"} {
-			if cmd.Flags().Changed(flag) {
-				lines = append(lines, fmt.Sprintf("  %-32s (changed)", flag+":"))
-			}
-		}
-		for _, flag := range []string{"database-storage-class", "snapshot-storage-class", "volume-snapshot-class", "volume-attributes-class"} {
+		for _, flag := range undiffableFlags {
 			if cmd.Flags().Changed(flag) {
 				lines = append(lines, fmt.Sprintf("  %-32s (changed)", flag+":"))
 			}
