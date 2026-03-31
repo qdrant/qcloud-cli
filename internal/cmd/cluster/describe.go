@@ -13,6 +13,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
+	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -47,7 +48,7 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 			}
 
 			cluster := resp.GetCluster()
-			if cluster.GetCloudProviderId() == hybridCloudProviderID {
+			if cluster.GetCloudProviderId() == qcloudapi.HybridCloudProviderID {
 				return nil, fmt.Errorf("cluster %s is a hybrid cloud cluster; use \"qcloud hybrid cluster describe\" instead", args[0])
 			}
 

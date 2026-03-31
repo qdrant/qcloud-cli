@@ -3,19 +3,9 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 )
-
-const hybridCloudProviderID = "hybrid"
-
-// isUUID returns true if s is a valid UUID.
-func isUUID(s string) bool {
-	_, err := uuid.Parse(s)
-	return err == nil
-}
 
 func boolToMark(v bool) string {
 	if v {
@@ -37,16 +27,6 @@ func formatGiB(v float64) string {
 
 func formatMillicores(v float64) string {
 	return fmt.Sprintf("%.0fm", v)
-}
-
-// formatMillicents formats millicent pricing as a human-readable price string.
-// 1 unit of currency = 100,000 millicents. Returns "free" for zero.
-// currency should be an ISO 4217 code (e.g. "USD").
-func formatMillicents(mc int32, currency string) string {
-	if mc == 0 {
-		return "free"
-	}
-	return fmt.Sprintf("%.4f %s", float64(mc)/100_000.0, currency)
 }
 
 const (

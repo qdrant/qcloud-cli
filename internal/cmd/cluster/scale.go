@@ -161,17 +161,15 @@ match.`,
 			if cmd.Flags().Changed("cpu") || cmd.Flags().Changed("ram") || cmd.Flags().Changed("gpu") || cmd.Flags().Changed("multi-az") {
 				// scale doesn't allow changing multi-az so any new package selected needs to
 				// use the same multi-az value
-				newPkg, err = resolvePackageByResources(
-					ctx,
-					client.Booking(),
-					accountID,
-					cluster.CloudProviderId,
-					cluster.CloudProviderRegionId,
-					cpu,
-					gpu,
-					ram,
-					multiAz,
-				)
+				newPkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), clusterutil.PackageResourceQuery{
+					AccountID:     accountID,
+					CloudProvider: cluster.CloudProviderId,
+					CloudRegion:   &cluster.CloudProviderRegionId,
+					CPU:           cpu,
+					GPU:           gpu,
+					RAM:           ram,
+					MultiAz:       multiAz,
+				})
 				if err != nil {
 					return nil, err
 				}

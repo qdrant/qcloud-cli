@@ -15,6 +15,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
+	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -101,7 +102,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 			}
 
 			cluster := resp.GetCluster()
-			if cluster.GetCloudProviderId() == hybridCloudProviderID {
+			if cluster.GetCloudProviderId() == qcloudapi.HybridCloudProviderID {
 				return nil, fmt.Errorf("cluster %s is a hybrid cloud cluster; use \"qcloud hybrid cluster update\" instead", args[0])
 			}
 

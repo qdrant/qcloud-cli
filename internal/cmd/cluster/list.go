@@ -11,6 +11,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -49,7 +50,7 @@ qcloud cluster list --page-size 10`,
 			var cloudProvider, cloudRegion string
 			if cloudProviderChanged {
 				cloudProvider, _ = cmd.Flags().GetString("cloud-provider")
-				if cloudProvider == hybridCloudProviderID {
+				if cloudProvider == qcloudapi.HybridCloudProviderID {
 					return nil, fmt.Errorf("hybrid clusters are not supported by this command, use \"qcloud hybrid cluster list\" instead")
 				}
 			}
@@ -77,7 +78,7 @@ qcloud cluster list --page-size 10`,
 						return nil, fmt.Errorf("failed to list clusters: %w", err)
 					}
 					for _, c := range resp.Items {
-						if c.GetCloudProviderId() != hybridCloudProviderID {
+						if c.GetCloudProviderId() != qcloudapi.HybridCloudProviderID {
 							allItems = append(allItems, c)
 						}
 					}
@@ -111,7 +112,7 @@ qcloud cluster list --page-size 10`,
 			}
 			var filtered []*clusterv1.Cluster
 			for _, c := range resp.Items {
-				if c.GetCloudProviderId() != hybridCloudProviderID {
+				if c.GetCloudProviderId() != qcloudapi.HybridCloudProviderID {
 					filtered = append(filtered, c)
 				}
 			}

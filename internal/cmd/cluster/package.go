@@ -98,7 +98,7 @@ qcloud cluster package list --cloud-provider aws --cloud-region eu-central-1`,
 				return boolToYesNo(p.GetMultiAz())
 			})
 			t.AddField("PRICE/HR", func(p *bookingv1.Package) string {
-				return formatMillicents(p.GetUnitIntPricePerHour(), p.GetCurrency())
+				return output.FormatMillicents(p.GetUnitIntPricePerHour(), p.GetCurrency())
 			})
 			t.Write(resp.GetItems())
 			return nil

@@ -121,23 +121,31 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 			var packageID string
 
 			if packageValue != "" {
-				if isUUID(packageValue) {
+				if util.IsUUID(packageValue) {
 					packageID = packageValue
 					if cmd.Flags().Changed("disk") {
-						pkg, err = resolvePackageByID(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, packageValue)
+						pkg, err = clusterutil.ResolvePackageByID(ctx, client.Booking(), accountID, cloudProvider, &cloudRegion, packageValue)
 						if err != nil {
 							return nil, err
 						}
 					}
 				} else {
-					pkg, err = resolvePackageByName(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, packageValue)
+					pkg, err = clusterutil.ResolvePackageByName(ctx, client.Booking(), accountID, cloudProvider, &cloudRegion, packageValue)
 					if err != nil {
 						return nil, err
 					}
 					packageID = pkg.GetId()
 				}
 			} else {
-				pkg, err = resolvePackageByResources(ctx, client.Booking(), accountID, cloudProvider, cloudRegion, cpu, gpu, ram, multiAz)
+				pkg, err = clusterutil.ResolvePackageByResources(ctx, client.Booking(), clusterutil.PackageResourceQuery{
+					AccountID:     accountID,
+					CloudProvider: cloudProvider,
+					CloudRegion:   &cloudRegion,
+					CPU:           cpu,
+					GPU:           gpu,
+					RAM:           ram,
+					MultiAz:       multiAz,
+				})
 				if err != nil {
 					return nil, err
 				}
@@ -179,14 +187,13 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 			}
 
 			// Database configuration flags
-			if cmd.Flags().Changed("replication-factor") || cmd.Flags().Changed("write-consistency-factor") ||
-				cmd.Flags().Changed("async-scorer") || cmd.Flags().Changed("optimizer-cpu-budget") {
+			if util.AnyFlagChanged(cmd, []string{"replication-factor", "write-consistency-factor", "async-scorer", "optimizer-cpu-budget"}) {
 				if cluster.Configuration.DatabaseConfiguration == nil {
 					cluster.Configuration.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}
 				}
 				dbCfg := cluster.Configuration.DatabaseConfiguration
 
-				if cmd.Flags().Changed("replication-factor") || cmd.Flags().Changed("write-consistency-factor") {
+				if util.AnyFlagChanged(cmd, []string{"replication-factor", "write-consistency-factor"}) {
 					if dbCfg.Collection == nil {
 						dbCfg.Collection = &clusterv1.DatabaseConfigurationCollection{}
 					}
@@ -200,7 +207,7 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 					}
 				}
 
-				if cmd.Flags().Changed("async-scorer") || cmd.Flags().Changed("optimizer-cpu-budget") {
+				if util.AnyFlagChanged(cmd, []string{"async-scorer", "optimizer-cpu-budget"}) {
 					if dbCfg.Storage == nil {
 						dbCfg.Storage = &clusterv1.DatabaseConfigurationStorage{}
 					}
@@ -248,17 +255,13 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 
 			if cmd.Flags().Changed("disk") && pkg != nil {
 				requestedDisk := *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
-				if pkgDiskStr := pkg.GetResourceConfiguration().GetDisk(); pkgDiskStr != "" {
-					pkgDisk, err := resource.ParseByteQuantity(pkgDiskStr)
-					if err != nil {
-						return nil, err
-					}
-
-					// only apply additional disk calculation if requested disk is bigger than the disk package
-					if requestedDisk > pkgDisk {
-						cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
-							Disk: uint32(requestedDisk.GiB() - pkgDisk.GiB()), // API expects additional disk in GiB
-						}
+				additionalDisk, err := clusterutil.CalculateAdditionalDisk(requestedDisk, pkg)
+				if err != nil {
+					return nil, err
+				}
+				if additionalDisk > 0 {
+					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
+						Disk: additionalDisk,
 					}
 				}
 			}

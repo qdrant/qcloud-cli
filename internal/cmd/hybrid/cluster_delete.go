@@ -9,6 +9,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
+	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -51,7 +52,7 @@ qcloud hybrid cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 				return fmt.Errorf("failed to get cluster: %w", err)
 			}
 
-			if resp.GetCluster().GetCloudProviderId() != hybridCloudProviderID {
+			if resp.GetCluster().GetCloudProviderId() != qcloudapi.HybridCloudProviderID {
 				return fmt.Errorf("cluster %s is not a hybrid cloud cluster; use \"qcloud cluster delete\" instead", clusterID)
 			}
 
