@@ -73,7 +73,7 @@ qcloud hybrid cluster create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().String("snapshot-storage-class", "", "Kubernetes storage class for snapshot volumes")
 			cmd.Flags().String("volume-snapshot-class", "", "Kubernetes volume snapshot class")
 			cmd.Flags().String("volume-attributes-class", "", "Kubernetes volume attributes class")
-			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list --cloud-provider hybrid')")
+			cmd.Flags().String("package", "", "Booking package name or ID (see 'package list --cloud-provider hybrid')")
 			cmd.Flags().Var(new(resource.Millicores), "cpu", `CPU to select a package (e.g. "1", "0.5", or "1000m")`)
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", `RAM to select a package (e.g. "8", "8G", "8Gi", or "8GiB")`)
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", `Total disk size (e.g. "200GiB"); if larger than the package's included disk, the difference is provisioned as additional storage`)

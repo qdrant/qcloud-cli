@@ -43,7 +43,7 @@ defines CPU, RAM, GPU, and minimum disk size.
 
 The --cpu, --ram, and --gpu flags specify per-node resources and are used to match a
 package. If none of these flags are provided, the current package is preserved. Available
-packages can be listed with 'cluster package list' using the --cloud-provider and
+packages can be listed with 'package list' using the --cloud-provider and
 --cloud-region flags.
 
 Each package includes a baseline disk size. Requesting more disk than the baseline with
