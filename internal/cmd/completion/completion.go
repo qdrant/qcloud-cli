@@ -134,7 +134,7 @@ func ClusterIDCompletion(s *state.State) func(*cobra.Command, []string, string) 
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		clusters, err := client.Cluster().ListCloudClusters(ctx, accountID)
+		clusters, err := client.Cluster().ListAllClusters(ctx, accountID)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}

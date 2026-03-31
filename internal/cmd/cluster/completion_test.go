@@ -24,18 +24,20 @@ func TestClusterIDCompletion(t *testing.T) {
 
 	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{
 		Items: []*clusterv1.Cluster{
-			{Id: "cluster-abc", Name: "my-cluster"},
-			{Id: "cluster-xyz", Name: "other-cluster"},
-			{Id: "cluster-hybrid", Name: "hybrid-cluster", CloudProviderId: "hybrid"},
+			{Id: "79a272a3-db29-4091-9cd0-5de588da9b2d", Name: "my-cluster", CloudProviderId: "aws"},
+			{Id: "68c83c58-e9f9-4539-8fa5-20b4e0263117", Name: "other-cluster", CloudProviderId: "gcp"},
+			{Id: "404adfbf-ad7b-4926-9943-542920be2b78", Name: "hybrid-cluster", CloudProviderId: "hybrid"},
 		},
 	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "describe", "")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "cluster-abc")
+	assert.Contains(t, stdout, "79a272a3-db29-4091-9cd0-5de588da9b2d")
 	assert.Contains(t, stdout, "my-cluster")
-	assert.Contains(t, stdout, "cluster-xyz")
-	assert.NotContains(t, stdout, "cluster-hybrid")
+	assert.Contains(t, stdout, "68c83c58-e9f9-4539-8fa5-20b4e0263117")
+	assert.Contains(t, stdout, "other-cluster")
+	assert.Contains(t, stdout, "404adfbf-ad7b-4926-9943-542920be2b78")
+	assert.Contains(t, stdout, "hybrid-cluster")
 }
 
 func TestCloudProviderCompletion(t *testing.T) {

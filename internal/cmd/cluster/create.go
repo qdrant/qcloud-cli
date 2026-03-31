@@ -124,13 +124,27 @@ qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 4 -
 				if util.IsUUID(packageValue) {
 					packageID = packageValue
 					if cmd.Flags().Changed("disk") {
-						pkg, err = clusterutil.ResolvePackageByID(ctx, client.Booking(), accountID, cloudProvider, &cloudRegion, packageValue)
+						pkg,
+							err = clusterutil.ResolvePackageByID(ctx,
+							client.Booking(),
+							accountID,
+							cloudProvider,
+							&cloudRegion,
+							packageValue,
+						)
 						if err != nil {
 							return nil, err
 						}
 					}
 				} else {
-					pkg, err = clusterutil.ResolvePackageByName(ctx, client.Booking(), accountID, cloudProvider, &cloudRegion, packageValue)
+					pkg, err = clusterutil.ResolvePackageByName(
+						ctx,
+						client.Booking(),
+						accountID,
+						cloudProvider,
+						&cloudRegion,
+						packageValue,
+					)
 					if err != nil {
 						return nil, err
 					}

@@ -15,7 +15,6 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
-	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -101,12 +100,7 @@ it, or append '-' (e.g. '10.0.0.0/8-') to remove one.`,
 				return nil, fmt.Errorf("failed to get cluster: %w", err)
 			}
 
-			cluster := resp.GetCluster()
-			if cluster.GetCloudProviderId() == qcloudapi.HybridCloudProviderID {
-				return nil, fmt.Errorf("cluster %s is a hybrid cloud cluster; use \"qcloud hybrid cluster update\" instead", args[0])
-			}
-
-			return cluster, nil
+			return resp.GetCluster(), nil
 		},
 		Update: func(s *state.State, cmd *cobra.Command, cluster *clusterv1.Cluster) (*clusterv1.Cluster, error) {
 			ctx := cmd.Context()
