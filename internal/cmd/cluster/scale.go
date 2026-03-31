@@ -342,7 +342,7 @@ func scaleConfirmPrompt(
 		output.DiffValue(oldRC.GetCpu(), newRC.GetCpu()),
 		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
 		diskLine,
-		output.DiffValue(boolToYesNo(oldPkg.GetMultiAz()), boolToYesNo(newPkg.GetMultiAz())),
+		output.DiffValue(output.BoolYesNo(oldPkg.GetMultiAz()), output.BoolYesNo(newPkg.GetMultiAz())),
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
 		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(oldRC.GetGpu(), newRC.GetGpu()))

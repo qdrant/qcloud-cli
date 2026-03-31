@@ -8,8 +8,6 @@ import (
 
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
-
-	"github.com/spf13/cobra"
 )
 
 // Flag groups used to guard struct initialization in create/update.
@@ -200,35 +198,6 @@ func parseTolerationEffect(s string) (clusterv1.TolerationEffect, error) {
 	}
 }
 
-// GPU type
-
-const (
-	gpuTypeNvidia = "nvidia"
-	gpuTypeAMD    = "amd"
-)
-
-func parseGpuType(s string) (clusterv1.ClusterConfigurationGpuType, error) {
-	switch s {
-	case gpuTypeNvidia:
-		return clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_NVIDIA, nil
-	case gpuTypeAMD:
-		return clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_AMD, nil
-	default:
-		return clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_UNSPECIFIED,
-			fmt.Errorf("invalid GPU type %q: must be one of %s, %s", s, gpuTypeNvidia, gpuTypeAMD)
-	}
-}
-
-func gpuTypeString(t clusterv1.ClusterConfigurationGpuType) string {
-	switch t {
-	case clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_NVIDIA:
-		return gpuTypeNvidia
-	case clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_AMD:
-		return gpuTypeAMD
-	default:
-		return ""
-	}
-}
 
 // Database log level
 
@@ -375,26 +344,3 @@ func secretKeyRefString(ref *commonv1.SecretKeyRef) string {
 
 // Completion functions for hybrid-specific flags
 
-func serviceTypeCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		return []string{serviceTypeClusterIP, serviceTypeNodePort, serviceTypeLoadBalancer}, cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func dbLogLevelCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		return []string{dbLogLevelTrace, dbLogLevelDebug, dbLogLevelInfo, dbLogLevelWarn, dbLogLevelError, dbLogLevelOff}, cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func auditLogRotationCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		return []string{auditLogRotationDaily, auditLogRotationHourly}, cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func gpuTypeCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		return []string{gpuTypeNvidia, gpuTypeAMD}, cobra.ShellCompDirectiveNoFileComp
-	}
-}

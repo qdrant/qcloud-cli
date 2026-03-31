@@ -281,7 +281,7 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 			if oldPerf != nil {
 				oldAS = oldPerf.AsyncScorer
 			}
-			lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), boolToYesNo(newPerf.GetAsyncScorer()))))
+			lines = append(lines, fmt.Sprintf("  Async scorer:              %s", output.DiffValue(output.OptionalValue(oldAS, notSet), output.BoolYesNo(newPerf.GetAsyncScorer()))))
 		}
 		if cmd.Flags().Changed("optimizer-cpu-budget") {
 			var oldBudget *int32

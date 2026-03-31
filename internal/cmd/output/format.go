@@ -43,6 +43,14 @@ func BoolYesNo(v bool) string {
 	return "no"
 }
 
+// BoolMark formats a bool as "yes" or empty string ("").
+func BoolMark(v bool) string {
+	if v {
+		return "yes"
+	}
+	return ""
+}
+
 // OptionalValue formats an optional pointer value as a string.
 // Returns fallback for nil pointers. Supports any pointer type.
 // Booleans are formatted as "yes"/"no"; all other types use their default format.

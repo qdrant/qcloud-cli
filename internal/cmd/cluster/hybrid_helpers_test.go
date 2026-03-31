@@ -10,30 +10,6 @@ import (
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 )
 
-func TestParseGpuType(t *testing.T) {
-	tests := []struct {
-		input   string
-		want    clusterv1.ClusterConfigurationGpuType
-		wantErr bool
-	}{
-		{"nvidia", clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_NVIDIA, false},
-		{"amd", clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_AMD, false},
-		{"intel", clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_UNSPECIFIED, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got, err := parseGpuType(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.want, got)
-				assert.Equal(t, tt.input, gpuTypeString(got))
-			}
-		})
-	}
-}
-
 func TestParseDBLogLevel(t *testing.T) {
 	tests := []struct {
 		input   string

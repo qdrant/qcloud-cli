@@ -7,20 +7,6 @@ import (
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 )
 
-func boolToMark(v bool) string {
-	if v {
-		return "yes"
-	}
-	return ""
-}
-
-func boolToYesNo(v bool) string {
-	if v {
-		return "yes"
-	}
-	return "no"
-}
-
 func formatGiB(v float64) string {
 	return fmt.Sprintf("%.2f GiB", v)
 }
@@ -76,15 +62,10 @@ func parseRestartMode(s string) (clusterv1.ClusterConfigurationRestartPolicy, er
 	case restartModeAutomatic:
 		return clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_AUTOMATIC, nil
 	default:
-		return clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_UNSPECIFIED, fmt.Errorf("invalid restart mode %q: must be one of %s, %s, %s", s, restartModeRolling, restartModeParallel, restartModeAutomatic)
+		return clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_UNSPECIFIED,
+			fmt.Errorf("invalid restart mode %q: must be one of %s, %s, %s", s, restartModeRolling, restartModeParallel, restartModeAutomatic)
 	}
 }
-
-const (
-	rebalanceByCount        = "by-count"
-	rebalanceBySize         = "by-size"
-	rebalanceByCountAndSize = "by-count-and-size"
-)
 
 func restartPolicyString(p clusterv1.ClusterConfigurationRestartPolicy) string {
 	switch p {
@@ -99,28 +80,35 @@ func restartPolicyString(p clusterv1.ClusterConfigurationRestartPolicy) string {
 	}
 }
 
-func rebalanceStrategyString(s clusterv1.ClusterConfigurationRebalanceStrategy) string {
-	switch s {
-	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT:
-		return rebalanceByCount
-	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_SIZE:
-		return rebalanceBySize
-	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE:
-		return rebalanceByCountAndSize
-	default:
-		return ""
-	}
-}
+const (
+	rebalanceStrategyByCount        = "by-count"
+	rebalanceStrategyBySize         = "by-size"
+	rebalanceStrategyByCountAndSize = "by-count-and-size"
+)
 
 func parseRebalanceStrategy(s string) (clusterv1.ClusterConfigurationRebalanceStrategy, error) {
 	switch s {
-	case rebalanceByCount:
+	case rebalanceStrategyByCount:
 		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT, nil
-	case rebalanceBySize:
+	case rebalanceStrategyBySize:
 		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_SIZE, nil
-	case rebalanceByCountAndSize:
+	case rebalanceStrategyByCountAndSize:
 		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE, nil
 	default:
-		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_UNSPECIFIED, fmt.Errorf("invalid rebalance strategy %q: must be one of %s, %s, %s", s, rebalanceByCount, rebalanceBySize, rebalanceByCountAndSize)
+		return clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_UNSPECIFIED,
+			fmt.Errorf("invalid rebalance strategy %q: must be one of %s, %s, %s", s, rebalanceStrategyByCount, rebalanceStrategyBySize, rebalanceStrategyByCountAndSize)
+	}
+}
+
+func rebalanceStrategyString(s clusterv1.ClusterConfigurationRebalanceStrategy) string {
+	switch s {
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT:
+		return rebalanceStrategyByCount
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_SIZE:
+		return rebalanceStrategyBySize
+	case clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE:
+		return rebalanceStrategyByCountAndSize
+	default:
+		return ""
 	}
 }

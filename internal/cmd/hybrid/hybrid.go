@@ -20,7 +20,6 @@ func NewCommand(s *state.State) *cobra.Command {
 		newUpdateCommand(s),
 		newDeleteCommand(s),
 		newBootstrapCommand(s),
-		newClusterCommand(s),
 	)
 	return cmd
 }

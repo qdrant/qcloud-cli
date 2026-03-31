@@ -97,21 +97,15 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 
 					if hasHybridCfg {
 						fmt.Fprintln(w)
-						fmt.Fprintln(w, "Hybrid Configuration:")
+						fmt.Fprintln(w, "Kubernetes Configuration:")
 						if cfg.ServiceType != nil {
 							fmt.Fprintf(w, "  Service Type:              %s\n", serviceTypeString(cfg.GetServiceType()))
-						}
-						if cfg.GpuType != nil {
-							fmt.Fprintf(w, "  GPU Type:                  %s\n", gpuTypeString(cfg.GetGpuType()))
 						}
 						if cfg.ReservedCpuPercentage != nil {
 							fmt.Fprintf(w, "  Reserved CPU %%:            %d\n", cfg.GetReservedCpuPercentage())
 						}
 						if cfg.ReservedMemoryPercentage != nil {
 							fmt.Fprintf(w, "  Reserved Memory %%:         %d\n", cfg.GetReservedMemoryPercentage())
-						}
-						if cfg.AdditionalResources != nil {
-							fmt.Fprintf(w, "  Additional Disk (GiB):     %d\n", cfg.GetAdditionalResources().GetDisk())
 						}
 						if ns := cfg.GetNodeSelector(); len(ns) > 0 {
 							fmt.Fprintf(w, "  Node Selectors:\n")
