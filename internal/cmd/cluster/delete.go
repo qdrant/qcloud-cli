@@ -10,7 +10,6 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
-	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -42,18 +41,6 @@ qcloud cluster delete 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force`,
 			accountID, err := s.AccountID()
 			if err != nil {
 				return err
-			}
-
-			resp, err := client.Cluster().GetCluster(ctx, &clusterv1.GetClusterRequest{
-				AccountId: accountID,
-				ClusterId: clusterID,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to get cluster: %w", err)
-			}
-
-			if resp.GetCluster().GetCloudProviderId() == qcloudapi.HybridCloudProviderID {
-				return fmt.Errorf("cluster %s is a hybrid cloud cluster; use \"qcloud hybrid cluster delete\" instead", clusterID)
 			}
 
 			force, _ := cmd.Flags().GetBool("force")

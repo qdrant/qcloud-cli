@@ -15,7 +15,7 @@ import (
 )
 
 func newUpdateCommand(s *state.State) *cobra.Command {
-	cmd := base.UpdateCmd[*hybridv1.HybridCloudEnvironment]{
+	return base.UpdateCmd[*hybridv1.HybridCloudEnvironment]{
 		ValidArgsFunction: envIDCompletion(s),
 		Example: `# Rename a hybrid cloud environment
 qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --name new-name
@@ -37,6 +37,7 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 			cmd.Flags().String("database-storage-class", "", "Default database storage class (uses cluster default if omitted)")
 			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class (uses cluster default if omitted)")
 			cmd.Flags().String("log-level", "", `Log level for deployed components ("debug", "info", "warn", "error")`)
+			_ = cmd.RegisterFlagCompletionFunc("log-level", logLevelCompletion())
 			return cmd
 		},
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*hybridv1.HybridCloudEnvironment, error) {
@@ -117,6 +118,4 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 			fmt.Fprintf(out, "Hybrid cloud environment %s (%s) updated.\n", env.GetId(), env.GetName())
 		},
 	}.CobraCommand(s)
-	_ = cmd.RegisterFlagCompletionFunc("log-level", logLevelCompletion())
-	return cmd
 }

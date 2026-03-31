@@ -1,4 +1,4 @@
-package hybrid
+package cluster
 
 import (
 	"testing"
@@ -9,80 +9,6 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	commonv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/common/v1"
 )
-
-func TestParseRestartPolicy(t *testing.T) {
-	tests := []struct {
-		input   string
-		want    clusterv1.ClusterConfigurationRestartPolicy
-		wantErr bool
-	}{
-		{"rolling", clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_ROLLING, false},
-		{"parallel", clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_PARALLEL, false},
-		{"automatic", clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_AUTOMATIC, false},
-		{"invalid", clusterv1.ClusterConfigurationRestartPolicy_CLUSTER_CONFIGURATION_RESTART_POLICY_UNSPECIFIED, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got, err := parseRestartPolicy(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.want, got)
-				assert.Equal(t, tt.input, restartPolicyString(got))
-			}
-		})
-	}
-}
-
-func TestParseRebalanceStrategy(t *testing.T) {
-	tests := []struct {
-		input   string
-		want    clusterv1.ClusterConfigurationRebalanceStrategy
-		wantErr bool
-	}{
-		{"by-count", clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT, false},
-		{"by-size", clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_SIZE, false},
-		{"by-count-and-size", clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_BY_COUNT_AND_SIZE, false},
-		{"invalid", clusterv1.ClusterConfigurationRebalanceStrategy_CLUSTER_CONFIGURATION_REBALANCE_STRATEGY_UNSPECIFIED, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got, err := parseRebalanceStrategy(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.want, got)
-				assert.Equal(t, tt.input, rebalanceStrategyString(got))
-			}
-		})
-	}
-}
-
-func TestParseGpuType(t *testing.T) {
-	tests := []struct {
-		input   string
-		want    clusterv1.ClusterConfigurationGpuType
-		wantErr bool
-	}{
-		{"nvidia", clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_NVIDIA, false},
-		{"amd", clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_AMD, false},
-		{"intel", clusterv1.ClusterConfigurationGpuType_CLUSTER_CONFIGURATION_GPU_TYPE_UNSPECIFIED, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got, err := parseGpuType(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.want, got)
-				assert.Equal(t, tt.input, gpuTypeString(got))
-			}
-		})
-	}
-}
 
 func TestParseDBLogLevel(t *testing.T) {
 	tests := []struct {
@@ -214,4 +140,98 @@ func TestParseSecretKeyRef(t *testing.T) {
 func TestSecretKeyRefString(t *testing.T) {
 	assert.Equal(t, "name:key", secretKeyRefString(&commonv1.SecretKeyRef{Name: "name", Key: "key"}))
 	assert.Empty(t, secretKeyRefString(nil))
+}
+
+func TestParseServiceType(t *testing.T) {
+	tests := []struct {
+		input   string
+		want    clusterv1.ClusterServiceType
+		wantErr bool
+	}{
+		{"cluster-ip", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_CLUSTER_IP, false},
+		{"node-port", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_NODE_PORT, false},
+		{"load-balancer", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_LOAD_BALANCER, false},
+		{"invalid", clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_UNSPECIFIED, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := parseServiceType(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+				assert.Equal(t, tt.input, serviceTypeString(got))
+			}
+		})
+	}
+}
+
+func TestParseToleration(t *testing.T) {
+	opEqual := clusterv1.TolerationOperator_TOLERATION_OPERATOR_EQUAL
+	opExists := clusterv1.TolerationOperator_TOLERATION_OPERATOR_EXISTS
+	effectNoSchedule := clusterv1.TolerationEffect_TOLERATION_EFFECT_NO_SCHEDULE
+	effectPreferNoSchedule := clusterv1.TolerationEffect_TOLERATION_EFFECT_PREFER_NO_SCHEDULE
+	effectNoExecute := clusterv1.TolerationEffect_TOLERATION_EFFECT_NO_EXECUTE
+
+	t.Run("key=value:Effect", func(t *testing.T) {
+		tol, err := parseToleration("env=prod:NoSchedule")
+		require.NoError(t, err)
+		assert.Equal(t, "env", tol.GetKey())
+		assert.Equal(t, "prod", tol.GetValue())
+		assert.Equal(t, opEqual, tol.GetOperator())
+		assert.Equal(t, effectNoSchedule, tol.GetEffect())
+	})
+
+	t.Run("key=value no effect", func(t *testing.T) {
+		tol, err := parseToleration("env=prod")
+		require.NoError(t, err)
+		assert.Equal(t, "env", tol.GetKey())
+		assert.Equal(t, "prod", tol.GetValue())
+		assert.Equal(t, opEqual, tol.GetOperator())
+		assert.Nil(t, tol.Effect)
+	})
+
+	t.Run("key:Exists:Effect", func(t *testing.T) {
+		tol, err := parseToleration("dedicated:Exists:NoExecute")
+		require.NoError(t, err)
+		assert.Equal(t, "dedicated", tol.GetKey())
+		assert.Equal(t, opExists, tol.GetOperator())
+		assert.Equal(t, effectNoExecute, tol.GetEffect())
+	})
+
+	t.Run("key:Exists no effect", func(t *testing.T) {
+		tol, err := parseToleration("dedicated:Exists")
+		require.NoError(t, err)
+		assert.Equal(t, "dedicated", tol.GetKey())
+		assert.Equal(t, opExists, tol.GetOperator())
+		assert.Nil(t, tol.Effect)
+	})
+
+	t.Run("prefer-no-schedule effect", func(t *testing.T) {
+		tol, err := parseToleration("tier=spot:PreferNoSchedule")
+		require.NoError(t, err)
+		assert.Equal(t, effectPreferNoSchedule, tol.GetEffect())
+	})
+
+	t.Run("no-execute alias", func(t *testing.T) {
+		tol, err := parseToleration("node.kubernetes.io/not-ready:Exists:no-execute")
+		require.NoError(t, err)
+		assert.Equal(t, effectNoExecute, tol.GetEffect())
+	})
+
+	t.Run("empty key with equals", func(t *testing.T) {
+		_, err := parseToleration("=value:NoSchedule")
+		require.Error(t, err)
+	})
+
+	t.Run("empty key without equals", func(t *testing.T) {
+		_, err := parseToleration(":Exists")
+		require.Error(t, err)
+	})
+
+	t.Run("invalid effect", func(t *testing.T) {
+		_, err := parseToleration("env=prod:Bogus")
+		require.Error(t, err)
+	})
 }

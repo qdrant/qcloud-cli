@@ -24,7 +24,6 @@ func NewCommand(s *state.State) *cobra.Command {
 		newUnsuspendCommand(s),
 		newWaitCommand(s),
 		newVersionCommand(s),
-		newPackageCommand(s),
 		newKeyCommand(s),
 		newScaleCommand(s),
 	)

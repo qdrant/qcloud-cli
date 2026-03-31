@@ -13,17 +13,14 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-// PackageProviderFn returns the cloud provider ID and an optional region for package queries.
-// Returning an empty provider signals that completions cannot be generated yet.
-type PackageProviderFn func(cmd *cobra.Command) (cloudProvider string, cloudRegion *string)
-
 // CPUCompletion returns a completion function for a --cpu flag.
-func CPUCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+func CPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region := pf(cmd)
+		provider, region := getCloudValuesFromFlags(cmd)
 		if provider == "" {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 		ram := *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
 		gpu := *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
 		multiAz, _ := cmd.Flags().GetBool("multi-az")
@@ -55,12 +52,13 @@ func CPUCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []
 }
 
 // RAMCompletion returns a completion function for a --ram flag.
-func RAMCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+func RAMCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region := pf(cmd)
+		provider, region := getCloudValuesFromFlags(cmd)
 		if provider == "" {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 		gpu := *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
 		multiAz, _ := cmd.Flags().GetBool("multi-az")
@@ -92,12 +90,13 @@ func RAMCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []
 }
 
 // DiskCompletion returns a completion function for a --disk flag.
-func DiskCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+func DiskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region := pf(cmd)
+		provider, region := getCloudValuesFromFlags(cmd)
 		if provider == "" {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 		ram := *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
 		gpu := *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
@@ -131,12 +130,13 @@ func DiskCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, [
 }
 
 // GPUCompletion returns a completion function for a --gpu flag.
-func GPUCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+func GPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region := pf(cmd)
+		provider, region := getCloudValuesFromFlags(cmd)
 		if provider == "" {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 		cpu := *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 		ram := *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
 		multiAz, _ := cmd.Flags().GetBool("multi-az")
@@ -167,9 +167,9 @@ func GPUCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []
 }
 
 // PackageNameCompletion returns a completion function for a --package flag.
-func PackageNameCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+func PackageNameCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		provider, region := pf(cmd)
+		provider, region := getCloudValuesFromFlags(cmd)
 		if provider == "" {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -191,7 +191,6 @@ func PackageNameCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Com
 			CloudProviderRegionId: region,
 			Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
 		}
-
 		resp, err := client.Booking().ListPackages(ctx, req)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
@@ -208,4 +207,13 @@ func PackageNameCompletion(s *state.State, pf PackageProviderFn) func(*cobra.Com
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
+}
+
+// getCloudValuesFromFlags returns (cloud, region, error) for completion of package related values.
+// Region can be nil when the cloud is 'hybrid'.
+func getCloudValuesFromFlags(cmd *cobra.Command) (string, *string) {
+	provider, _ := cmd.Flags().GetString("cloud-provider")
+	r, _ := cmd.Flags().GetString("cloud-region")
+
+	return provider, &r
 }

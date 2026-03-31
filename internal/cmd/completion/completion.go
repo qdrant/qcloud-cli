@@ -7,7 +7,6 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 
-	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -35,9 +34,6 @@ func CloudProviderCompletion(s *state.State) func(*cobra.Command, []string, stri
 
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, p := range resp.GetItems() {
-			if p.GetId() == qcloudapi.HybridCloudProviderID {
-				continue
-			}
 			completions = append(completions, p.GetId()+"\t"+p.GetName())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
@@ -134,7 +130,7 @@ func ClusterIDCompletion(s *state.State) func(*cobra.Command, []string, string) 
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		clusters, err := client.Cluster().ListCloudClusters(ctx, accountID)
+		clusters, err := client.Cluster().ListAllClusters(ctx, accountID)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}

@@ -43,7 +43,7 @@ defines CPU, RAM, GPU, and minimum disk size.
 
 The --cpu, --ram, and --gpu flags specify per-node resources and are used to match a
 package. If none of these flags are provided, the current package is preserved. Available
-packages can be listed with 'cluster package list' using the --cloud-provider and
+packages can be listed with 'package list' using the --cloud-provider and
 --cloud-region flags.
 
 Each package includes a baseline disk size. Requesting more disk than the baseline with
@@ -309,10 +309,10 @@ match.`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
-	_ = cmd.RegisterFlagCompletionFunc("cpu", cpuCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("ram", ramCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("disk", diskCompletion(s))
-	_ = cmd.RegisterFlagCompletionFunc("gpu", gpuCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("cpu", completion.CPUCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("ram", completion.RAMCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("disk", completion.DiskCompletion(s))
+	_ = cmd.RegisterFlagCompletionFunc("gpu", completion.GPUCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("disk-performance", diskPerformanceCompletion())
 	return cmd
 }
@@ -342,7 +342,7 @@ func scaleConfirmPrompt(
 		output.DiffValue(oldRC.GetCpu(), newRC.GetCpu()),
 		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
 		diskLine,
-		output.DiffValue(boolToYesNo(oldPkg.GetMultiAz()), boolToYesNo(newPkg.GetMultiAz())),
+		output.DiffValue(output.BoolYesNo(oldPkg.GetMultiAz()), output.BoolYesNo(newPkg.GetMultiAz())),
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
 		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(oldRC.GetGpu(), newRC.GetGpu()))

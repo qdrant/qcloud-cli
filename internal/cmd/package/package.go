@@ -1,4 +1,4 @@
-package cluster
+package packagecmd
 
 import (
 	"fmt"
@@ -11,25 +11,30 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-func newPackageCommand(s *state.State) *cobra.Command {
+// NewCommand creates the "package" parent command and registers all subcommands.
+func NewCommand(s *state.State) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package",
-		Short: "Manage cluster packages",
+		Short: "Manage packages",
 		Args:  cobra.NoArgs,
 	}
-	cmd.AddCommand(newPackageListCommand(s))
+	cmd.AddCommand(newListCommand(s))
 	return cmd
 }
 
-func newPackageListCommand(s *state.State) *cobra.Command {
+func newListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*bookingv1.ListPackagesResponse]{
 		Use:   "list",
 		Short: "List available packages for cluster creation",
 		Example: `# List packages for a cloud provider and region
-qcloud cluster package list --cloud-provider aws --cloud-region eu-central-1`,
+qcloud package list --cloud-provider aws --cloud-region eu-central-1
+
+# List packages for a hybrid cloud provider (no region required)
+qcloud package list --cloud-provider hybrid`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*bookingv1.ListPackagesResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
@@ -45,10 +50,20 @@ qcloud cluster package list --cloud-provider aws --cloud-region eu-central-1`,
 			cloudProvider, _ := cmd.Flags().GetString("cloud-provider")
 			cloudRegion, _ := cmd.Flags().GetString("cloud-region")
 
+			var cloudRegionPtr *string
+			if cloudProvider == qcloudapi.HybridCloudProviderID {
+				cloudRegionPtr = nil
+			} else {
+				if cloudRegion == "" {
+					return nil, fmt.Errorf("--cloud-region is required when --cloud-provider is not %q", qcloudapi.HybridCloudProviderID)
+				}
+				cloudRegionPtr = &cloudRegion
+			}
+
 			resp, err := client.Booking().ListPackages(ctx, &bookingv1.ListPackagesRequest{
 				AccountId:             accountID,
 				CloudProviderId:       cloudProvider,
-				CloudProviderRegionId: &cloudRegion,
+				CloudProviderRegionId: cloudRegionPtr,
 				Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
 			})
 			if err != nil {
@@ -95,7 +110,7 @@ qcloud cluster package list --cloud-provider aws --cloud-region eu-central-1`,
 				return "n/a"
 			})
 			t.AddField("MULTI-AZ", func(p *bookingv1.Package) string {
-				return boolToYesNo(p.GetMultiAz())
+				return output.BoolYesNo(p.GetMultiAz())
 			})
 			t.AddField("PRICE/HR", func(p *bookingv1.Package) string {
 				return output.FormatMillicents(p.GetUnitIntPricePerHour(), p.GetCurrency())
@@ -106,9 +121,8 @@ qcloud cluster package list --cloud-provider aws --cloud-region eu-central-1`,
 	}.CobraCommand(s)
 
 	cmd.Flags().String("cloud-provider", "", "Cloud provider ID (required)")
-	cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required)")
+	cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required for non-hybrid providers)")
 	_ = cmd.MarkFlagRequired("cloud-provider")
-	_ = cmd.MarkFlagRequired("cloud-region")
 
 	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", completion.CloudProviderCompletion(s))
 	_ = cmd.RegisterFlagCompletionFunc("cloud-region", completion.CloudRegionCompletion(s))

@@ -211,13 +211,13 @@ func ResolvePackageByResources(
 	case 1:
 		return matches[0], nil
 	case 0:
-		return nil, fmt.Errorf("no package found matching %s; use 'cluster package list' to see available packages", desc)
+		return nil, fmt.Errorf("no package found matching %s; use 'package list' to see available packages", desc)
 	default:
 		names := make([]string, len(matches))
 		for i, p := range matches {
 			names[i] = p.GetName()
 		}
-		return nil, fmt.Errorf("multiple packages match %s: %s; use 'cluster package list' to see available packages", desc, strings.Join(names, ", "))
+		return nil, fmt.Errorf("multiple packages match %s: %s; use 'package list' to see available packages", desc, strings.Join(names, ", "))
 	}
 }
 

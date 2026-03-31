@@ -11,7 +11,6 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
-	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -50,9 +49,6 @@ qcloud cluster list --page-size 10`,
 			var cloudProvider, cloudRegion string
 			if cloudProviderChanged {
 				cloudProvider, _ = cmd.Flags().GetString("cloud-provider")
-				if cloudProvider == qcloudapi.HybridCloudProviderID {
-					return nil, fmt.Errorf("hybrid clusters are not supported by this command, use \"qcloud hybrid cluster list\" instead")
-				}
 			}
 			if cloudRegionChanged {
 				cloudRegion, _ = cmd.Flags().GetString("cloud-region")
@@ -77,11 +73,7 @@ qcloud cluster list --page-size 10`,
 					if err != nil {
 						return nil, fmt.Errorf("failed to list clusters: %w", err)
 					}
-					for _, c := range resp.Items {
-						if c.GetCloudProviderId() != qcloudapi.HybridCloudProviderID {
-							allItems = append(allItems, c)
-						}
-					}
+					allItems = append(allItems, resp.Items...)
 					if resp.NextPageToken == nil || *resp.NextPageToken == "" {
 						break
 					}
@@ -110,13 +102,6 @@ qcloud cluster list --page-size 10`,
 			if err != nil {
 				return nil, fmt.Errorf("failed to list clusters: %w", err)
 			}
-			var filtered []*clusterv1.Cluster
-			for _, c := range resp.Items {
-				if c.GetCloudProviderId() != qcloudapi.HybridCloudProviderID {
-					filtered = append(filtered, c)
-				}
-			}
-			resp.Items = filtered
 			return resp, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {
@@ -142,7 +127,7 @@ qcloud cluster list --page-size 10`,
 			t.AddField("CLOUD", func(v *clusterv1.Cluster) string {
 				return v.GetCloudProviderId()
 			})
-			t.AddField("REGION", func(v *clusterv1.Cluster) string {
+			t.AddField("REGION / ENV", func(v *clusterv1.Cluster) string {
 				return v.GetCloudProviderRegionId()
 			})
 			t.AddField("CREATED", func(v *clusterv1.Cluster) string {
@@ -160,9 +145,6 @@ qcloud cluster list --page-size 10`,
 	}.CobraCommand(s)
 
 	cmd.Long = `List all clusters in the current account.
-
-Hybrid cloud clusters are excluded from the output. To list hybrid clusters, use
-"qcloud hybrid cluster list".
 
 By default, all clusters are fetched automatically across multiple pages.
 

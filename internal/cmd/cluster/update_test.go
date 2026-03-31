@@ -655,6 +655,320 @@ func TestUpdateCluster_VersionFallsBackToConfigVersion(t *testing.T) {
 	assert.Contains(t, stderr, "v1.15.0 => v1.17.0")
 }
 
+func TestUpdateCluster_DBConfigExtended(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--vectors-on-disk",
+		"--db-log-level", "debug",
+		"--force",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	dbCfg := req.GetCluster().GetConfiguration().GetDatabaseConfiguration()
+	assert.True(t, dbCfg.GetCollection().GetVectors().GetOnDisk())
+	assert.Equal(t, clusterv1.DatabaseConfigurationLogLevel_DATABASE_CONFIGURATION_LOG_LEVEL_DEBUG, dbCfg.GetLogLevel())
+}
+
+func TestUpdateCluster_AuditLogging(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--audit-logging",
+		"--audit-log-rotation", "daily",
+		"--audit-log-max-files", "10",
+		"--audit-log-trust-forwarded-headers",
+		"--force",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	audit := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetAuditLogging()
+	assert.True(t, audit.GetEnabled())
+	assert.Equal(t, clusterv1.AuditLogRotation_AUDIT_LOG_ROTATION_DAILY, audit.GetRotation())
+	assert.Equal(t, uint32(10), audit.GetMaxLogFiles())
+	assert.True(t, audit.GetTrustForwardedHeaders())
+}
+
+func TestUpdateCluster_TLSAndSecrets(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--enable-tls",
+		"--api-key-secret", "my-secret:api-key",
+		"--read-only-api-key-secret", "ro-secret:rokey",
+		"--tls-cert-secret", "cert-secret:tls.crt",
+		"--tls-key-secret", "key-secret:tls.key",
+		"--force",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	dbCfg := req.GetCluster().GetConfiguration().GetDatabaseConfiguration()
+	assert.True(t, dbCfg.GetService().GetEnableTls())
+	assert.Equal(t, "my-secret", dbCfg.GetService().GetApiKey().GetName())
+	assert.Equal(t, "api-key", dbCfg.GetService().GetApiKey().GetKey())
+	assert.Equal(t, "ro-secret", dbCfg.GetService().GetReadOnlyApiKey().GetName())
+	assert.Equal(t, "rokey", dbCfg.GetService().GetReadOnlyApiKey().GetKey())
+	assert.Equal(t, "cert-secret", dbCfg.GetTls().GetCert().GetName())
+	assert.Equal(t, "tls.crt", dbCfg.GetTls().GetCert().GetKey())
+	assert.Equal(t, "key-secret", dbCfg.GetTls().GetKey().GetName())
+	assert.Equal(t, "tls.key", dbCfg.GetTls().GetKey().GetKey())
+}
+
+func TestUpdateCluster_DiskPerformanceAndCostLabel(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--disk-performance", "performance",
+		"--cost-allocation-label", "billing-team",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, commonv1.StorageTierType_STORAGE_TIER_TYPE_PERFORMANCE, req.GetCluster().GetConfiguration().GetClusterStorageConfiguration().GetStorageTierType())
+	assert.Equal(t, "billing-team", req.GetCluster().GetCostAllocationLabel())
+}
+
+func TestUpdateCluster_InvalidDiskPerformance(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--disk-performance", "invalid",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid disk performance")
+}
+
+func TestUpdateCluster_HybridServiceType(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--service-type", "load-balancer",
+		"--force",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, clusterv1.ClusterServiceType_CLUSTER_SERVICE_TYPE_LOAD_BALANCER, req.GetCluster().GetConfiguration().GetServiceType())
+}
+
+func TestUpdateCluster_HybridReservedResources(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--reserved-cpu-percentage", "25",
+		"--reserved-memory-percentage", "30",
+		"--force",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	cfg := req.GetCluster().GetConfiguration()
+	assert.Equal(t, uint32(25), cfg.GetReservedCpuPercentage())
+	assert.Equal(t, uint32(30), cfg.GetReservedMemoryPercentage())
+}
+
+func TestUpdateCluster_HybridKeyValueFlags(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--node-selector", "zone=us-east",
+		"--annotation", "app=qdrant",
+		"--pod-label", "tier=db",
+		"--service-annotation", "lb=internal",
+		"--force",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	cfg := req.GetCluster().GetConfiguration()
+
+	toMap := func(kvs []*commonv1.KeyValue) map[string]string {
+		m := make(map[string]string)
+		for _, kv := range kvs {
+			m[kv.GetKey()] = kv.GetValue()
+		}
+		return m
+	}
+
+	assert.Equal(t, map[string]string{"zone": "us-east"}, toMap(cfg.GetNodeSelector()))
+	assert.Equal(t, map[string]string{"app": "qdrant"}, toMap(cfg.GetAnnotations()))
+	assert.Equal(t, map[string]string{"tier": "db"}, toMap(cfg.GetPodLabels()))
+	assert.Equal(t, map[string]string{"lb": "internal"}, toMap(cfg.GetServiceAnnotations()))
+}
+
+func TestUpdateCluster_HybridTolerations(t *testing.T) {
+	t.Run("add", func(t *testing.T) {
+		env := testutil.NewTestEnv(t)
+		setupUpdateHandlers(env)
+
+		_, _, err := testutil.Exec(t, env,
+			"cluster", "update", "cluster-abc",
+			"--toleration", "env=prod:NoSchedule",
+			"--force",
+		)
+		require.NoError(t, err)
+
+		req, ok := env.Server.UpdateClusterCalls.Last()
+		require.True(t, ok)
+		tols := req.GetCluster().GetConfiguration().GetTolerations()
+		require.Len(t, tols, 1)
+		assert.Equal(t, "env", tols[0].GetKey())
+		assert.Equal(t, "prod", tols[0].GetValue())
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		env := testutil.NewTestEnv(t)
+
+		env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			tolKey := "env"
+			tolValue := "prod"
+			opEqual := clusterv1.TolerationOperator_TOLERATION_OPERATOR_EQUAL
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:   req.GetClusterId(),
+					Name: "my-cluster",
+					Configuration: &clusterv1.ClusterConfiguration{
+						Tolerations: []*clusterv1.Toleration{
+							{Key: &tolKey, Value: &tolValue, Operator: &opEqual},
+						},
+					},
+				},
+			}, nil
+		})
+		env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+			return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+		})
+
+		_, _, err := testutil.Exec(t, env,
+			"cluster", "update", "cluster-abc",
+			"--toleration", "env-",
+			"--force",
+		)
+		require.NoError(t, err)
+
+		req, ok := env.Server.UpdateClusterCalls.Last()
+		require.True(t, ok)
+		assert.Empty(t, req.GetCluster().GetConfiguration().GetTolerations())
+	})
+}
+
+func TestUpdateCluster_HybridTopologySpreadConstraints(t *testing.T) {
+	t.Run("add", func(t *testing.T) {
+		env := testutil.NewTestEnv(t)
+		setupUpdateHandlers(env)
+
+		_, _, err := testutil.Exec(t, env,
+			"cluster", "update", "cluster-abc",
+			"--topology-spread-constraint", "hostname:2:do-not-schedule",
+			"--force",
+		)
+		require.NoError(t, err)
+
+		req, ok := env.Server.UpdateClusterCalls.Last()
+		require.True(t, ok)
+		tscs := req.GetCluster().GetConfiguration().GetTopologySpreadConstraints()
+		require.Len(t, tscs, 1)
+		assert.Equal(t, "hostname", tscs[0].GetTopologyKey())
+		assert.Equal(t, int32(2), tscs[0].GetMaxSkew())
+	})
+
+	t.Run("remove", func(t *testing.T) {
+		env := testutil.NewTestEnv(t)
+
+		maxSkew := int32(1)
+		env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {
+			return &clusterv1.GetClusterResponse{
+				Cluster: &clusterv1.Cluster{
+					Id:   req.GetClusterId(),
+					Name: "my-cluster",
+					Configuration: &clusterv1.ClusterConfiguration{
+						TopologySpreadConstraints: []*commonv1.TopologySpreadConstraint{
+							{TopologyKey: "hostname", MaxSkew: &maxSkew},
+						},
+					},
+				},
+			}, nil
+		})
+		env.Server.UpdateClusterCalls.Always(func(_ context.Context, req *clusterv1.UpdateClusterRequest) (*clusterv1.UpdateClusterResponse, error) {
+			return &clusterv1.UpdateClusterResponse{Cluster: req.GetCluster()}, nil
+		})
+
+		_, _, err := testutil.Exec(t, env,
+			"cluster", "update", "cluster-abc",
+			"--topology-spread-constraint", "hostname-",
+			"--force",
+		)
+		require.NoError(t, err)
+
+		req, ok := env.Server.UpdateClusterCalls.Last()
+		require.True(t, ok)
+		assert.Empty(t, req.GetCluster().GetConfiguration().GetTopologySpreadConstraints())
+	})
+}
+
+func TestUpdateCluster_HybridStorageClasses(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--database-storage-class", "fast-ssd",
+		"--snapshot-storage-class", "standard",
+		"--volume-snapshot-class", "default",
+		"--volume-attributes-class", "perf",
+		"--force",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	sc := req.GetCluster().GetConfiguration().GetClusterStorageConfiguration()
+	assert.Equal(t, "fast-ssd", sc.GetDatabaseStorageClass())
+	assert.Equal(t, "standard", sc.GetSnapshotStorageClass())
+	assert.Equal(t, "default", sc.GetVolumeSnapshotClass())
+	assert.Equal(t, "perf", sc.GetVolumeAttributesClass())
+}
+
+func TestUpdateCluster_HybridPromptShowsDiff(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--service-type", "node-port",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Aborted.")
+	assert.Contains(t, stderr, "rolling restart")
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
 // setupUpdateHandlers configures the standard Get/Update handlers for update tests.
 func setupUpdateHandlers(env *testutil.TestEnv) {
 	env.Server.GetClusterCalls.Always(func(_ context.Context, req *clusterv1.GetClusterRequest) (*clusterv1.GetClusterResponse, error) {

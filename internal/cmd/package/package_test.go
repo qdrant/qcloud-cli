@@ -1,4 +1,4 @@
-package cluster_test
+package packagecmd_test
 
 import (
 	"testing"
@@ -34,7 +34,7 @@ func TestListPackages_TableOutput(t *testing.T) {
 	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env,
-		"cluster", "package", "list",
+		"package", "list",
 		"--cloud-provider", "aws",
 		"--cloud-region", "us-east-1",
 	)
@@ -66,10 +66,41 @@ func TestListPackages_FreePackage(t *testing.T) {
 	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env,
-		"cluster", "package", "list",
+		"package", "list",
 		"--cloud-provider", "aws",
 		"--cloud-region", "us-east-1",
 	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "free")
+}
+
+func TestListPackages_HybridNoRegion(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{
+				Id:   "pkg-hybrid",
+				Name: "hybrid-starter",
+			},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env,
+		"package", "list",
+		"--cloud-provider", "hybrid",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "hybrid-starter")
+}
+
+func TestListPackages_NonHybridRequiresRegion(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env,
+		"package", "list",
+		"--cloud-provider", "aws",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--cloud-region is required")
 }

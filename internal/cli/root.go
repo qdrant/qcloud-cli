@@ -9,8 +9,9 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudprovider"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudregion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cluster"
-	cmdcontext "github.com/qdrant/qcloud-cli/internal/cmd/context"
+	contextcmd "github.com/qdrant/qcloud-cli/internal/cmd/context"
 	"github.com/qdrant/qcloud-cli/internal/cmd/hybrid"
+	packagecmd "github.com/qdrant/qcloud-cli/internal/cmd/package"
 	"github.com/qdrant/qcloud-cli/internal/cmd/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/cmd/version"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -67,9 +68,10 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 	cmd.AddCommand(cluster.NewCommand(s))
 	cmd.AddCommand(cloudprovider.NewCommand(s))
 	cmd.AddCommand(cloudregion.NewCommand(s))
-	cmd.AddCommand(cmdcontext.NewCommand(s))
+	cmd.AddCommand(contextcmd.NewCommand(s))
 	cmd.AddCommand(backup.NewCommand(s))
 	cmd.AddCommand(hybrid.NewCommand(s))
+	cmd.AddCommand(packagecmd.NewCommand(s))
 	cmd.AddCommand(selfupgrade.NewCommand(s))
 
 	return cmd
