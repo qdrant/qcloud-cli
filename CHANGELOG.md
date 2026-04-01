@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.16.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.16.1)
+
+### Bug Fixes
+
+- remove the default string from the nodes flag help message, since it's already rendered by cobra (#90)
+
 ## [v0.16.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.15.0)
 
 ### Features
