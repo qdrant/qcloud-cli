@@ -53,7 +53,7 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 			cmd.Flags().String("name", "", "Cluster name (auto-generated if not provided)")
 			cmd.Flags().String("cloud-provider", "", "Cloud provider ID (required, see 'cloud-provider list)")
 			cmd.Flags().String("cloud-region", "", "Cloud provider region ID (required, see 'cloud-region list --cloud-provider <provider_id>)")
-			cmd.Flags().Uint32("nodes", 1, "Number of nodes (default 1)")
+			cmd.Flags().Uint32("nodes", 1, "Number of nodes")
 			cmd.Flags().String("package", "", "Booking package name or ID (see 'cluster package list')")
 			cmd.Flags().Var(new(resource.Millicores), "cpu", "CPU to select a package (e.g. \"1\", \"0.5\", or \"1000m\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM to select a package (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
