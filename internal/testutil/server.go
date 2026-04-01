@@ -16,6 +16,7 @@ import (
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
+	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
@@ -59,6 +60,7 @@ type TestEnv struct {
 	DatabaseApiKeyServer *FakeDatabaseApiKeyService
 	BackupServer         *FakeBackupService
 	HybridServer         *FakeHybridService
+	MonitoringServer     *FakeMonitoringService
 	Capture              *RequestCapture
 	Cleanup              func()
 }
@@ -96,12 +98,19 @@ func WithVersion(v string) Option {
 func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	t.Helper()
 
+	// Redirect HOME to an empty temp dir so Config.Load never reads the real
+	// ~/.config/qcloud/config.yaml. Also clear QDRANT_CLOUD_CONFIG in case it
+	// is set in the caller's environment.
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("QDRANT_CLOUD_CONFIG", "")
+
 	fake := &FakeClusterService{}
 	fakeBooking := &FakeBookingService{}
 	fakePlatform := &FakePlatformService{}
 	fakeDatabaseApiKey := &FakeDatabaseApiKeyService{}
 	fakeBackup := &FakeBackupService{}
 	fakeHybrid := &FakeHybridService{}
+	fakeMonitoring := &FakeMonitoringService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -113,6 +122,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	clusterauthv2.RegisterDatabaseApiKeyServiceServer(srv, fakeDatabaseApiKey)
 	backupv1.RegisterBackupServiceServer(srv, fakeBackup)
 	hybridv1.RegisterHybridCloudServiceServer(srv, fakeHybrid)
+	monitoringv1.RegisterMonitoringServiceServer(srv, fakeMonitoring)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -162,6 +172,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		DatabaseApiKeyServer: fakeDatabaseApiKey,
 		BackupServer:         fakeBackup,
 		HybridServer:         fakeHybrid,
+		MonitoringServer:     fakeMonitoring,
 		Capture:              capture,
 		Cleanup:              cleanup,
 	}

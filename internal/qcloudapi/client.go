@@ -12,6 +12,7 @@ import (
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
+	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 )
 
@@ -24,6 +25,7 @@ type Client struct {
 	databaseApiKey clusterauthv2.DatabaseApiKeyServiceClient
 	backup         backupv1.BackupServiceClient
 	hybrid         hybridv1.HybridCloudServiceClient
+	monitoring     monitoringv1.MonitoringServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -54,6 +56,7 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 		databaseApiKey: clusterauthv2.NewDatabaseApiKeyServiceClient(conn),
 		backup:         backupv1.NewBackupServiceClient(conn),
 		hybrid:         hybridv1.NewHybridCloudServiceClient(conn),
+		monitoring:     monitoringv1.NewMonitoringServiceClient(conn),
 	}
 }
 
@@ -85,6 +88,11 @@ func (c *Client) Backup() backupv1.BackupServiceClient {
 // Hybrid returns the HybridCloudService gRPC client.
 func (c *Client) Hybrid() hybridv1.HybridCloudServiceClient {
 	return c.hybrid
+}
+
+// Monitoring returns the MonitoringService gRPC client.
+func (c *Client) Monitoring() monitoringv1.MonitoringServiceClient {
+	return c.monitoring
 }
 
 // Close closes the underlying gRPC connection.
