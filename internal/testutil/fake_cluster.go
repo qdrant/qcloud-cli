@@ -11,16 +11,17 @@ import (
 type FakeClusterService struct {
 	clusterv1.UnimplementedClusterServiceServer
 
-	ListClustersCalls       MethodSpy[*clusterv1.ListClustersRequest, *clusterv1.ListClustersResponse]
-	GetClusterCalls         MethodSpy[*clusterv1.GetClusterRequest, *clusterv1.GetClusterResponse]
-	CreateClusterCalls      MethodSpy[*clusterv1.CreateClusterRequest, *clusterv1.CreateClusterResponse]
-	UpdateClusterCalls      MethodSpy[*clusterv1.UpdateClusterRequest, *clusterv1.UpdateClusterResponse]
-	DeleteClusterCalls      MethodSpy[*clusterv1.DeleteClusterRequest, *clusterv1.DeleteClusterResponse]
-	RestartClusterCalls     MethodSpy[*clusterv1.RestartClusterRequest, *clusterv1.RestartClusterResponse]
-	SuspendClusterCalls     MethodSpy[*clusterv1.SuspendClusterRequest, *clusterv1.SuspendClusterResponse]
-	UnsuspendClusterCalls   MethodSpy[*clusterv1.UnsuspendClusterRequest, *clusterv1.UnsuspendClusterResponse]
-	SuggestClusterNameCalls MethodSpy[*clusterv1.SuggestClusterNameRequest, *clusterv1.SuggestClusterNameResponse]
-	ListQdrantReleasesCalls MethodSpy[*clusterv1.ListQdrantReleasesRequest, *clusterv1.ListQdrantReleasesResponse]
+	ListClustersCalls            MethodSpy[*clusterv1.ListClustersRequest, *clusterv1.ListClustersResponse]
+	GetClusterCalls              MethodSpy[*clusterv1.GetClusterRequest, *clusterv1.GetClusterResponse]
+	CreateClusterCalls           MethodSpy[*clusterv1.CreateClusterRequest, *clusterv1.CreateClusterResponse]
+	UpdateClusterCalls           MethodSpy[*clusterv1.UpdateClusterRequest, *clusterv1.UpdateClusterResponse]
+	DeleteClusterCalls           MethodSpy[*clusterv1.DeleteClusterRequest, *clusterv1.DeleteClusterResponse]
+	RestartClusterCalls          MethodSpy[*clusterv1.RestartClusterRequest, *clusterv1.RestartClusterResponse]
+	SuspendClusterCalls          MethodSpy[*clusterv1.SuspendClusterRequest, *clusterv1.SuspendClusterResponse]
+	UnsuspendClusterCalls        MethodSpy[*clusterv1.UnsuspendClusterRequest, *clusterv1.UnsuspendClusterResponse]
+	SuggestClusterNameCalls      MethodSpy[*clusterv1.SuggestClusterNameRequest, *clusterv1.SuggestClusterNameResponse]
+	ListQdrantReleasesCalls      MethodSpy[*clusterv1.ListQdrantReleasesRequest, *clusterv1.ListQdrantReleasesResponse]
+	CreateClusterFromBackupCalls MethodSpy[*clusterv1.CreateClusterFromBackupRequest, *clusterv1.CreateClusterFromBackupResponse]
 }
 
 // ListClusters records the call and dispatches via ListClustersCalls.
@@ -81,4 +82,10 @@ func (f *FakeClusterService) SuggestClusterName(ctx context.Context, req *cluste
 func (f *FakeClusterService) ListQdrantReleases(ctx context.Context, req *clusterv1.ListQdrantReleasesRequest) (*clusterv1.ListQdrantReleasesResponse, error) {
 	f.ListQdrantReleasesCalls.record(req)
 	return f.ListQdrantReleasesCalls.dispatch(ctx, req, f.UnimplementedClusterServiceServer.ListQdrantReleases)
+}
+
+// CreateClusterFromBackup records the call and dispatches via CreateClusterFromBackupCalls.
+func (f *FakeClusterService) CreateClusterFromBackup(ctx context.Context, req *clusterv1.CreateClusterFromBackupRequest) (*clusterv1.CreateClusterFromBackupResponse, error) {
+	f.CreateClusterFromBackupCalls.record(req)
+	return f.CreateClusterFromBackupCalls.dispatch(ctx, req, f.UnimplementedClusterServiceServer.CreateClusterFromBackup)
 }
