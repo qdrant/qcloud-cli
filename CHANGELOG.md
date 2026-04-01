@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.17.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.17.0)
+
+### Features
+
+- add cluster logs command (#94)
+
 ## [v0.16.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.16.2)
 
 ### Bug Fixes
