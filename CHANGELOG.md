@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.16.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.15.0)
+
+### Features
+
+- Merged the `hybrid cluster` commands into `cluster`. This is a breaking change. e.g. `qcloud cluster list` now lists both managed cloud and hybrid cloud clusters.
+- Moved the `cluster package` commands into a root `package` command. This is a breaking change. e.g. `qcloud package list`
+
 ## [v0.15.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.15.0)
 
 ### Features
