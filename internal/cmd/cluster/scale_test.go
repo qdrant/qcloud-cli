@@ -55,19 +55,6 @@ func newPkg(id, cpu, ram, disk string) *bookingv1.Package {
 	}
 }
 
-func newMultiAzPkg(id, cpu, ram, disk string) *bookingv1.Package {
-	return &bookingv1.Package{
-		Id:   id,
-		Name: id,
-		ResourceConfiguration: &bookingv1.ResourceConfiguration{
-			Cpu:  cpu,
-			Ram:  ram,
-			Disk: disk,
-		},
-		MultiAz: true,
-	}
-}
-
 type scaleEnv struct {
 	cluster    *clusterv1.Cluster
 	currentPkg *bookingv1.Package
@@ -237,36 +224,18 @@ func TestScale_AbortWithoutForce(t *testing.T) {
 	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
 }
 
-func TestScale_ConfirmPromptShowsDiskAndMultiAzCorrectly(t *testing.T) {
+func TestScale_ConfirmPromptShowsDiskCorrectly(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{
 		cluster:    baseCluster(),
 		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
-		newPkg:     newMultiAzPkg(pkgID2, "2000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID2, "2000m", "4GiB", "50GiB"),
 	})
 
-	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--multi-az")
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2")
 	require.NoError(t, err)
 
 	assert.Contains(t, stderr, "Disk:    50GiB")
-	assert.Contains(t, stderr, "Multi AZ: no => yes")
-}
-
-func TestScale_MultiAz(t *testing.T) {
-	env := testutil.NewTestEnv(t)
-	setupScale(env, scaleEnv{
-		cluster:    baseCluster(),
-		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
-		newPkg:     newMultiAzPkg(pkgID2, "2000m", "4GiB", "50GiB"),
-	})
-
-	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--multi-az", "--force")
-	require.NoError(t, err)
-
-	req, ok := env.Server.UpdateClusterCalls.Last()
-	require.True(t, ok)
-	assert.Equal(t, pkgID2, req.GetCluster().GetConfiguration().GetPackageId())
-	assert.Equal(t, 1, env.BookingServer.ListPackagesCalls.Count())
 }
 
 func TestScale_MissingClusterID(t *testing.T) {
