@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.0.0](https://github.com/qdrant/qcloud-cli/releases/tag/v1.0.0)
+
+### Features
+
+- add zizmor security scanner (#78)
+- add missing flags to the hybrid environment clusters (#76)
+- **BREAKING**: merge hybrid cluster commands into cluster, move package to root (#86)
+
 ## [v0.16.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.15.0)
 
 ### Features
