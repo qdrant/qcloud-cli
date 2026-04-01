@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.16.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.16.2)
+
+### Bug Fixes
+
+- remove multi-az flag from the cluster scale command, as that is a (#92)
+
 ## [v0.16.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.16.1)
 
 ### Bug Fixes
