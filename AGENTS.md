@@ -188,6 +188,16 @@ Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "
 - Never define a private `phaseString` / `statusString` / etc. helper in a cmd package for TrimPrefix formatting. These belong in `output`.
 - Switch-based format/parse pairs (`storageTierString`, `restartPolicyString`, etc.) encode semantic mappings paired with parse functions and belong with their cmd package, not in `output`.
 
+### Output helpers (`internal/cmd/output/`)
+
+General-purpose output formatting helpers belong in the `output` package, not in individual cmd packages.
+
+Examples: `BoolYesNo` (formats a bool as `"yes"` / `"no"`), `BoolMark`, `HumanTime`, `OptionalValue`, etc.
+
+**Rules:**
+- If a helper formats a value for display and could be reused across more than one cmd package, add it to `output/`.
+- Never define a private display-formatting helper in a cmd package when it belongs in `output`.
+
 ### Inline pointer literals
 
 Go 1.26 allows passing a literal directly to `new`, which returns a pointer to it. Use this wherever a pointer to a constant value is needed inline:
