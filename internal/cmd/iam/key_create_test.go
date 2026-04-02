@@ -1,4 +1,4 @@
-package access_test
+package iam_test
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ func TestKeyCreate_PrintsIDAndKey(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "access", "key", "create")
+	stdout, _, err := testutil.Exec(t, env, "iam", "key", "create")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "new-key-id")
 	assert.Contains(t, stdout, "super-secret-value")
@@ -39,7 +39,7 @@ func TestKeyCreate_BackendError(t *testing.T) {
 
 	env.AuthServer.CreateManagementKeyCalls.Returns(nil, fmt.Errorf("internal server error"))
 
-	_, _, err := testutil.Exec(t, env, "access", "key", "create")
+	_, _, err := testutil.Exec(t, env, "iam", "key", "create")
 	require.Error(t, err)
 }
 
@@ -53,7 +53,7 @@ func TestKeyCreate_JSONOutput(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "access", "key", "create", "--json")
+	stdout, _, err := testutil.Exec(t, env, "iam", "key", "create", "--json")
 	require.NoError(t, err)
 
 	var result struct {

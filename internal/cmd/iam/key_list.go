@@ -1,4 +1,4 @@
-package access
+package iam
 
 import (
 	"io"
@@ -22,10 +22,10 @@ Management keys grant access to the Qdrant Cloud API and are used to authenticat
 and API requests. Each key is identified by its ID and a prefix — the prefix represents
 the first bytes of the key value and is safe to display.`,
 		Example: `# List all management keys for the account
-qcloud access key list
+qcloud iam key list
 
 # Output as JSON
-qcloud access key list --json`,
+qcloud iam key list --json`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*authv1.ListManagementKeysResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)

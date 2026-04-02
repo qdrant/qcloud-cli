@@ -1,4 +1,4 @@
-package access_test
+package iam_test
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ func TestKeyDelete_WithForce(t *testing.T) {
 
 	env.AuthServer.DeleteManagementKeyCalls.Returns(&authv1.DeleteManagementKeyResponse{}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "access", "key", "delete", "key-abc", "--force")
+	stdout, _, err := testutil.Exec(t, env, "iam", "key", "delete", "key-abc", "--force")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "key-abc")
 	assert.Contains(t, stdout, "deleted")
@@ -31,7 +31,7 @@ func TestKeyDelete_WithForce(t *testing.T) {
 func TestKeyDelete_Aborted(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	stdout, _, err := testutil.Exec(t, env, "access", "key", "delete", "key-abc")
+	stdout, _, err := testutil.Exec(t, env, "iam", "key", "delete", "key-abc")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Aborted.")
 	assert.Equal(t, 0, env.AuthServer.DeleteManagementKeyCalls.Count())
@@ -42,14 +42,14 @@ func TestKeyDelete_BackendError(t *testing.T) {
 
 	env.AuthServer.DeleteManagementKeyCalls.Returns(nil, fmt.Errorf("internal server error"))
 
-	_, _, err := testutil.Exec(t, env, "access", "key", "delete", "key-abc", "--force")
+	_, _, err := testutil.Exec(t, env, "iam", "key", "delete", "key-abc", "--force")
 	require.Error(t, err)
 }
 
 func TestKeyDelete_MissingArg(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	_, _, err := testutil.Exec(t, env, "access", "key", "delete")
+	_, _, err := testutil.Exec(t, env, "iam", "key", "delete")
 	require.Error(t, err)
 }
 
@@ -63,7 +63,7 @@ func TestKeyDeleteCompletion(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "__complete", "access", "key", "delete", "")
+	stdout, _, err := testutil.Exec(t, env, "__complete", "iam", "key", "delete", "")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "key-uuid-1")
 	assert.Contains(t, stdout, "abc123")

@@ -1,4 +1,4 @@
-package access
+package iam
 
 import (
 	"fmt"
@@ -22,10 +22,10 @@ using the deleted key will receive authentication errors. This action cannot be 
 
 A confirmation prompt is shown unless --force is passed.`,
 		Example: `# Delete a management key (with confirmation prompt)
-qcloud access key delete a1b2c3d4-e5f6-7890-abcd-ef1234567890
+qcloud iam key delete a1b2c3d4-e5f6-7890-abcd-ef1234567890
 
 # Delete without confirmation
-qcloud access key delete a1b2c3d4-e5f6-7890-abcd-ef1234567890 --force`,
+qcloud iam key delete a1b2c3d4-e5f6-7890-abcd-ef1234567890 --force`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "delete <key-id>",

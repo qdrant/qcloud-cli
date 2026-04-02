@@ -1,4 +1,4 @@
-package access_test
+package iam_test
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ func TestKeyList_TableOutput(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "access", "key", "list")
+	stdout, _, err := testutil.Exec(t, env, "iam", "key", "list")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "PREFIX")
@@ -51,7 +51,7 @@ func TestKeyList_JSONOutput(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "access", "key", "list", "--json")
+	stdout, _, err := testutil.Exec(t, env, "iam", "key", "list", "--json")
 	require.NoError(t, err)
 
 	var result struct {
@@ -71,7 +71,7 @@ func TestKeyList_BackendError(t *testing.T) {
 
 	env.AuthServer.ListManagementKeysCalls.Returns(nil, fmt.Errorf("internal server error"))
 
-	_, _, err := testutil.Exec(t, env, "access", "key", "list")
+	_, _, err := testutil.Exec(t, env, "iam", "key", "list")
 	require.Error(t, err)
 }
 
@@ -80,7 +80,7 @@ func TestKeyList_Empty(t *testing.T) {
 
 	env.AuthServer.ListManagementKeysCalls.Returns(&authv1.ListManagementKeysResponse{}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "access", "key", "list")
+	stdout, _, err := testutil.Exec(t, env, "iam", "key", "list")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "PREFIX")

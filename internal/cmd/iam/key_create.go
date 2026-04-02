@@ -1,4 +1,4 @@
-package access
+package iam
 
 import (
 	"fmt"
@@ -20,10 +20,10 @@ Management keys grant access to the Qdrant Cloud API. The full key value is retu
 only once at creation time — store it securely, as it cannot be retrieved again. If a
 key is lost, delete it and create a new one.`,
 		Example: `# Create a new management key
-qcloud access key create
+qcloud iam key create
 
 # Create and capture the key value in a script
-qcloud access key create --json | jq -r '.key'`,
+qcloud iam key create --json | jq -r '.key'`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "create",
