@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 
+	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
@@ -61,6 +62,7 @@ type TestEnv struct {
 	BackupServer         *FakeBackupService
 	HybridServer         *FakeHybridService
 	MonitoringServer     *FakeMonitoringService
+	AuthServer           *FakeAuthService
 	Capture              *RequestCapture
 	Cleanup              func()
 }
@@ -111,6 +113,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fakeBackup := &FakeBackupService{}
 	fakeHybrid := &FakeHybridService{}
 	fakeMonitoring := &FakeMonitoringService{}
+	fakeAuth := &FakeAuthService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -123,6 +126,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	backupv1.RegisterBackupServiceServer(srv, fakeBackup)
 	hybridv1.RegisterHybridCloudServiceServer(srv, fakeHybrid)
 	monitoringv1.RegisterMonitoringServiceServer(srv, fakeMonitoring)
+	authv1.RegisterAuthServiceServer(srv, fakeAuth)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -173,6 +177,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		BackupServer:         fakeBackup,
 		HybridServer:         fakeHybrid,
 		MonitoringServer:     fakeMonitoring,
+		AuthServer:           fakeAuth,
 		Capture:              capture,
 		Cleanup:              cleanup,
 	}

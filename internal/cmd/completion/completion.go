@@ -3,6 +3,7 @@ package completion
 import (
 	"github.com/spf13/cobra"
 
+	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
@@ -70,6 +71,39 @@ func CloudRegionCompletion(s *state.State) func(*cobra.Command, []string, string
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, r := range resp.GetItems() {
 			completions = append(completions, r.GetId()+"\t"+r.GetName())
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// ManagementKeyIDCompletion returns a ValidArgsFunction that completes management key IDs.
+func ManagementKeyIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.Auth().ListManagementKeys(ctx, &authv1.ListManagementKeysRequest{
+			AccountId: accountID,
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, k := range resp.GetItems() {
+			completions = append(completions, k.GetId()+"\t"+k.GetPrefix())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
