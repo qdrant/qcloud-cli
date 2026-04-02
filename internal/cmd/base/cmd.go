@@ -10,6 +10,7 @@ import (
 // return a resource. Use for delete, wait, use, set, and similar operations.
 type Cmd struct {
 	BaseCobraCommand  func() *cobra.Command
+	Long              string
 	Example           string
 	Run               func(s *state.State, cmd *cobra.Command, args []string) error
 	ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
@@ -18,6 +19,9 @@ type Cmd struct {
 // CobraCommand builds a cobra.Command from this Cmd.
 func (gc Cmd) CobraCommand(s *state.State) *cobra.Command {
 	cmd := gc.BaseCobraCommand()
+	if gc.Long != "" {
+		cmd.Long = gc.Long
+	}
 	cmd.Example = gc.Example
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return gc.Run(s, cmd, args)
