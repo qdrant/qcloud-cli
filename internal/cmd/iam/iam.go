@@ -1,4 +1,4 @@
-package access
+package iam
 
 import (
 	"github.com/spf13/cobra"
@@ -6,12 +6,12 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
-// NewCommand creates the access command group.
+// NewCommand creates the iam command group.
 func NewCommand(s *state.State) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "access",
-		Short: "Manage access to Qdrant Cloud",
-		Long:  `Manage access settings for the Qdrant Cloud account.`,
+		Use:   "iam",
+		Short: "Manage IAM resources in Qdrant Cloud",
+		Long:  `Manage IAM resources for the Qdrant Cloud account.`,
 		Args:  cobra.NoArgs,
 	}
 	return cmd
