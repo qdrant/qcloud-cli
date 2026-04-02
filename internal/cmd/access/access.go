@@ -14,5 +14,6 @@ func NewCommand(s *state.State) *cobra.Command {
 		Long:  `Manage access settings for the Qdrant Cloud account.`,
 		Args:  cobra.NoArgs,
 	}
+	cmd.AddCommand(newKeyCommand(s))
 	return cmd
 }
