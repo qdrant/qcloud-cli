@@ -14,6 +14,7 @@ import (
 type ListCmd[T any] struct {
 	Use               string
 	Short             string
+	Long              string
 	Example           string
 	Fetch             func(s *state.State, cmd *cobra.Command) (T, error)
 	PrintText         func(cmd *cobra.Command, out io.Writer, resp T) error
@@ -25,6 +26,7 @@ func (lc ListCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     lc.Use,
 		Short:   lc.Short,
+		Long:    lc.Long,
 		Example: lc.Example,
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {

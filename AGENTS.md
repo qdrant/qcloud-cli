@@ -50,6 +50,33 @@ If make lint fails from formatting problems, use `make format` to fix them.
 
 ## Conventions
 
+### Long descriptions and examples — mandatory
+
+Every leaf command and group command **must** have a `Long` description and an `Example` block.
+
+**`Long`:**
+- First line expands the `Short` description into a full sentence.
+- Blank line, then one or two paragraphs explaining behaviour, use cases, and important caveats.
+- Use the proto service/message comments as the authoritative source of truth for what a resource or operation does.
+- Do NOT describe individual flags — only document unusual or non-obvious flag interactions.
+
+**`Example`:**
+- One example per meaningful use case (basic call, common flag combinations, scripting).
+- Prefix every line with `# ` comment explaining what the example does.
+- Real command invocations with plausible IDs/values.
+
+All five base types (`ListCmd`, `DescribeCmd`, `CreateCmd`, `UpdateCmd`, `Cmd`) expose `Long` and `Example` as top-level struct fields. Never set them inside `BaseCobraCommand()`.
+
+### Tests — mandatory
+
+Every new command package **must** ship tests. This is not optional.
+
+- Place tests in `internal/cmd/<group>/` as `<file>_test.go` using `package <group>_test`.
+- Use `testutil.NewTestEnv` + `testutil.Exec` — never call command functions directly.
+- When adding a new gRPC service, also add a `fake_<service>.go` in `internal/testutil/` and register it in `server.go` / `TestEnv`.
+- Cover: table output (assert header columns + key values), JSON output (unmarshal and assert), request fields sent to server, backend errors (use `Returns(nil, fmt.Errorf(...))` and assert `require.Error`), input errors (missing args, wrong flags).
+- Run `make test` before declaring done.
+
 ### Subcommand pattern
 
 Each subcommand group lives in `internal/cmd/<group>/`:
