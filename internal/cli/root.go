@@ -5,13 +5,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/qdrant/qcloud-cli/internal/cmd/iam"
 	"github.com/qdrant/qcloud-cli/internal/cmd/backup"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudprovider"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudregion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cluster"
 	contextcmd "github.com/qdrant/qcloud-cli/internal/cmd/context"
 	"github.com/qdrant/qcloud-cli/internal/cmd/hybrid"
+	"github.com/qdrant/qcloud-cli/internal/cmd/iam"
 	packagecmd "github.com/qdrant/qcloud-cli/internal/cmd/package"
 	"github.com/qdrant/qcloud-cli/internal/cmd/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/cmd/version"
