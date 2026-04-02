@@ -7,12 +7,14 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
+	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
+	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 )
@@ -28,6 +30,8 @@ type Client struct {
 	hybrid         hybridv1.HybridCloudServiceClient
 	monitoring     monitoringv1.MonitoringServiceClient
 	auth           authv1.AuthServiceClient
+	iam            iamv1.IAMServiceClient
+	account        accountv1.AccountServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -60,6 +64,8 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 		hybrid:         hybridv1.NewHybridCloudServiceClient(conn),
 		monitoring:     monitoringv1.NewMonitoringServiceClient(conn),
 		auth:           authv1.NewAuthServiceClient(conn),
+		iam:            iamv1.NewIAMServiceClient(conn),
+		account:        accountv1.NewAccountServiceClient(conn),
 	}
 }
 
@@ -101,6 +107,16 @@ func (c *Client) Monitoring() monitoringv1.MonitoringServiceClient {
 // Auth returns the AuthService gRPC client.
 func (c *Client) Auth() authv1.AuthServiceClient {
 	return c.auth
+}
+
+// IAM returns the IAMService gRPC client.
+func (c *Client) IAM() iamv1.IAMServiceClient {
+	return c.iam
+}
+
+// Account returns the AccountService gRPC client.
+func (c *Client) Account() accountv1.AccountServiceClient {
+	return c.account
 }
 
 // Close closes the underlying gRPC connection.

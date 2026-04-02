@@ -11,12 +11,14 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 
+	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
+	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 
@@ -63,6 +65,8 @@ type TestEnv struct {
 	HybridServer         *FakeHybridService
 	MonitoringServer     *FakeMonitoringService
 	AuthServer           *FakeAuthService
+	IAMServer            *FakeIAMService
+	AccountServer        *FakeAccountService
 	Capture              *RequestCapture
 	Cleanup              func()
 }
@@ -114,6 +118,8 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fakeHybrid := &FakeHybridService{}
 	fakeMonitoring := &FakeMonitoringService{}
 	fakeAuth := &FakeAuthService{}
+	fakeIAM := &FakeIAMService{}
+	fakeAccount := &FakeAccountService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -127,6 +133,8 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	hybridv1.RegisterHybridCloudServiceServer(srv, fakeHybrid)
 	monitoringv1.RegisterMonitoringServiceServer(srv, fakeMonitoring)
 	authv1.RegisterAuthServiceServer(srv, fakeAuth)
+	iamv1.RegisterIAMServiceServer(srv, fakeIAM)
+	accountv1.RegisterAccountServiceServer(srv, fakeAccount)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -178,6 +186,8 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		HybridServer:         fakeHybrid,
 		MonitoringServer:     fakeMonitoring,
 		AuthServer:           fakeAuth,
+		IAMServer:            fakeIAM,
+		AccountServer:        fakeAccount,
 		Capture:              capture,
 		Cleanup:              cleanup,
 	}
