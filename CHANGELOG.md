@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.18.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.18.0)
+
+### Features
+
+- add cluster create-from-backup command (#96)
+
 ## [v0.17.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.17.0)
 
 ### Features
