@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/access"
 	"github.com/qdrant/qcloud-cli/internal/cmd/backup"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudprovider"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudregion"
@@ -65,6 +66,7 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 	s.Config.BindPFlag(config.KeyEndpoint, cmd.PersistentFlags().Lookup("endpoint"))
 
 	cmd.AddCommand(version.NewCommand(s))
+	cmd.AddCommand(access.NewCommand(s))
 	cmd.AddCommand(cluster.NewCommand(s))
 	cmd.AddCommand(cloudprovider.NewCommand(s))
 	cmd.AddCommand(cloudregion.NewCommand(s))
