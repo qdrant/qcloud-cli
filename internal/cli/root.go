@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/access"
 	"github.com/qdrant/qcloud-cli/internal/cmd/backup"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudprovider"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudregion"
