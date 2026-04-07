@@ -66,9 +66,10 @@ qcloud iam user describe user@example.com --json`,
 			permissions := effectivePermissions(roles)
 
 			if s.Config.JSONOutput() {
-				return output.PrintJSON(cmd.OutOrStdout(), &iamv1.ListUserRolesResponse{
-					Roles: append([]*iamv1.Role{}, roles...),
-				})
+				return output.PrintJSON(cmd.OutOrStdout(), struct {
+					User  *iamv1.User   `json:"user"`
+					Roles []*iamv1.Role `json:"roles"`
+				}{User: user, Roles: roles})
 			}
 
 			w := cmd.OutOrStdout()

@@ -1,6 +1,7 @@
 package iam_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -126,6 +127,45 @@ func TestUserDescribe_ByEmail(t *testing.T) {
 	req, ok := env.IAMServer.ListUserRolesCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "user-id-abc", req.GetUserId())
+}
+
+func TestUserDescribe_JSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	userID := testUserID
+	cat := "Cluster"
+	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
+		Items: []*iamv1.User{
+			{Id: userID, Email: "alice@example.com", Status: iamv1.UserStatus_USER_STATUS_ACTIVE},
+		},
+	}, nil)
+	env.IAMServer.ListUserRolesCalls.Returns(&iamv1.ListUserRolesResponse{
+		Roles: []*iamv1.Role{
+			{Id: "role-id-1", Name: "admin", Permissions: []*iamv1.Permission{
+				{Value: "read:clusters", Category: &cat},
+			}},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "iam", "user", "describe", userID, "--json")
+	require.NoError(t, err)
+
+	var got struct {
+		User struct {
+			Id    string `json:"id"`
+			Email string `json:"email"`
+		} `json:"user"`
+		Roles []struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"roles"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, userID, got.User.Id)
+	assert.Equal(t, "alice@example.com", got.User.Email)
+	require.Len(t, got.Roles, 1)
+	assert.Equal(t, "role-id-1", got.Roles[0].Id)
+	assert.Equal(t, "admin", got.Roles[0].Name)
 }
 
 func TestUserDescribe_NotFound(t *testing.T) {
