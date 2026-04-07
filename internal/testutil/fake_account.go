@@ -40,4 +40,3 @@ func (f *FakeAccountService) DeleteAccountInvite(ctx context.Context, req *accou
 	f.DeleteAccountInviteCalls.record(req)
 	return f.DeleteAccountInviteCalls.dispatch(ctx, req, f.UnimplementedAccountServiceServer.DeleteAccountInvite)
 }
-
