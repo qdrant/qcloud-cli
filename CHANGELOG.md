@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.19.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.19.0)
+
+### Features
+
+- management api key commands (#98)
+
 ## [v0.18.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.18.0)
 
 ### Features
