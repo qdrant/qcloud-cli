@@ -17,14 +17,10 @@ import (
 )
 
 func newUserDescribeCommand(s *state.State) *cobra.Command {
-	return base.Cmd{
-		BaseCobraCommand: func() *cobra.Command {
-			return &cobra.Command{
-				Use:   "describe <user-id-or-email>",
-				Short: "Describe a user and their assigned roles",
-				Args:  util.ExactArgs(1, "a user ID or email"),
-			}
-		},
+	return base.DescribeCmd[*iamv1.User]{
+		Use:   "describe <user-id-or-email>",
+		Short: "Describe a user and their assigned roles",
+		Args:  util.ExactArgs(1, "a user ID or email"),
 		Long: `Describe a user and their assigned roles.
 
 Accepts either a user ID (UUID) or an email address. Displays the user's
@@ -37,7 +33,18 @@ qcloud iam user describe user@example.com
 
 # Output as JSON
 qcloud iam user describe user@example.com --json`,
-		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
+		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*iamv1.User, error) {
+			client, err := s.Client(cmd.Context())
+			if err != nil {
+				return nil, err
+			}
+			accountID, err := s.AccountID()
+			if err != nil {
+				return nil, err
+			}
+			return resolveUser(cmd, client, accountID, args[0])
+		},
+		PrintText: func(cmd *cobra.Command, w io.Writer, user *iamv1.User) error {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
 			if err != nil {
@@ -47,13 +54,6 @@ qcloud iam user describe user@example.com --json`,
 			if err != nil {
 				return err
 			}
-
-			user, err := resolveUser(cmd, client, accountID, args[0])
-			if err != nil {
-				return err
-			}
-
-			// Fetch the user's roles.
 			rolesResp, err := client.IAM().ListUserRoles(ctx, &iamv1.ListUserRolesRequest{
 				AccountId: accountID,
 				UserId:    user.GetId(),
@@ -62,18 +62,7 @@ qcloud iam user describe user@example.com --json`,
 				return fmt.Errorf("failed to list user roles: %w", err)
 			}
 			roles := rolesResp.GetRoles()
-
-			permissions := effectivePermissions(roles)
-
-			if s.Config.JSONOutput() {
-				return output.PrintJSON(cmd.OutOrStdout(), struct {
-					User  *iamv1.User   `json:"user"`
-					Roles []*iamv1.Role `json:"roles"`
-				}{User: user, Roles: roles})
-			}
-
-			w := cmd.OutOrStdout()
-			return printUserWithRoles(w, user, roles, permissions)
+			return printUserWithRoles(w, user, roles, effectivePermissions(roles))
 		},
 	}.CobraCommand(s)
 }
