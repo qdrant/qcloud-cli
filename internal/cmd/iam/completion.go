@@ -15,29 +15,25 @@ func userCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		return listUserCompletions(s, cmd)
-	}
-}
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
 
-func listUserCompletions(s *state.State, cmd *cobra.Command) ([]string, cobra.ShellCompDirective) {
-	ctx := cmd.Context()
-	client, err := s.Client(ctx)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
-	accountID, err := s.AccountID()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
+		resp, err := client.IAM().ListUsers(ctx, &iamv1.ListUsersRequest{AccountId: accountID})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
 
-	resp, err := client.IAM().ListUsers(ctx, &iamv1.ListUsersRequest{AccountId: accountID})
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, u := range resp.GetItems() {
+			completions = append(completions, u.GetId()+"\t"+u.GetEmail())
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
-
-	completions := make([]string, 0, len(resp.GetItems()))
-	for _, u := range resp.GetItems() {
-		completions = append(completions, u.GetId()+"\t"+u.GetEmail())
-	}
-	return completions, cobra.ShellCompDirectiveNoFileComp
 }
