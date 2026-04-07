@@ -48,29 +48,9 @@ qcloud iam user describe user@example.com --json`,
 				return err
 			}
 
-			// Resolve the user.
-			var user *iamv1.User
-			resp, err := client.IAM().ListUsers(ctx, &iamv1.ListUsersRequest{AccountId: accountID})
+			user, err := resolveUser(cmd, client, accountID, args[0])
 			if err != nil {
-				return fmt.Errorf("failed to list users: %w", err)
-			}
-			if util.IsUUID(args[0]) {
-				for _, u := range resp.GetItems() {
-					if u.GetId() == args[0] {
-						user = u
-						break
-					}
-				}
-			} else {
-				for _, u := range resp.GetItems() {
-					if u.GetEmail() == args[0] {
-						user = u
-						break
-					}
-				}
-			}
-			if user == nil {
-				return fmt.Errorf("user %s not found", args[0])
+				return err
 			}
 
 			// Fetch the user's roles.

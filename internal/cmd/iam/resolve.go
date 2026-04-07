@@ -8,8 +8,10 @@ import (
 
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
+	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 // resolveUser looks up a user by UUID or email from the account's user list.
@@ -75,4 +77,38 @@ func resolveRoleIDs(ctx context.Context, client *qcloudapi.Client, accountID str
 		}
 	}
 	return ids, nil
+}
+
+// modifyUserRoles calls AssignUserRoles with the given add/delete IDs, then
+// fetches and prints the resulting role list. errVerb is used in the error
+// message ("failed to <errVerb> roles").
+func modifyUserRoles(s *state.State, cmd *cobra.Command, client *qcloudapi.Client, accountID string, user *iamv1.User, addIDs, removeIDs []string, errVerb string) error {
+	ctx := cmd.Context()
+
+	_, err := client.IAM().AssignUserRoles(ctx, &iamv1.AssignUserRolesRequest{
+		AccountId:       accountID,
+		UserId:          user.GetId(),
+		RoleIdsToAdd:    addIDs,
+		RoleIdsToDelete: removeIDs,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to %s roles: %w", errVerb, err)
+	}
+
+	rolesResp, err := client.IAM().ListUserRoles(ctx, &iamv1.ListUserRolesRequest{
+		AccountId: accountID,
+		UserId:    user.GetId(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list user roles: %w", err)
+	}
+
+	if s.Config.JSONOutput() {
+		return output.PrintJSON(cmd.OutOrStdout(), rolesResp)
+	}
+
+	w := cmd.OutOrStdout()
+	fmt.Fprintf(w, "Roles for %s:\n", user.GetEmail())
+	printRoles(w, rolesResp.GetRoles())
+	return nil
 }

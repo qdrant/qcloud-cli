@@ -1,14 +1,9 @@
 package iam
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
-	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
-
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
-	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -45,42 +40,15 @@ qcloud iam user assign-role user@example.com admin viewer`,
 			if err != nil {
 				return err
 			}
-
 			user, err := resolveUser(cmd, client, accountID, args[0])
 			if err != nil {
 				return err
 			}
-
 			roleIDs, err := resolveRoleIDs(ctx, client, accountID, args[1:])
 			if err != nil {
 				return err
 			}
-
-			_, err = client.IAM().AssignUserRoles(ctx, &iamv1.AssignUserRolesRequest{
-				AccountId:    accountID,
-				UserId:       user.GetId(),
-				RoleIdsToAdd: roleIDs,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to assign roles: %w", err)
-			}
-
-			rolesResp, err := client.IAM().ListUserRoles(ctx, &iamv1.ListUserRolesRequest{
-				AccountId: accountID,
-				UserId:    user.GetId(),
-			})
-			if err != nil {
-				return fmt.Errorf("failed to list user roles: %w", err)
-			}
-
-			if s.Config.JSONOutput() {
-				return output.PrintJSON(cmd.OutOrStdout(), rolesResp)
-			}
-
-			w := cmd.OutOrStdout()
-			fmt.Fprintf(w, "Roles for %s:\n", user.GetEmail())
-			printRoles(w, rolesResp.GetRoles())
-			return nil
+			return modifyUserRoles(s, cmd, client, accountID, user, roleIDs, nil, "assign")
 		},
 	}.CobraCommand(s)
 }
