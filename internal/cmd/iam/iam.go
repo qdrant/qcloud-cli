@@ -15,5 +15,7 @@ func NewCommand(s *state.State) *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(newKeyCommand(s))
+	cmd.AddCommand(newRoleCommand(s))
+	cmd.AddCommand(newPermissionCommand(s))
 	return cmd
 }
