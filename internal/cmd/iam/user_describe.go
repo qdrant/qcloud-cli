@@ -18,9 +18,10 @@ import (
 
 func newUserDescribeCommand(s *state.State) *cobra.Command {
 	return base.DescribeCmd[*iamv1.User]{
-		Use:   "describe <user-id-or-email>",
-		Short: "Describe a user and their assigned roles",
-		Args:  util.ExactArgs(1, "a user ID or email"),
+		Use:               "describe <user-id-or-email>",
+		Short:             "Describe a user and their assigned roles",
+		Args:              util.ExactArgs(1, "a user ID or email"),
+		ValidArgsFunction: userCompletion(s),
 		Long: `Describe a user and their assigned roles.
 
 Accepts either a user ID (UUID) or an email address. Displays the user's

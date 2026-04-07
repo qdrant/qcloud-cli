@@ -17,8 +17,9 @@ import (
 
 func newInviteDescribeCommand(s *state.State) *cobra.Command {
 	return base.DescribeCmd[*accountv1.AccountInvite]{
-		Use:   "describe <invite-id>",
-		Short: "Describe an account invite",
+		Use:               "describe <invite-id>",
+		Short:             "Describe an account invite",
+		ValidArgsFunction: inviteCompletion(s),
 		Long: `Describe an account invite.
 
 Displays the full details of a specific account invite, including the invited

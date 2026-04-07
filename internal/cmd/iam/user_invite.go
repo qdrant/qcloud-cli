@@ -8,11 +8,12 @@ import (
 	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 func newUserInviteCommand(s *state.State) *cobra.Command {
-	return base.Cmd{
+	cmd := base.Cmd{
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "invite",
@@ -74,4 +75,7 @@ qcloud iam user invite --email user@example.com --role viewer --role admin`,
 			return nil
 		},
 	}.CobraCommand(s)
+
+	_ = cmd.RegisterFlagCompletionFunc("role", completion.RoleCompletion(s))
+	return cmd
 }

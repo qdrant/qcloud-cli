@@ -17,6 +17,7 @@ func newUserRemoveRoleCommand(s *state.State) *cobra.Command {
 				Args:  util.MinimumNArgs(2, "a user ID or email and at least one role"),
 			}
 		},
+		ValidArgsFunction: userThenRoleCompletion(s),
 		Long: `Remove one or more roles from a user in the account.
 
 Accepts either a user ID (UUID) or an email address to identify the user.

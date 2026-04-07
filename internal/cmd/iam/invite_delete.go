@@ -23,6 +23,7 @@ func newInviteDeleteCommand(s *state.State) *cobra.Command {
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
 			return cmd
 		},
+		ValidArgsFunction: inviteCompletion(s),
 		Long: `Delete an account invite.
 
 Cancels a pending account invite. The invited user will no longer be able to
