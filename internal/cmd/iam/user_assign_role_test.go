@@ -26,7 +26,7 @@ func TestUserAssignRole_ByRoleID(t *testing.T) {
 	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "iam", "user", "assign-role",
-		"alice@example.com", roleID)
+		"alice@example.com", "--role", roleID)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "alice@example.com")
 	assert.Contains(t, stdout, roleID)
@@ -56,7 +56,7 @@ func TestUserAssignRole_ByRoleName(t *testing.T) {
 	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "iam", "user", "assign-role",
-		"alice@example.com", "admin")
+		"alice@example.com", "--role", "admin")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "admin")
 

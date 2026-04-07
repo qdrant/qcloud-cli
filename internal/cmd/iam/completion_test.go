@@ -52,20 +52,3 @@ func TestUserThenRoleCompletion_FirstArg(t *testing.T) {
 	assert.Contains(t, stdout, "alice@example.com")
 }
 
-func TestUserThenRoleCompletion_RoleArg(t *testing.T) {
-	env := testutil.NewTestEnv(t)
-
-	env.IAMServer.ListRolesCalls.Returns(&iamv1.ListRolesResponse{
-		Items: []*iamv1.Role{
-			{Id: "role-uuid-1", Name: "admin"},
-			{Id: "role-uuid-2", Name: "viewer"},
-		},
-	}, nil)
-
-	stdout, _, err := testutil.Exec(t, env, "__complete", "iam", "user", "assign-role", "alice@example.com", "")
-	require.NoError(t, err)
-	assert.Contains(t, stdout, "admin")
-	assert.Contains(t, stdout, "role-uuid-1")
-	assert.Contains(t, stdout, "viewer")
-	assert.Contains(t, stdout, "role-uuid-2")
-}

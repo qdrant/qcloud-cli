@@ -49,12 +49,3 @@ func ExactArgs(n int, usage string) cobra.PositionalArgs {
 	}
 }
 
-// MinimumNArgs returns a PositionalArgs that requires at least n args with a descriptive error.
-func MinimumNArgs(n int, usage string) cobra.PositionalArgs {
-	return func(cmd *cobra.Command, args []string) error {
-		if len(args) < n {
-			return fmt.Errorf("requires %s\n\nUsage: %s", usage, cmd.UseLine())
-		}
-		return nil
-	}
-}

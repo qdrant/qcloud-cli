@@ -24,7 +24,7 @@ func TestUserRemoveRole_ByRoleID(t *testing.T) {
 	env.IAMServer.ListUserRolesCalls.Returns(&iamv1.ListUserRolesResponse{}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "iam", "user", "remove-role",
-		"alice@example.com", roleID)
+		"alice@example.com", "--role", roleID)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "alice@example.com")
 
@@ -50,7 +50,7 @@ func TestUserRemoveRole_ByRoleName(t *testing.T) {
 	env.IAMServer.ListUserRolesCalls.Returns(&iamv1.ListUserRolesResponse{}, nil)
 
 	_, _, err := testutil.Exec(t, env, "iam", "user", "remove-role",
-		"alice@example.com", "viewer")
+		"alice@example.com", "--role", "viewer")
 	require.NoError(t, err)
 
 	req, ok := env.IAMServer.AssignUserRolesCalls.Last()
