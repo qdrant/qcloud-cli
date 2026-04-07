@@ -14,8 +14,10 @@ func NewCommand(s *state.State) *cobra.Command {
 		Long:  `Manage IAM resources for the Qdrant Cloud account.`,
 		Args:  cobra.NoArgs,
 	}
-	cmd.AddCommand(newKeyCommand(s))
-	cmd.AddCommand(newRoleCommand(s))
-	cmd.AddCommand(newPermissionCommand(s))
+	cmd.AddCommand(
+		newKeyCommand(s),
+		newRoleCommand(s),
+		newPermissionCommand(s),
+	)
 	return cmd
 }
