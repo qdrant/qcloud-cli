@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -13,7 +14,7 @@ func newUserRemoveRoleCommand(s *state.State) *cobra.Command {
 			return &cobra.Command{
 				Use:   "remove-role <user-id-or-email> <role> [<role>...]",
 				Short: "Remove one or more roles from a user",
-				Args:  cobra.MinimumNArgs(2),
+				Args:  util.MinimumNArgs(2, "a user ID or email and at least one role"),
 			}
 		},
 		Long: `Remove one or more roles from a user in the account.

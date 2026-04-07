@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -13,7 +14,7 @@ func newUserAssignRoleCommand(s *state.State) *cobra.Command {
 			return &cobra.Command{
 				Use:   "assign-role <user-id-or-email> <role> [<role>...]",
 				Short: "Assign one or more roles to a user",
-				Args:  cobra.MinimumNArgs(2),
+				Args:  util.MinimumNArgs(2, "a user ID or email and at least one role"),
 			}
 		},
 		Long: `Assign one or more roles to a user in the account.

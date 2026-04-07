@@ -28,6 +28,24 @@ func TestIsUUID(t *testing.T) {
 	}
 }
 
+func TestMinimumNArgs(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	fn := util.MinimumNArgs(2, "a user and at least one role")
+
+	t.Run("errors when too few args", func(t *testing.T) {
+		err := fn(cmd, []string{"only-one"})
+		assert.ErrorContains(t, err, "a user and at least one role")
+	})
+
+	t.Run("passes with exact minimum", func(t *testing.T) {
+		assert.NoError(t, fn(cmd, []string{"a", "b"}))
+	})
+
+	t.Run("passes with more than minimum", func(t *testing.T) {
+		assert.NoError(t, fn(cmd, []string{"a", "b", "c"}))
+	})
+}
+
 func TestAnyFlagChanged(t *testing.T) {
 	t.Run("returns true when one flag is changed", func(t *testing.T) {
 		cmd := &cobra.Command{Use: "test"}
