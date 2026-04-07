@@ -17,7 +17,6 @@ func NewCommand(s *state.State) *cobra.Command {
 	cmd.AddCommand(
 		newKeyCommand(s),
 		newUserCommand(s),
-		newInviteCommand(s),
 	)
 	return cmd
 }
