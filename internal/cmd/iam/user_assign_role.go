@@ -18,8 +18,8 @@ func newUserAssignRoleCommand(s *state.State) *cobra.Command {
 				Args:  util.ExactArgs(1, "a user ID or email"),
 			}
 
-			cmd.Flags().StringSliceP("role", "r", nil, "A role ID or name")
-			cmd.RegisterFlagCompletionFunc("role", completion.RoleCompletion(s))
+			_ = cmd.Flags().StringSliceP("role", "r", nil, "A role ID or name")
+			_ = cmd.RegisterFlagCompletionFunc("role", completion.RoleCompletion(s))
 			return cmd
 		},
 		ValidArgsFunction: userCompletion(s),
@@ -55,7 +55,7 @@ qcloud iam user assign-role user@example.com --role admin,viewer`,
 				return err
 			}
 
-			roles, _ :=  cmd.Flags().GetStringSlice("role")
+			roles, _ := cmd.Flags().GetStringSlice("role")
 			roleIDs, err := resolveRoleIDs(ctx, client, accountID, roles)
 			if err != nil {
 				return err

@@ -1,6 +1,7 @@
 package iam_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,4 +64,74 @@ func TestUserRemoveRole_MissingRole(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env, "iam", "user", "remove-role", "alice@example.com")
 	require.Error(t, err)
+}
+
+func TestUserRemoveRole_ResolveUserError(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(nil, fmt.Errorf("connection refused"))
+
+	_, _, err := testutil.Exec(t, env, "iam", "user", "remove-role",
+		"alice@example.com", "--role", testRoleID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "connection refused")
+}
+
+func TestUserRemoveRole_ResolveRoleError(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
+		Items: []*iamv1.User{{Id: testUserID, Email: "alice@example.com"}},
+	}, nil)
+	env.IAMServer.ListRolesCalls.Returns(nil, fmt.Errorf("service unavailable"))
+
+	_, _, err := testutil.Exec(t, env, "iam", "user", "remove-role",
+		"alice@example.com", "--role", "admin")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "service unavailable")
+}
+
+func TestUserRemoveRole_RoleNameNotFound(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
+		Items: []*iamv1.User{{Id: testUserID, Email: "alice@example.com"}},
+	}, nil)
+	env.IAMServer.ListRolesCalls.Returns(&iamv1.ListRolesResponse{
+		Items: []*iamv1.Role{{Id: testRoleID, Name: "viewer"}},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env, "iam", "user", "remove-role",
+		"alice@example.com", "--role", "nonexistent")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `role "nonexistent" not found`)
+}
+
+func TestUserRemoveRole_RemoveError(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
+		Items: []*iamv1.User{{Id: testUserID, Email: "alice@example.com"}},
+	}, nil)
+	env.IAMServer.AssignUserRolesCalls.Returns(nil, fmt.Errorf("forbidden"))
+
+	_, _, err := testutil.Exec(t, env, "iam", "user", "remove-role",
+		"alice@example.com", "--role", testRoleID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forbidden")
+}
+
+func TestUserRemoveRole_ListUserRolesError(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
+		Items: []*iamv1.User{{Id: testUserID, Email: "alice@example.com"}},
+	}, nil)
+	env.IAMServer.AssignUserRolesCalls.Returns(&iamv1.AssignUserRolesResponse{}, nil)
+	env.IAMServer.ListUserRolesCalls.Returns(nil, fmt.Errorf("timeout"))
+
+	_, _, err := testutil.Exec(t, env, "iam", "user", "remove-role",
+		"alice@example.com", "--role", testRoleID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "timeout")
 }

@@ -5,7 +5,6 @@ import (
 
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 
-	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -17,18 +16,6 @@ func userCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		return listUserCompletions(s, cmd)
-	}
-}
-
-// userThenRoleCompletion returns a ValidArgsFunction that completes user
-// IDs/emails for the first positional argument, and role names/IDs for all
-// subsequent arguments.
-func userThenRoleCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
-		if len(args) == 0 {
-			return listUserCompletions(s, cmd)
-		}
-		return completion.RoleCompletion(s)(cmd, args, "")
 	}
 }
 

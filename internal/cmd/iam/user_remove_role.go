@@ -18,15 +18,15 @@ func newUserRemoveRoleCommand(s *state.State) *cobra.Command {
 				Args:  util.ExactArgs(1, "a user ID or email"),
 			}
 
-			cmd.Flags().StringSliceP("role", "r", nil, "A role ID or name")
-			cmd.RegisterFlagCompletionFunc("role", completion.RoleCompletion(s))
+			_ = cmd.Flags().StringSliceP("role", "r", nil, "A role ID or name")
+			_ = cmd.RegisterFlagCompletionFunc("role", completion.RoleCompletion(s))
 			return cmd
 		},
 		ValidArgsFunction: userCompletion(s),
 		Long: `Remove one or more roles from a user in the account.
 
 Accepts either a user ID (UUID) or an email address to identify the user.
-Each role argument accepts either a role UUID or a role name, which is
+Each role accepts either a role UUID or a role name, which is
 resolved to an ID via the IAM service. Prints the user's resulting roles
 after the removal.`,
 		Example: `# Remove a role by name
@@ -52,7 +52,7 @@ qcloud iam user remove-role user@example.com --role admin --role viewer`,
 				return err
 			}
 
-			roles, _ :=  cmd.Flags().GetStringSlice("role")
+			roles, _ := cmd.Flags().GetStringSlice("role")
 			roleIDs, err := resolveRoleIDs(ctx, client, accountID, roles)
 			if err != nil {
 				return err

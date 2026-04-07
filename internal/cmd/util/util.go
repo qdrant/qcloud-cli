@@ -48,4 +48,3 @@ func ExactArgs(n int, usage string) cobra.PositionalArgs {
 		return nil
 	}
 }
-

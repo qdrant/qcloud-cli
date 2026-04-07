@@ -2,6 +2,7 @@ package iam_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -162,4 +163,27 @@ func TestUserDescribe_NotFound(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "iam", "user", "describe", "nobody@example.com")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestUserDescribe_ListUsersError(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(nil, fmt.Errorf("permission denied"))
+
+	_, _, err := testutil.Exec(t, env, "iam", "user", "describe", testUserID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "permission denied")
+}
+
+func TestUserDescribe_ListUserRolesError(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
+		Items: []*iamv1.User{{Id: testUserID, Email: "alice@example.com"}},
+	}, nil)
+	env.IAMServer.ListUserRolesCalls.Returns(nil, fmt.Errorf("internal server error"))
+
+	_, _, err := testutil.Exec(t, env, "iam", "user", "describe", testUserID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "internal server error")
 }

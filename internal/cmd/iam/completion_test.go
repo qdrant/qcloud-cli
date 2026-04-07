@@ -51,4 +51,3 @@ func TestUserThenRoleCompletion_FirstArg(t *testing.T) {
 	assert.Contains(t, stdout, "user-uuid-1")
 	assert.Contains(t, stdout, "alice@example.com")
 }
-
