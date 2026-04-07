@@ -3,7 +3,6 @@ package iam
 import (
 	"github.com/spf13/cobra"
 
-	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
@@ -30,40 +29,6 @@ func userThenRoleCompletion(s *state.State) func(*cobra.Command, []string, strin
 			return listUserCompletions(s, cmd)
 		}
 		return completion.RoleCompletion(s)(cmd, args, "")
-	}
-}
-
-// inviteCompletion returns a ValidArgsFunction that completes invite IDs with
-// the invited email as description. It only completes the first positional
-// argument.
-func inviteCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-
-		ctx := cmd.Context()
-		client, err := s.Client(ctx)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-		accountID, err := s.AccountID()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-
-		resp, err := client.Account().ListAccountInvites(ctx, &accountv1.ListAccountInvitesRequest{
-			AccountId: accountID,
-		})
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-
-		completions := make([]string, 0, len(resp.GetItems()))
-		for _, inv := range resp.GetItems() {
-			completions = append(completions, inv.GetId()+"\t"+inv.GetUserEmail())
-		}
-		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
