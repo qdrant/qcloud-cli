@@ -21,7 +21,6 @@ manage role assignments.`,
 		newUserDescribeCommand(s),
 		newUserAssignRoleCommand(s),
 		newUserRemoveRoleCommand(s),
-		newUserInviteCommand(s),
 	)
 	return cmd
 }
