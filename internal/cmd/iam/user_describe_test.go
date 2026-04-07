@@ -12,11 +12,13 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
 
+const testRoleCategory = "Cluster"
+
 func TestUserDescribe_ByID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	userID := testUserID
-	cat := "Cluster"
+	cat := testRoleCategory
 	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
 		Items: []*iamv1.User{
 			{Id: userID, Email: "alice@example.com", Status: iamv1.UserStatus_USER_STATUS_ACTIVE},
@@ -56,7 +58,7 @@ func TestUserDescribe_PermissionsDeduplicatedWithRoles(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	userID := testUserID
-	cat := "Cluster"
+	cat := testRoleCategory
 	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
 		Items: []*iamv1.User{{Id: userID, Email: "alice@example.com"}},
 	}, nil)
@@ -133,7 +135,7 @@ func TestUserDescribe_JSON(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	userID := testUserID
-	cat := "Cluster"
+	cat := testRoleCategory
 	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
 		Items: []*iamv1.User{
 			{Id: userID, Email: "alice@example.com", Status: iamv1.UserStatus_USER_STATUS_ACTIVE},
