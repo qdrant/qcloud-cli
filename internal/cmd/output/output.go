@@ -10,11 +10,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Renderable can render table output with configurable header suppression.
+// Table[T] implements this interface after SetItems is called.
+type Renderable interface {
+	SetNoHeaders(bool)
+	Render()
+}
+
 // Table renders items as an ASCII table.
 type Table[T any] struct {
-	w       io.Writer
-	headers []string
-	fields  []func(T) string
+	w         io.Writer
+	headers   []string
+	fields    []func(T) string
+	items     []T
+	noHeaders bool
 }
 
 // NewTable creates a new Table that writes to the given writer.
@@ -28,8 +37,28 @@ func (t *Table[T]) AddField(name string, fn func(T) string) {
 	t.fields = append(t.fields, fn)
 }
 
-// Write renders the table with the given items.
+// SetNoHeaders controls whether the header row is suppressed when rendering.
+func (t *Table[T]) SetNoHeaders(v bool) {
+	t.noHeaders = v
+}
+
+// SetItems stores items for deferred rendering via Render.
+func (t *Table[T]) SetItems(items []T) {
+	t.items = items
+}
+
+// Render writes the table using previously stored items (via SetItems).
+// Headers are suppressed when SetNoHeaders(true) has been called.
+func (t *Table[T]) Render() {
+	t.render(t.items)
+}
+
+// Write renders the table with the given items immediately.
 func (t *Table[T]) Write(items []T) {
+	t.render(items)
+}
+
+func (t *Table[T]) render(items []T) {
 	style := table.Style{
 		Name:    "minimal",
 		Box:     table.StyleBoxLight,
@@ -49,11 +78,13 @@ func (t *Table[T]) Write(items []T) {
 	tw.SetOutputMirror(t.w)
 	tw.SetStyle(style)
 
-	header := make(table.Row, len(t.headers))
-	for i, h := range t.headers {
-		header[i] = h
+	if !t.noHeaders {
+		header := make(table.Row, len(t.headers))
+		for i, h := range t.headers {
+			header[i] = h
+		}
+		tw.AppendHeader(header)
 	}
-	tw.AppendHeader(header)
 
 	for _, item := range items {
 		row := make(table.Row, len(t.fields))

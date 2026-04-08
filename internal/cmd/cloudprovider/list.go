@@ -39,7 +39,7 @@ func newListCommand(s *state.State) *cobra.Command {
 
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *platformv1.ListCloudProvidersResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *platformv1.ListCloudProvidersResponse) output.Renderable {
 			t := output.NewTable[*platformv1.CloudProvider](w)
 			t.AddField("ID", func(v *platformv1.CloudProvider) string {
 				return v.GetId()
@@ -50,8 +50,8 @@ func newListCommand(s *state.State) *cobra.Command {
 			t.AddField("AVAILABLE", func(v *platformv1.CloudProvider) string {
 				return strconv.FormatBool(v.GetAvailable())
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t
 		},
 	}.CobraCommand(s)
 }
