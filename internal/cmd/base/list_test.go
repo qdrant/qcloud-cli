@@ -66,7 +66,7 @@ func TestListCmd_OutputTable_NoHeaders(t *testing.T) {
 
 func TestListCmd_PrintText(t *testing.T) {
 	lc := base.ListCmd[string]{
-		Use:  "test",
+		Use:   "test",
 		Fetch: fetchHello,
 		PrintText: func(_ *cobra.Command, out io.Writer, resp string) error {
 			_, err := fmt.Fprintln(out, resp)
