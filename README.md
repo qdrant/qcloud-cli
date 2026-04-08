@@ -14,6 +14,7 @@
 
 `qcloud` is the CLI for [Qdrant Cloud](https://qdrant.tech/). It lets you manage clusters, authentication and anything the API has to offer with a terminal experience.
 
+[![asciicast](https://asciinema.org/a/AmrtBHhFD1XysBYS.svg)](https://asciinema.org/a/AmrtBHhFD1XysBYS)
 
 ## Disclaimer
 
