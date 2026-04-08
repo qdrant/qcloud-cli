@@ -15,6 +15,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
+var fetchHello = func(_ *state.State, _ *cobra.Command) (string, error) { return "hello", nil }
+
 func execListCmd(t *testing.T, lc base.ListCmd[string], args ...string) (string, error) {
 	t.Helper()
 	cmd := lc.CobraCommand(state.New(""))
@@ -35,7 +37,7 @@ func stringTableRenderer(out io.Writer, val string) output.TableRenderer {
 func TestListCmd_OutputTable(t *testing.T) {
 	lc := base.ListCmd[string]{
 		Use:   "test",
-		Fetch: func(_ *state.State, _ *cobra.Command) (string, error) { return "hello", nil },
+		Fetch: fetchHello,
 		OutputTable: func(_ *cobra.Command, out io.Writer, resp string) output.TableRenderer {
 			return stringTableRenderer(out, resp)
 		},
@@ -50,7 +52,7 @@ func TestListCmd_OutputTable(t *testing.T) {
 func TestListCmd_OutputTable_NoHeaders(t *testing.T) {
 	lc := base.ListCmd[string]{
 		Use:   "test",
-		Fetch: func(_ *state.State, _ *cobra.Command) (string, error) { return "hello", nil },
+		Fetch: fetchHello,
 		OutputTable: func(_ *cobra.Command, out io.Writer, resp string) output.TableRenderer {
 			return stringTableRenderer(out, resp)
 		},
@@ -64,8 +66,8 @@ func TestListCmd_OutputTable_NoHeaders(t *testing.T) {
 
 func TestListCmd_PrintText(t *testing.T) {
 	lc := base.ListCmd[string]{
-		Use:   "test",
-		Fetch: func(_ *state.State, _ *cobra.Command) (string, error) { return "hello", nil },
+		Use:  "test",
+		Fetch: fetchHello,
 		PrintText: func(_ *cobra.Command, out io.Writer, resp string) error {
 			_, err := fmt.Fprintln(out, resp)
 			return err
@@ -80,7 +82,7 @@ func TestListCmd_PrintText(t *testing.T) {
 func TestListCmd_NeitherOutputTableNorPrintText_Panics(t *testing.T) {
 	lc := base.ListCmd[string]{
 		Use:   "test",
-		Fetch: func(_ *state.State, _ *cobra.Command) (string, error) { return "hello", nil },
+		Fetch: fetchHello,
 	}
 
 	assert.Panics(t, func() {
