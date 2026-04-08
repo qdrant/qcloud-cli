@@ -49,6 +49,9 @@ func (lc ListCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 				r.Render()
 				return nil
 			}
+			if lc.PrintText == nil {
+				panic("ListCmd: either OutputTable or PrintText must be set")
+			}
 			return lc.PrintText(cmd, cmd.OutOrStdout(), resp)
 		},
 	}
