@@ -6,7 +6,7 @@ require (
 	github.com/creativeprojects/go-selfupdate v1.5.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/google/uuid v1.6.0
-	github.com/jedib0t/go-pretty/v6 v6.7.8
+	github.com/jedib0t/go-pretty/v6 v6.7.9
 	github.com/qdrant/qdrant-cloud-public-api v0.114.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
