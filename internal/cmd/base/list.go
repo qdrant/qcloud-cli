@@ -21,7 +21,7 @@ type ListCmd[T any] struct {
 	Long              string
 	Example           string
 	Fetch             func(s *state.State, cmd *cobra.Command) (T, error)
-	OutputTable       func(cmd *cobra.Command, out io.Writer, resp T) output.Renderable
+	OutputTable       func(cmd *cobra.Command, out io.Writer, resp T) output.TableRenderer
 	PrintText         func(cmd *cobra.Command, out io.Writer, resp T) error
 	ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 }
