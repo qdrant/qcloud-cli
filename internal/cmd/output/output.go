@@ -10,9 +10,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Renderable can render table output with configurable header suppression.
+// TableRenderer can render table output with configurable header suppression.
 // Table[T] implements this interface after SetItems is called.
-type Renderable interface {
+type TableRenderer interface {
 	SetNoHeaders(bool)
 	Render()
 }

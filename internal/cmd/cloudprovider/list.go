@@ -39,7 +39,7 @@ func newListCommand(s *state.State) *cobra.Command {
 
 			return resp, nil
 		},
-		OutputTable: func(_ *cobra.Command, w io.Writer, resp *platformv1.ListCloudProvidersResponse) output.Renderable {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *platformv1.ListCloudProvidersResponse) output.TableRenderer {
 			t := output.NewTable[*platformv1.CloudProvider](w)
 			t.AddField("ID", func(v *platformv1.CloudProvider) string {
 				return v.GetId()
