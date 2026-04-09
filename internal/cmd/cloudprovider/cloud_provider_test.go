@@ -37,3 +37,36 @@ func TestListCloudProviders_TableOutput(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "test-account-id", req.GetAccountId())
 }
+
+func TestListCloudProviders_NoHeaders(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.PlatformServer.ListCloudProvidersCalls.Returns(&platformv1.ListCloudProvidersResponse{
+		Items: []*platformv1.CloudProvider{
+			{Id: "aws", Name: "Amazon Web Services", Available: true},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "cloud-provider", "list", "--no-headers")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "ID")
+	assert.NotContains(t, stdout, "NAME")
+	assert.NotContains(t, stdout, "AVAILABLE")
+	assert.Contains(t, stdout, "aws")
+	assert.Contains(t, stdout, "Amazon Web Services")
+}
+
+func TestListCloudProviders_NoHeadersWithJSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.PlatformServer.ListCloudProvidersCalls.Returns(&platformv1.ListCloudProvidersResponse{
+		Items: []*platformv1.CloudProvider{
+			{Id: "aws", Name: "Amazon Web Services", Available: true},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "cloud-provider", "list", "--no-headers", "--json")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, `"id"`)
+	assert.Contains(t, stdout, `"aws"`)
+}
