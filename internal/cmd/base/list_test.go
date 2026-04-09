@@ -2,7 +2,6 @@ package base_test
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"testing"
 
@@ -38,8 +37,8 @@ func TestListCmd_OutputTable(t *testing.T) {
 	lc := base.ListCmd[string]{
 		Use:   "test",
 		Fetch: fetchHello,
-		OutputTable: func(_ *cobra.Command, out io.Writer, resp string) output.TableRenderer {
-			return stringTableRenderer(out, resp)
+		OutputTable: func(_ *cobra.Command, out io.Writer, resp string) (output.TableRenderer, error) {
+			return stringTableRenderer(out, resp), nil
 		},
 	}
 
@@ -53,8 +52,8 @@ func TestListCmd_OutputTable_NoHeaders(t *testing.T) {
 	lc := base.ListCmd[string]{
 		Use:   "test",
 		Fetch: fetchHello,
-		OutputTable: func(_ *cobra.Command, out io.Writer, resp string) output.TableRenderer {
-			return stringTableRenderer(out, resp)
+		OutputTable: func(_ *cobra.Command, out io.Writer, resp string) (output.TableRenderer, error) {
+			return stringTableRenderer(out, resp), nil
 		},
 	}
 
@@ -64,22 +63,7 @@ func TestListCmd_OutputTable_NoHeaders(t *testing.T) {
 	assert.Contains(t, stdout, "hello")
 }
 
-func TestListCmd_PrintText(t *testing.T) {
-	lc := base.ListCmd[string]{
-		Use:   "test",
-		Fetch: fetchHello,
-		PrintText: func(_ *cobra.Command, out io.Writer, resp string) error {
-			_, err := fmt.Fprintln(out, resp)
-			return err
-		},
-	}
-
-	stdout, err := execListCmd(t, lc)
-	require.NoError(t, err)
-	assert.Contains(t, stdout, "hello")
-}
-
-func TestListCmd_NeitherOutputTableNorPrintText_Panics(t *testing.T) {
+func TestListCmd_NoOutputTable_Panics(t *testing.T) {
 	lc := base.ListCmd[string]{
 		Use:   "test",
 		Fetch: fetchHello,

@@ -42,7 +42,7 @@ qcloud iam key list --json`,
 				AccountId: accountID,
 			})
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *authv1.ListManagementKeysResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *authv1.ListManagementKeysResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*authv1.ManagementKey](w)
 			t.AddField("ID", func(v *authv1.ManagementKey) string {
 				return v.GetId()
@@ -56,8 +56,8 @@ qcloud iam key list --json`,
 				}
 				return ""
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 	}.CobraCommand(s)
 }

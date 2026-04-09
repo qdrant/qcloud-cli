@@ -72,7 +72,7 @@ qcloud package list --cloud-provider hybrid`,
 
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *bookingv1.ListPackagesResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *bookingv1.ListPackagesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*bookingv1.Package](w)
 			t.AddField("NAME", func(p *bookingv1.Package) string {
 				return p.GetName()
@@ -115,8 +115,8 @@ qcloud package list --cloud-provider hybrid`,
 			t.AddField("PRICE/HR", func(p *bookingv1.Package) string {
 				return output.FormatMillicents(p.GetUnitIntPricePerHour(), p.GetCurrency())
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 	}.CobraCommand(s)
 

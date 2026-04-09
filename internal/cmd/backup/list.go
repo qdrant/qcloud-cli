@@ -42,7 +42,7 @@ func newListCommand(s *state.State) *cobra.Command {
 			}
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupsResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupsResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*backupv1.Backup](w)
 			t.AddField("ID", func(v *backupv1.Backup) string {
 				return v.GetId()
@@ -62,8 +62,8 @@ func newListCommand(s *state.State) *cobra.Command {
 				}
 				return ""
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 	}.CobraCommand(s)
 

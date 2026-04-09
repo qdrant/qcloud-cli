@@ -47,15 +47,15 @@ qcloud cluster version list`,
 			}
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListQdrantReleasesResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListQdrantReleasesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*clusterv1.QdrantRelease](w)
 			t.AddField("VERSION", func(r *clusterv1.QdrantRelease) string { return r.GetVersion() })
 			t.AddField("DEFAULT", func(r *clusterv1.QdrantRelease) string { return output.BoolYesNo(r.GetDefault()) })
 			t.AddField("END OF LIFE", func(r *clusterv1.QdrantRelease) string { return output.BoolMark(r.GetEndOfLife()) })
 			t.AddField("UNAVAILABLE", func(r *clusterv1.QdrantRelease) string { return output.BoolMark(r.GetUnavailable()) })
 			t.AddField("REMARKS", func(r *clusterv1.QdrantRelease) string { return r.GetRemarks() })
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 	}.CobraCommand(s)
 }
