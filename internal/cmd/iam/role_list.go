@@ -42,7 +42,7 @@ qcloud iam role list --json`,
 				AccountId: accountID,
 			})
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *iamv1.ListRolesResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *iamv1.ListRolesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*iamv1.Role](w)
 			t.AddField("ID", func(v *iamv1.Role) string {
 				return v.GetId()
@@ -62,8 +62,8 @@ qcloud iam role list --json`,
 				}
 				return ""
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 	}.CobraCommand(s)
 }

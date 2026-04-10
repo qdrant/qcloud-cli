@@ -105,3 +105,17 @@ func TestRoleList_BackendError(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "iam", "role", "list")
 	require.Error(t, err)
 }
+
+func TestRoleList_NoHeaders(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListRolesCalls.Returns(&iamv1.ListRolesResponse{
+		Items: []*iamv1.Role{{Id: "role-abc", Name: "Admin"}},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "iam", "role", "list", "--no-headers")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "ID")
+	assert.NotContains(t, stdout, "NAME")
+	assert.Contains(t, stdout, "role-abc")
+}

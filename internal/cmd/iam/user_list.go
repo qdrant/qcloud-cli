@@ -44,7 +44,7 @@ qcloud iam user list --json`,
 			}
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *iamv1.ListUsersResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *iamv1.ListUsersResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*iamv1.User](w)
 			t.AddField("ID", func(v *iamv1.User) string { return v.GetId() })
 			t.AddField("EMAIL", func(v *iamv1.User) string { return v.GetEmail() })
@@ -55,8 +55,8 @@ qcloud iam user list --json`,
 				}
 				return ""
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 	}.CobraCommand(s)
 }
