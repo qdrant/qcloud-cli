@@ -15,13 +15,12 @@ type FakeAccountService struct {
 	GetAccountInviteCalls    MethodSpy[*accountv1.GetAccountInviteRequest, *accountv1.GetAccountInviteResponse]
 	CreateAccountInviteCalls MethodSpy[*accountv1.CreateAccountInviteRequest, *accountv1.CreateAccountInviteResponse]
 	DeleteAccountInviteCalls MethodSpy[*accountv1.DeleteAccountInviteRequest, *accountv1.DeleteAccountInviteResponse]
-	ListAccountsCalls       MethodSpy[*accountv1.ListAccountsRequest, *accountv1.ListAccountsResponse]
-	GetAccountCalls         MethodSpy[*accountv1.GetAccountRequest, *accountv1.GetAccountResponse]
-	UpdateAccountCalls      MethodSpy[*accountv1.UpdateAccountRequest, *accountv1.UpdateAccountResponse]
-	ListAccountMembersCalls MethodSpy[*accountv1.ListAccountMembersRequest, *accountv1.ListAccountMembersResponse]
-	GetAccountMemberCalls   MethodSpy[*accountv1.GetAccountMemberRequest, *accountv1.GetAccountMemberResponse]
+	ListAccountsCalls        MethodSpy[*accountv1.ListAccountsRequest, *accountv1.ListAccountsResponse]
+	GetAccountCalls          MethodSpy[*accountv1.GetAccountRequest, *accountv1.GetAccountResponse]
+	UpdateAccountCalls       MethodSpy[*accountv1.UpdateAccountRequest, *accountv1.UpdateAccountResponse]
+	ListAccountMembersCalls  MethodSpy[*accountv1.ListAccountMembersRequest, *accountv1.ListAccountMembersResponse]
+	GetAccountMemberCalls    MethodSpy[*accountv1.GetAccountMemberRequest, *accountv1.GetAccountMemberResponse]
 }
-
 
 // ListAccountInvites records the call and dispatches via ListAccountInvitesCalls.
 func (f *FakeAccountService) ListAccountInvites(ctx context.Context, req *accountv1.ListAccountInvitesRequest) (*accountv1.ListAccountInvitesResponse, error) {
