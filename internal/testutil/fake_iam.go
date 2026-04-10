@@ -11,12 +11,40 @@ import (
 type FakeIAMService struct {
 	iamv1.UnimplementedIAMServiceServer
 
-	ListRolesCalls       MethodSpy[*iamv1.ListRolesRequest, *iamv1.ListRolesResponse]
-	GetRoleCalls         MethodSpy[*iamv1.GetRoleRequest, *iamv1.GetRoleResponse]
-	CreateRoleCalls      MethodSpy[*iamv1.CreateRoleRequest, *iamv1.CreateRoleResponse]
-	UpdateRoleCalls      MethodSpy[*iamv1.UpdateRoleRequest, *iamv1.UpdateRoleResponse]
-	DeleteRoleCalls      MethodSpy[*iamv1.DeleteRoleRequest, *iamv1.DeleteRoleResponse]
-	ListPermissionsCalls MethodSpy[*iamv1.ListPermissionsRequest, *iamv1.ListPermissionsResponse]
+	GetAuthenticatedUserCalls MethodSpy[*iamv1.GetAuthenticatedUserRequest, *iamv1.GetAuthenticatedUserResponse]
+	ListUsersCalls            MethodSpy[*iamv1.ListUsersRequest, *iamv1.ListUsersResponse]
+	ListUserRolesCalls        MethodSpy[*iamv1.ListUserRolesRequest, *iamv1.ListUserRolesResponse]
+	AssignUserRolesCalls      MethodSpy[*iamv1.AssignUserRolesRequest, *iamv1.AssignUserRolesResponse]
+	ListRolesCalls            MethodSpy[*iamv1.ListRolesRequest, *iamv1.ListRolesResponse]
+	GetRoleCalls              MethodSpy[*iamv1.GetRoleRequest, *iamv1.GetRoleResponse]
+	CreateRoleCalls           MethodSpy[*iamv1.CreateRoleRequest, *iamv1.CreateRoleResponse]
+	UpdateRoleCalls           MethodSpy[*iamv1.UpdateRoleRequest, *iamv1.UpdateRoleResponse]
+	DeleteRoleCalls           MethodSpy[*iamv1.DeleteRoleRequest, *iamv1.DeleteRoleResponse]
+	ListPermissionsCalls      MethodSpy[*iamv1.ListPermissionsRequest, *iamv1.ListPermissionsResponse]
+}
+
+// GetAuthenticatedUser records the call and dispatches via GetAuthenticatedUserCalls.
+func (f *FakeIAMService) GetAuthenticatedUser(ctx context.Context, req *iamv1.GetAuthenticatedUserRequest) (*iamv1.GetAuthenticatedUserResponse, error) {
+	f.GetAuthenticatedUserCalls.record(req)
+	return f.GetAuthenticatedUserCalls.dispatch(ctx, req, f.UnimplementedIAMServiceServer.GetAuthenticatedUser)
+}
+
+// ListUsers records the call and dispatches via ListUsersCalls.
+func (f *FakeIAMService) ListUsers(ctx context.Context, req *iamv1.ListUsersRequest) (*iamv1.ListUsersResponse, error) {
+	f.ListUsersCalls.record(req)
+	return f.ListUsersCalls.dispatch(ctx, req, f.UnimplementedIAMServiceServer.ListUsers)
+}
+
+// ListUserRoles records the call and dispatches via ListUserRolesCalls.
+func (f *FakeIAMService) ListUserRoles(ctx context.Context, req *iamv1.ListUserRolesRequest) (*iamv1.ListUserRolesResponse, error) {
+	f.ListUserRolesCalls.record(req)
+	return f.ListUserRolesCalls.dispatch(ctx, req, f.UnimplementedIAMServiceServer.ListUserRoles)
+}
+
+// AssignUserRoles records the call and dispatches via AssignUserRolesCalls.
+func (f *FakeIAMService) AssignUserRoles(ctx context.Context, req *iamv1.AssignUserRolesRequest) (*iamv1.AssignUserRolesResponse, error) {
+	f.AssignUserRolesCalls.record(req)
+	return f.AssignUserRolesCalls.dispatch(ctx, req, f.UnimplementedIAMServiceServer.AssignUserRoles)
 }
 
 // ListRoles records the call and dispatches via ListRolesCalls.

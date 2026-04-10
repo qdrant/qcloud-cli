@@ -11,11 +11,39 @@ import (
 type FakeAccountService struct {
 	accountv1.UnimplementedAccountServiceServer
 
-	ListAccountsCalls       MethodSpy[*accountv1.ListAccountsRequest, *accountv1.ListAccountsResponse]
-	GetAccountCalls         MethodSpy[*accountv1.GetAccountRequest, *accountv1.GetAccountResponse]
-	UpdateAccountCalls      MethodSpy[*accountv1.UpdateAccountRequest, *accountv1.UpdateAccountResponse]
-	ListAccountMembersCalls MethodSpy[*accountv1.ListAccountMembersRequest, *accountv1.ListAccountMembersResponse]
-	GetAccountMemberCalls   MethodSpy[*accountv1.GetAccountMemberRequest, *accountv1.GetAccountMemberResponse]
+	ListAccountInvitesCalls  MethodSpy[*accountv1.ListAccountInvitesRequest, *accountv1.ListAccountInvitesResponse]
+	GetAccountInviteCalls    MethodSpy[*accountv1.GetAccountInviteRequest, *accountv1.GetAccountInviteResponse]
+	CreateAccountInviteCalls MethodSpy[*accountv1.CreateAccountInviteRequest, *accountv1.CreateAccountInviteResponse]
+	DeleteAccountInviteCalls MethodSpy[*accountv1.DeleteAccountInviteRequest, *accountv1.DeleteAccountInviteResponse]
+	ListAccountsCalls        MethodSpy[*accountv1.ListAccountsRequest, *accountv1.ListAccountsResponse]
+	GetAccountCalls          MethodSpy[*accountv1.GetAccountRequest, *accountv1.GetAccountResponse]
+	UpdateAccountCalls       MethodSpy[*accountv1.UpdateAccountRequest, *accountv1.UpdateAccountResponse]
+	ListAccountMembersCalls  MethodSpy[*accountv1.ListAccountMembersRequest, *accountv1.ListAccountMembersResponse]
+	GetAccountMemberCalls    MethodSpy[*accountv1.GetAccountMemberRequest, *accountv1.GetAccountMemberResponse]
+}
+
+// ListAccountInvites records the call and dispatches via ListAccountInvitesCalls.
+func (f *FakeAccountService) ListAccountInvites(ctx context.Context, req *accountv1.ListAccountInvitesRequest) (*accountv1.ListAccountInvitesResponse, error) {
+	f.ListAccountInvitesCalls.record(req)
+	return f.ListAccountInvitesCalls.dispatch(ctx, req, f.UnimplementedAccountServiceServer.ListAccountInvites)
+}
+
+// GetAccountInvite records the call and dispatches via GetAccountInviteCalls.
+func (f *FakeAccountService) GetAccountInvite(ctx context.Context, req *accountv1.GetAccountInviteRequest) (*accountv1.GetAccountInviteResponse, error) {
+	f.GetAccountInviteCalls.record(req)
+	return f.GetAccountInviteCalls.dispatch(ctx, req, f.UnimplementedAccountServiceServer.GetAccountInvite)
+}
+
+// CreateAccountInvite records the call and dispatches via CreateAccountInviteCalls.
+func (f *FakeAccountService) CreateAccountInvite(ctx context.Context, req *accountv1.CreateAccountInviteRequest) (*accountv1.CreateAccountInviteResponse, error) {
+	f.CreateAccountInviteCalls.record(req)
+	return f.CreateAccountInviteCalls.dispatch(ctx, req, f.UnimplementedAccountServiceServer.CreateAccountInvite)
+}
+
+// DeleteAccountInvite records the call and dispatches via DeleteAccountInviteCalls.
+func (f *FakeAccountService) DeleteAccountInvite(ctx context.Context, req *accountv1.DeleteAccountInviteRequest) (*accountv1.DeleteAccountInviteResponse, error) {
+	f.DeleteAccountInviteCalls.record(req)
+	return f.DeleteAccountInviteCalls.dispatch(ctx, req, f.UnimplementedAccountServiceServer.DeleteAccountInvite)
 }
 
 // ListAccounts records the call and dispatches via ListAccountsCalls.
