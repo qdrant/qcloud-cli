@@ -58,7 +58,7 @@ qcloud iam user remove-role user@example.com --role admin --role viewer`,
 				return err
 			}
 
-			return modifyUserRoles(s, cmd, client, accountID, user, nil, roleIDs, "remove")
+			return modifyUserRoles(s, cmd, client, accountID, user, nil, roleIDs)
 		},
 	}.CobraCommand(s)
 }

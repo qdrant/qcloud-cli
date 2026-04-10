@@ -61,7 +61,7 @@ qcloud iam user assign-role user@example.com --role admin,viewer`,
 				return err
 			}
 
-			return modifyUserRoles(s, cmd, client, accountID, user, roleIDs, nil, "assign")
+			return modifyUserRoles(s, cmd, client, accountID, user, roleIDs, nil)
 		},
 	}.CobraCommand(s)
 }
