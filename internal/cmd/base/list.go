@@ -12,8 +12,9 @@ import (
 // ListCmd defines a command for fetching and displaying a list response.
 // T is the full response proto message (e.g. *clusterv1.ListClustersResponse).
 //
-// OutputTable must be set. The base automatically registers --no-headers and
-// handles header suppression.
+// At least one of OutputTable or PrintText must be set. OutputTable is
+// preferred; when set, --no-headers is automatically registered and handled.
+// PrintText is the legacy fallback for commands that have not yet migrated.
 type ListCmd[T any] struct {
 	Use               string
 	Short             string
@@ -21,6 +22,7 @@ type ListCmd[T any] struct {
 	Example           string
 	Fetch             func(s *state.State, cmd *cobra.Command) (T, error)
 	OutputTable       func(cmd *cobra.Command, out io.Writer, resp T) (output.TableRenderer, error)
+	PrintText         func(cmd *cobra.Command, out io.Writer, resp T) error
 	ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
 }
 
@@ -40,20 +42,25 @@ func (lc ListCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 			if s.Config.JSONOutput() {
 				return output.PrintJSON(cmd.OutOrStdout(), resp)
 			}
-			if lc.OutputTable == nil {
-				panic("ListCmd: OutputTable must be set")
+			if lc.OutputTable != nil {
+				r, err := lc.OutputTable(cmd, cmd.OutOrStdout(), resp)
+				if err != nil {
+					return err
+				}
+				noHeaders, _ := cmd.Flags().GetBool("no-headers")
+				r.SetNoHeaders(noHeaders)
+				r.Render()
+				return nil
 			}
-			r, err := lc.OutputTable(cmd, cmd.OutOrStdout(), resp)
-			if err != nil {
-				return err
+			if lc.PrintText != nil {
+				return lc.PrintText(cmd, cmd.OutOrStdout(), resp)
 			}
-			noHeaders, _ := cmd.Flags().GetBool("no-headers")
-			r.SetNoHeaders(noHeaders)
-			r.Render()
-			return nil
+			panic("ListCmd: OutputTable or PrintText must be set")
 		},
 	}
-	cmd.Flags().Bool("no-headers", false, "Do not print column headers")
+	if lc.OutputTable != nil {
+		cmd.Flags().Bool("no-headers", false, "Do not print column headers")
+	}
 	if lc.ValidArgsFunction != nil {
 		cmd.ValidArgsFunction = lc.ValidArgsFunction
 	}

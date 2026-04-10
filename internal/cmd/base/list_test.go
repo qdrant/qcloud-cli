@@ -2,6 +2,7 @@ package base_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 
@@ -63,7 +64,22 @@ func TestListCmd_OutputTable_NoHeaders(t *testing.T) {
 	assert.Contains(t, stdout, "hello")
 }
 
-func TestListCmd_NoOutputTable_Panics(t *testing.T) {
+func TestListCmd_PrintText(t *testing.T) {
+	lc := base.ListCmd[string]{
+		Use:   "test",
+		Fetch: fetchHello,
+		PrintText: func(_ *cobra.Command, out io.Writer, resp string) error {
+			_, err := fmt.Fprint(out, resp)
+			return err
+		},
+	}
+
+	stdout, err := execListCmd(t, lc)
+	require.NoError(t, err)
+	assert.Equal(t, "hello", stdout)
+}
+
+func TestListCmd_NeitherOutputTableNorPrintText_Panics(t *testing.T) {
 	lc := base.ListCmd[string]{
 		Use:   "test",
 		Fetch: fetchHello,
