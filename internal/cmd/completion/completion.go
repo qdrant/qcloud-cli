@@ -3,6 +3,7 @@ package completion
 import (
 	"github.com/spf13/cobra"
 
+	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
@@ -224,6 +225,65 @@ func VersionCompletion(s *state.State) func(*cobra.Command, []string, string) ([
 				entry += "\t" + desc
 			}
 			completions = append(completions, entry)
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// AccountIDCompletion returns a ValidArgsFunction that completes account IDs.
+func AccountIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.Account().ListAccounts(ctx, &accountv1.ListAccountsRequest{})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, a := range resp.GetItems() {
+			completions = append(completions, a.GetId()+"\t"+a.GetName())
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// AccountMemberIDCompletion returns a ValidArgsFunction that completes account member user IDs.
+func AccountMemberIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.Account().ListAccountMembers(ctx, &accountv1.ListAccountMembersRequest{
+			AccountId: accountID,
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, m := range resp.GetItems() {
+			completions = append(completions, m.GetAccountMember().GetId()+"\t"+m.GetAccountMember().GetEmail())
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}

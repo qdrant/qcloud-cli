@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
+	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
 	bookingv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/booking/v1"
 	clusterauthv2 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/auth/v2"
@@ -28,6 +29,7 @@ type Client struct {
 	hybrid         hybridv1.HybridCloudServiceClient
 	monitoring     monitoringv1.MonitoringServiceClient
 	auth           authv1.AuthServiceClient
+	account        accountv1.AccountServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -60,6 +62,7 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 		hybrid:         hybridv1.NewHybridCloudServiceClient(conn),
 		monitoring:     monitoringv1.NewMonitoringServiceClient(conn),
 		auth:           authv1.NewAuthServiceClient(conn),
+		account:        accountv1.NewAccountServiceClient(conn),
 	}
 }
 
@@ -101,6 +104,11 @@ func (c *Client) Monitoring() monitoringv1.MonitoringServiceClient {
 // Auth returns the AuthService gRPC client.
 func (c *Client) Auth() authv1.AuthServiceClient {
 	return c.auth
+}
+
+// Account returns the AccountService gRPC client.
+func (c *Client) Account() accountv1.AccountServiceClient {
+	return c.account
 }
 
 // Close closes the underlying gRPC connection.
