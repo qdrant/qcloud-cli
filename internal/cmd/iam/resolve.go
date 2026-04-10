@@ -80,8 +80,7 @@ func resolveRoleIDs(ctx context.Context, client *qcloudapi.Client, accountID str
 }
 
 // modifyUserRoles calls AssignUserRoles with the given add/delete IDs, then
-// fetches and prints the resulting role list. errVerb is used in the error
-// message ("failed to <errVerb> roles").
+// fetches and prints the resulting role list.
 func modifyUserRoles(s *state.State, cmd *cobra.Command, client *qcloudapi.Client, accountID string, user *iamv1.User, addIDs, removeIDs []string) error {
 	ctx := cmd.Context()
 
