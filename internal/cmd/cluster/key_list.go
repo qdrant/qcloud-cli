@@ -16,14 +16,14 @@ import (
 )
 
 func newKeyListCommand(s *state.State) *cobra.Command {
-	return base.DescribeCmd[*clusterauthv2.ListDatabaseApiKeysResponse]{
+	return base.ListCmd[*clusterauthv2.ListDatabaseApiKeysResponse]{
 		Use:   "list <cluster-id>",
 		Short: "List API keys for a cluster",
 		Example: `# List API keys for a cluster
 qcloud cluster key list 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
 		Args: util.ExactArgs(1, "a cluster ID"),
-		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
-			clusterID := args[0]
+		Fetch: func(s *state.State, cmd *cobra.Command) (*clusterauthv2.ListDatabaseApiKeysResponse, error) {
+			clusterID := cmd.Flags().Arg(0)
 
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
@@ -46,7 +46,7 @@ qcloud cluster key list 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
 
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterauthv2.ListDatabaseApiKeysResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *clusterauthv2.ListDatabaseApiKeysResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*clusterauthv2.DatabaseApiKey](w)
 			t.AddField("ID", func(v *clusterauthv2.DatabaseApiKey) string {
 				return v.GetId()
@@ -69,8 +69,8 @@ qcloud cluster key list 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
 				}
 				return ""
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)

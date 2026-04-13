@@ -84,3 +84,19 @@ func TestAccountList_Empty(t *testing.T) {
 	assert.Contains(t, stdout, "ID")
 	assert.Contains(t, stdout, "NAME")
 }
+
+func TestAccountList_NoHeaders(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
+		Items: []*accountv1.Account{
+			{Id: "acct-001", Name: "Production"},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "account", "list", "--no-headers")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "ID")
+	assert.NotContains(t, stdout, "NAME")
+	assert.Contains(t, stdout, "acct-001")
+}

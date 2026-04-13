@@ -68,3 +68,17 @@ func TestUserList_Error(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "permission denied")
 }
+
+func TestUserList_NoHeaders(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListUsersCalls.Returns(&iamv1.ListUsersResponse{
+		Items: []*iamv1.User{{Id: "user-1", Email: "alice@example.com"}},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "iam", "user", "list", "--no-headers")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "ID")
+	assert.NotContains(t, stdout, "EMAIL")
+	assert.Contains(t, stdout, "user-1")
+}

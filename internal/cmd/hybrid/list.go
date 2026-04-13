@@ -37,7 +37,7 @@ func newListCommand(s *state.State) *cobra.Command {
 			}
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *hybridv1.ListHybridCloudEnvironmentsResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *hybridv1.ListHybridCloudEnvironmentsResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*hybridv1.HybridCloudEnvironment](w)
 			t.AddField("ID", func(v *hybridv1.HybridCloudEnvironment) string {
 				return v.GetId()
@@ -63,8 +63,8 @@ func newListCommand(s *state.State) *cobra.Command {
 				}
 				return ""
 			})
-			t.Write(resp.Items)
-			return nil
+			t.SetItems(resp.Items)
+			return t, nil
 		},
 	}.CobraCommand(s)
 }

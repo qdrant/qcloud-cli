@@ -48,7 +48,7 @@ qcloud account member list --json`,
 
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *accountv1.ListAccountMembersResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *accountv1.ListAccountMembersResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*accountv1.AccountMember](w)
 			t.AddField("ID", func(v *accountv1.AccountMember) string {
 				return v.GetAccountMember().GetId()
@@ -65,8 +65,8 @@ qcloud account member list --json`,
 				}
 				return ""
 			})
-			t.Write(resp.GetItems())
-			return nil
+			t.SetItems(resp.GetItems())
+			return t, nil
 		},
 	}.CobraCommand(s)
 }

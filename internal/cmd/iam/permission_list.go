@@ -42,7 +42,7 @@ qcloud iam permission list --json`,
 				AccountId: accountID,
 			})
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *iamv1.ListPermissionsResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *iamv1.ListPermissionsResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*iamv1.Permission](w)
 			t.AddField("PERMISSION", func(v *iamv1.Permission) string {
 				return v.GetValue()
@@ -50,8 +50,8 @@ qcloud iam permission list --json`,
 			t.AddField("CATEGORY", func(v *iamv1.Permission) string {
 				return v.GetCategory()
 			})
-			t.Write(resp.GetPermissions())
-			return nil
+			t.SetItems(resp.GetPermissions())
+			return t, nil
 		},
 	}.CobraCommand(s)
 }

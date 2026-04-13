@@ -104,7 +104,7 @@ qcloud cluster list --page-size 10`,
 			}
 			return resp, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) error {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*clusterv1.Cluster](w)
 			t.AddField("ID", func(v *clusterv1.Cluster) string {
 				return v.GetId()
@@ -136,11 +136,8 @@ qcloud cluster list --page-size 10`,
 				}
 				return ""
 			})
-			t.Write(resp.Items)
-			if resp.NextPageToken != nil && *resp.NextPageToken != "" {
-				fmt.Fprintf(w, "Next page token: %s\n", *resp.NextPageToken)
-			}
-			return nil
+			t.SetItems(resp.Items)
+			return t, nil
 		},
 	}.CobraCommand(s)
 

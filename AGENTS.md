@@ -94,9 +94,7 @@ Each subcommand group lives in `internal/cmd/<group>/`:
 All leaf commands are built using one of five generic base types. Always prefer these over raw `cobra.Command`.
 
 #### `base.ListCmd[T]`
-For listing resources. No args, no flags needed (extend via `BaseCobraCommand` if flags are required).
-
-Prefer `OutputTable` over `PrintText` for table output. When `OutputTable` is set, the base automatically registers `--no-headers` and handles header suppression. `PrintText` is used as a fallback when `OutputTable` is not set.
+For listing resources. `OutputTable` must be set. The base automatically registers `--no-headers` and handles header suppression. By default the command takes no positional args; set `Args` to accept them.
 
 ```go
 base.ListCmd[*foov1.ListFoosResponse]{
@@ -105,11 +103,11 @@ base.ListCmd[*foov1.ListFoosResponse]{
     Fetch: func(s *state.State, cmd *cobra.Command) (*foov1.ListFoosResponse, error) {
         // call gRPC, return response
     },
-    OutputTable: func(_ *cobra.Command, w io.Writer, resp *foov1.ListFoosResponse) output.Renderable {
+    OutputTable: func(_ *cobra.Command, w io.Writer, resp *foov1.ListFoosResponse) (output.TableRenderer, error) {
         t := output.NewTable[*foov1.Foo](w)
         t.AddField("ID", func(v *foov1.Foo) string { return v.GetId() })
-        t.SetItems(resp.Items)
-        return t
+        t.SetItems(resp.GetItems())
+        return t, nil
     },
 }.CobraCommand(s)
 ```

@@ -167,7 +167,7 @@ func TestListClusters_PageSizeFlagSingleRequest(t *testing.T) {
 		NextPageToken: &token,
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "list", "--page-size", "1")
+	_, _, err := testutil.Exec(t, env, "cluster", "list", "--page-size", "1")
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, env.Server.ListClustersCalls.Count())
@@ -175,7 +175,6 @@ func TestListClusters_PageSizeFlagSingleRequest(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, req.PageSize)
 	assert.Equal(t, int32(1), *req.PageSize)
-	assert.Contains(t, stdout, "Next page token: next-token")
 }
 
 func TestListClusters_PageTokenFlagSingleRequest(t *testing.T) {
@@ -224,19 +223,4 @@ func TestListClusters_CloudRegionFilter(t *testing.T) {
 	assert.Equal(t, "aws", *req.CloudProviderId)
 	require.NotNil(t, req.CloudProviderRegionId)
 	assert.Equal(t, "us-east-1", *req.CloudProviderRegionId)
-}
-
-func TestListClusters_NextPageTokenPrintedAsFooter(t *testing.T) {
-	env := testutil.NewTestEnv(t)
-
-	token := "footer-token"
-	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{
-		Items:         []*clusterv1.Cluster{{Id: "cluster-1"}},
-		NextPageToken: &token,
-	}, nil)
-
-	stdout, _, err := testutil.Exec(t, env, "cluster", "list", "--page-size", "1")
-	require.NoError(t, err)
-
-	assert.Contains(t, stdout, "Next page token: footer-token")
 }

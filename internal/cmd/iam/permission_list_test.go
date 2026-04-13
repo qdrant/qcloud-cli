@@ -69,3 +69,17 @@ func TestPermissionList_BackendError(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "iam", "permission", "list")
 	require.Error(t, err)
 }
+
+func TestPermissionList_NoHeaders(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.IAMServer.ListPermissionsCalls.Returns(&iamv1.ListPermissionsResponse{
+		Permissions: []*iamv1.Permission{{Value: "read:clusters", Category: new("Cluster")}},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "iam", "permission", "list", "--no-headers")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "PERMISSION")
+	assert.NotContains(t, stdout, "CATEGORY")
+	assert.Contains(t, stdout, "read:clusters")
+}
