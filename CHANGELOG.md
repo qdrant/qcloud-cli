@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.20.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.20.0)
+
+### Features
+
+- introduce automatic registration of --no-headers on list commands and cloud-provider list to use it (#109)
+- add account and account member commands (#108)
+- add role management commands (#107)
+- add user management commands (#102)
+- use OutputTable with --no-headers support in all list commands (#112)
+
 ## [v0.19.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.19.0)
 
 ### Features
