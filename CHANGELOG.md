@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.21.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.21.0)
+
+### Features
+
+- add docs generation from the cobra commands so that further LLM (#116)
+
 ## [v0.20.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.20.0)
 
 ### Features
