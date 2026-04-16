@@ -1,6 +1,6 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)
 
-.PHONY: build debug debug-run test lint format clean bootstrap docs docs-check
+.PHONY: build debug debug-run test lint format clean bootstrap docs docs-check e2e
 
 build:
 	CGO_ENABLED=0 go build -ldflags "-X main.version=$(VERSION)" -o build/qcloud ./cmd/qcloud
@@ -31,6 +31,9 @@ bootstrap:
 	@command -v mise > /dev/null 2>&1 || \
 		{ echo "mise is not installed. Install it from https://mise.jdx.dev/installing-mise.html"; exit 1; }
 	mise install
+
+e2e:
+	QCLOUD_E2E=1 go test -timeout 20m -v -count=1 ./test/e2e/
 
 docs:
 	go run ./cmd/docgen ./docs/reference
