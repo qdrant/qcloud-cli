@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -178,16 +179,24 @@ func (e *Env) homeDir() string {
 	return os.TempDir()
 }
 
-// Redact masks the API key in s. Useful when asserting against stdout/stderr.
+// Redact masks the API key and JWT-like tokens in s. Useful when asserting
+// against stdout/stderr.
 func (e *Env) Redact(s string) string {
-	if e.APIKey == "" {
-		return s
+	if e.APIKey != "" {
+		s = strings.ReplaceAll(s, e.APIKey, "[REDACTED]")
 	}
-	return strings.ReplaceAll(s, e.APIKey, "[REDACTED]")
+	return jwtLikeRe.ReplaceAllString(s, "[REDACTED]")
 }
 
+// jwtLikeRe matches strings that look like JWTs: three base64url segments
+// separated by dots, where the first two segments decode to JSON objects.
+// We anchor on word boundaries so we don't clip larger tokens.
+var jwtLikeRe = regexp.MustCompile(`\b[A-Za-z0-9_-]{4,}\.` +
+	`[A-Za-z0-9_-]{4,}\.` +
+	`[A-Za-z0-9_-]{4,}\b`)
+
 // testLogWriter forwards writes to t.Log, splitting on newlines and redacting
-// the API key so it never ends up in CI output.
+// secrets so they never end up in CI output.
 type testLogWriter struct {
 	t      *testing.T
 	prefix string
@@ -199,6 +208,7 @@ func (w testLogWriter) Write(p []byte) (int, error) {
 	if w.redact != "" {
 		s = strings.ReplaceAll(s, w.redact, "[REDACTED]")
 	}
+	s = jwtLikeRe.ReplaceAllString(s, "[REDACTED]")
 	for line := range strings.SplitSeq(strings.TrimRight(s, "\n"), "\n") {
 		w.t.Log(w.prefix + line)
 	}
