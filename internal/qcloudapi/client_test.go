@@ -28,8 +28,7 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 			return orig
 		}
 		err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, orig)
+		require.ErrorIs(t, err, orig)
 		assert.NotContains(t, err.Error(), "[")
 	})
 
@@ -44,8 +43,7 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 			return orig
 		}
 		err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, orig)
+		require.ErrorIs(t, err, orig)
 		assert.Contains(t, err.Error(), "[abc-123]")
 	})
 
