@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.22.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.22.0)
+
+### Features
+
+- include qc-trace-id in gRPC error messages (#120)
+
 ## [v0.21.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.21.0)
 
 ### Features
