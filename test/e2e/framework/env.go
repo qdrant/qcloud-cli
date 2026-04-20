@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -173,8 +174,8 @@ func (e *Env) commandEnv() []string {
 // homeDir points at the directory containing the empty config file so any
 // code that falls through to $HOME still lands inside the test sandbox.
 func (e *Env) homeDir() string {
-	if i := strings.LastIndex(e.configPath, "/"); i > 0 {
-		return e.configPath[:i]
+	if dir := filepath.Dir(e.configPath); dir != "." {
+		return dir
 	}
 	return os.TempDir()
 }
