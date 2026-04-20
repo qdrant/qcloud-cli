@@ -1,0 +1,43 @@
+name: E2E
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          version: 2026.3.8
+
+      - name: Run E2E tests
+        run: make e2e
+        env:
+          QDRANT_CLOUD_ENDPOINT: ${{ vars.QDRANT_CLOUD_ENDPOINT }}
+          QDRANT_CLOUD_ACCOUNT_ID: ${{ secrets.QDRANT_CLOUD_ACCOUNT_ID }}
+          QDRANT_CLOUD_API_KEY: ${{ secrets.QDRANT_CLOUD_API_KEY }}
