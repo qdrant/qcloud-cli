@@ -7,6 +7,14 @@ on:
   schedule:
     - cron: "0 8 * * *"
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
 
 env:
   GOTOOLCHAIN: local
@@ -14,6 +22,7 @@ env:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -29,5 +38,6 @@ jobs:
       - name: Run E2E tests
         run: make e2e
         env:
-          QDRANT_CLOUD_API_KEY: ${{ secrets.QDRANT_CLOUD_API_KEY }}
+          QDRANT_CLOUD_ENDPOINT: ${{ vars.QDRANT_CLOUD_ENDPOINT }}
           QDRANT_CLOUD_ACCOUNT_ID: ${{ secrets.QDRANT_CLOUD_ACCOUNT_ID }}
+          QDRANT_CLOUD_API_KEY: ${{ secrets.QDRANT_CLOUD_API_KEY }}
