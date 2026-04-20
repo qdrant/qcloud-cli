@@ -143,7 +143,7 @@ func authInterceptor(apiKey string) grpc.UnaryClientInterceptor {
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		if err != nil {
 			if ids := trailer.Get(traceIDTrailer); len(ids) > 0 {
-				return fmt.Errorf("%w [%s]", err, strings.Join(ids, "|"))
+				return fmt.Errorf("%w (trace ID: %s)", err, strings.Join(ids, "|"))
 			}
 		}
 		return err

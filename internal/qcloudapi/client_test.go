@@ -44,7 +44,7 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 		}
 		err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)
 		require.ErrorIs(t, err, orig)
-		assert.Contains(t, err.Error(), "[abc-123]")
+		assert.Contains(t, err.Error(), "(trace ID: abc-123)")
 	})
 
 	t.Run("error with multiple trace IDs joins them", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 		}
 		err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "[id-1|id-2]")
+		assert.Contains(t, err.Error(), "(trace ID: id-1|id-2)")
 	})
 
 	t.Run("sets authorization header", func(t *testing.T) {
