@@ -41,3 +41,22 @@ snapshot:
 
 changelog:
   disable: true
+
+homebrew_casks:
+  - name: qcloud
+    binaries:
+      - qcloud
+    generate_completions_from_executable:
+      shell_parameter_format: cobra
+      shells:
+        - bash
+        - zsh
+        - fish
+    repository:
+      owner: qdrant
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/qdrant/qcloud-cli
+    description: The Command Line Interface for Qdrant Cloud
+    license: Apache-2.0
+    skip_upload: auto
