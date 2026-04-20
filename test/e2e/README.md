@@ -17,7 +17,7 @@ Or directly:
 QCLOUD_E2E=1 \
 QDRANT_CLOUD_API_KEY=... \
 QDRANT_CLOUD_ACCOUNT_ID=... \
-go test -timeout 30m -v -count=1 ./test/e2e/...
+go test -timeout 20m -v -count=1 ./test/e2e/...
 ```
 
 Without `QCLOUD_E2E=1` every test in this tree is skipped, so `go test ./...`
