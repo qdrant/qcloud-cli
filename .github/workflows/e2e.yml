@@ -29,5 +29,5 @@ jobs:
       - name: Run E2E tests
         run: make e2e
         env:
-          QDRANT_CLOUD_API_KEY: ${{ secrets.E2E_QDRANT_CLOUD_API_KEY }}
-          QDRANT_CLOUD_ACCOUNT_ID: ${{ secrets.E2E_QDRANT_CLOUD_ACCOUNT_ID }}
+          QDRANT_CLOUD_API_KEY: ${{ secrets.QDRANT_CLOUD_API_KEY }}
+          QDRANT_CLOUD_ACCOUNT_ID: ${{ secrets.QDRANT_CLOUD_ACCOUNT_ID }}
