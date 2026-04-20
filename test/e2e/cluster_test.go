@@ -27,5 +27,6 @@ func TestClusterLifecycle(t *testing.T) {
 		"cluster", "key", "create", id,
 		"--name", "e2e-test-key",
 		"--wait",
+		"--wait-timeout", "5m",
 	)
 }
