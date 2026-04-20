@@ -65,7 +65,16 @@ func resolveBinary() (string, error) {
 	}
 
 	archive := fmt.Sprintf("qcloud-%s-%s.tar.gz", runtime.GOOS, runtime.GOARCH)
-	base := fmt.Sprintf("%s/%s/download", releaseBaseURL, release)
+
+	// GitHub asset URLs differ between the magic "latest" alias and concrete
+	// tags:  /releases/latest/download/{asset}  vs
+	//        /releases/download/{tag}/{asset}
+	var base string
+	if release == defaultRelease {
+		base = fmt.Sprintf("%s/latest/download", releaseBaseURL)
+	} else {
+		base = fmt.Sprintf("%s/download/%s", releaseBaseURL, release)
+	}
 
 	expectedSHA, err := fetchExpectedSHA(base+"/checksums.txt", archive)
 	if err != nil {
