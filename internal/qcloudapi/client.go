@@ -2,6 +2,8 @@ package qcloudapi
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -124,6 +126,8 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
+const traceIDTrailer = "qc-trace-id"
+
 func authInterceptor(apiKey string) grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
@@ -133,7 +137,15 @@ func authInterceptor(apiKey string) grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
+		var trailer metadata.MD
+		opts = append(opts, grpc.Trailer(&trailer))
 		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "apikey "+apiKey)
-		return invoker(ctx, method, req, reply, cc, opts...)
+		err := invoker(ctx, method, req, reply, cc, opts...)
+		if err != nil {
+			if ids := trailer.Get(traceIDTrailer); len(ids) > 0 {
+				return fmt.Errorf("%w (trace ID: %s)", err, strings.Join(ids, "|"))
+			}
+		}
+		return err
 	}
 }
