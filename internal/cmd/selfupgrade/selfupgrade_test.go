@@ -2,11 +2,13 @@ package selfupgrade_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/qdrant/qcloud-cli/internal/cmdexec"
 	"github.com/qdrant/qcloud-cli/internal/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
@@ -80,4 +82,27 @@ func TestSelfUpgrade_DevVersionRequiresForce(t *testing.T) {
 	assert.Contains(t, stdout, "dev build")
 	assert.Contains(t, stdout, "--force")
 	assert.False(t, mock.updateCalled)
+}
+
+func TestSelfUpgrade_HomebrewCheckPassesRunnerThrough(t *testing.T) {
+	env := testutil.NewTestEnv(t, testutil.WithVersion("0.4.0"))
+
+	// Simulate "brew not found" — the homebrew check should return false,
+	// allowing the upgrade flow to proceed normally.
+	runner := cmdexec.NewMockRunner().
+		Respond([]string{"brew", "--prefix"}, nil, fmt.Errorf("brew not found"))
+
+	env.State.CmdRunner = runner
+
+	mock := &mockUpdater{
+		latestRelease: selfupgrade.NewReleaseInfo("0.4.0"),
+		latestFound:   true,
+	}
+	env.State.SetUpdater(mock)
+
+	stdout, _, err := testutil.Exec(t, env, "self-upgrade")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "already up to date")
+	require.Equal(t, 1, runner.CallCount())
+	assert.Equal(t, []string{"brew", "--prefix"}, runner.Call(0))
 }

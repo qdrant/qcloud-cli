@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/qdrant/qcloud-cli/internal/cmdexec"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
@@ -24,19 +25,21 @@ type Updater interface {
 
 // State holds shared dependencies for all commands.
 type State struct {
-	Version string
-	Config  *config.Config
-	Logger  *slog.Logger
-	client  *qcloudapi.Client
-	updater Updater
+	Version   string
+	Config    *config.Config
+	Logger    *slog.Logger
+	CmdRunner cmdexec.CommandRunner
+	client    *qcloudapi.Client
+	updater   Updater
 }
 
 // New creates a new State with the given version string.
 func New(version string) *State {
 	return &State{
-		Version: version,
-		Config:  config.New(),
-		Logger:  slog.New(slog.DiscardHandler),
+		Version:   version,
+		Config:    config.New(),
+		Logger:    slog.New(slog.DiscardHandler),
+		CmdRunner: cmdexec.ExecRunner{},
 	}
 }
 

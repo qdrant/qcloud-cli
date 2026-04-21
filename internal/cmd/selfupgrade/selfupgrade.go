@@ -11,6 +11,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
+	upgrade "github.com/qdrant/qcloud-cli/internal/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -30,6 +31,10 @@ func NewCommand(s *state.State) *cobra.Command {
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			check, _ := cmd.Flags().GetBool("check")
 			force, _ := cmd.Flags().GetBool("force")
+
+			if !check && upgrade.IsHomebrewInstall(s.CmdRunner, upgrade.ResolveExecutablePath()) {
+				return fmt.Errorf("this installation is managed by Homebrew; use \"brew upgrade qcloud\" instead")
+			}
 
 			currentVersion := s.Version
 			isDev := strings.Contains(currentVersion, "-dev")

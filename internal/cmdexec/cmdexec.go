@@ -1,0 +1,48 @@
+package cmdexec
+
+import (
+	"bytes"
+	"errors"
+	"os/exec"
+)
+
+// CommandResult holds the output of an executed command.
+type CommandResult struct {
+	Stdout   []byte
+	Stderr   []byte
+	ExitCode int
+}
+
+// CommandRunner executes external commands.
+type CommandRunner interface {
+	Run(cmd ...string) (*CommandResult, error)
+}
+
+// ExecRunner is the default CommandRunner that delegates to os/exec.
+type ExecRunner struct{}
+
+// Run executes a command and returns its stdout, stderr, and exit code.
+// The returned error is non-nil only when the command cannot be started.
+func (ExecRunner) Run(cmd ...string) (*CommandResult, error) {
+	c := exec.Command(cmd[0], cmd[1:]...)
+	var stdout, stderr bytes.Buffer
+	c.Stdout = &stdout
+	c.Stderr = &stderr
+
+	err := c.Run()
+
+	exitCode := 0
+	if err != nil {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+			exitCode = exitErr.ExitCode()
+		} else {
+			return nil, err
+		}
+	}
+
+	return &CommandResult{
+		Stdout:   stdout.Bytes(),
+		Stderr:   stderr.Bytes(),
+		ExitCode: exitCode,
+	}, nil
+}
