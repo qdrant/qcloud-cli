@@ -13,38 +13,38 @@ import (
 func TestIsHomebrewInstall(t *testing.T) {
 	tests := []struct {
 		name    string
-		result  *cmdexec.CommandResult
+		result  *cmdexec.CmdResult
 		runErr  error
 		exePath string
 		want    bool
 	}{
 		{
 			name:    "Apple Silicon Homebrew cask",
-			result:  &cmdexec.CommandResult{Stdout: []byte("/opt/homebrew\n")},
+			result:  &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")},
 			exePath: "/opt/homebrew/Caskroom/qcloud/0.23.0/qcloud",
 			want:    true,
 		},
 		{
 			name:    "Intel Mac Homebrew cask",
-			result:  &cmdexec.CommandResult{Stdout: []byte("/usr/local\n")},
+			result:  &cmdexec.CmdResult{Stdout: []byte("/usr/local\n")},
 			exePath: "/usr/local/Caskroom/qcloud/0.23.0/qcloud",
 			want:    true,
 		},
 		{
 			name:    "custom Homebrew prefix",
-			result:  &cmdexec.CommandResult{Stdout: []byte("/Users/me/.homebrew\n")},
+			result:  &cmdexec.CmdResult{Stdout: []byte("/Users/me/.homebrew\n")},
 			exePath: "/Users/me/.homebrew/Caskroom/qcloud/1.0.0/qcloud",
 			want:    true,
 		},
 		{
 			name:    "direct download in /usr/local/bin",
-			result:  &cmdexec.CommandResult{Stdout: []byte("/opt/homebrew\n")},
+			result:  &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")},
 			exePath: "/usr/local/bin/qcloud",
 			want:    false,
 		},
 		{
 			name:    "go install path",
-			result:  &cmdexec.CommandResult{Stdout: []byte("/opt/homebrew\n")},
+			result:  &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")},
 			exePath: "/Users/me/go/bin/qcloud",
 			want:    false,
 		},
@@ -56,13 +56,13 @@ func TestIsHomebrewInstall(t *testing.T) {
 		},
 		{
 			name:    "brew exits non-zero",
-			result:  &cmdexec.CommandResult{Stderr: []byte("error\n"), ExitCode: 1},
+			result:  &cmdexec.CmdResult{Stderr: []byte("error\n"), ExitCode: 1},
 			exePath: "/usr/local/bin/qcloud",
 			want:    false,
 		},
 		{
 			name:    "empty exe path",
-			result:  &cmdexec.CommandResult{Stdout: []byte("/opt/homebrew\n")},
+			result:  &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")},
 			exePath: "",
 			want:    false,
 		},
@@ -86,7 +86,7 @@ func TestIsHomebrewInstall(t *testing.T) {
 
 func TestIsHomebrewInstall_CallsBrewPrefix(t *testing.T) {
 	runner := cmdexec.NewMockRunner().
-		Respond([]string{"brew"}, &cmdexec.CommandResult{Stdout: []byte("/opt/homebrew\n")}, nil)
+		Respond([]string{"brew"}, &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")}, nil)
 
 	IsHomebrewInstall(runner, "/some/path/qcloud")
 

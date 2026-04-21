@@ -6,24 +6,20 @@ import (
 	"os/exec"
 )
 
-// CommandResult holds the output of an executed command.
-type CommandResult struct {
+// CmdResult holds the output of an executed command.
+type CmdResult struct {
 	Stdout   []byte
 	Stderr   []byte
 	ExitCode int
 }
 
-// CommandRunner executes external commands.
-type CommandRunner interface {
-	Run(cmd ...string) (*CommandResult, error)
-}
 
 // ExecRunner is the default CommandRunner that delegates to os/exec.
 type ExecRunner struct{}
 
 // Run executes a command and returns its stdout, stderr, and exit code.
 // The returned error is non-nil only when the command cannot be started.
-func (ExecRunner) Run(cmd ...string) (*CommandResult, error) {
+func (ExecRunner) Run(cmd ...string) (*CmdResult, error) {
 	c := exec.Command(cmd[0], cmd[1:]...)
 	var stdout, stderr bytes.Buffer
 	c.Stdout = &stdout
@@ -40,7 +36,7 @@ func (ExecRunner) Run(cmd ...string) (*CommandResult, error) {
 		}
 	}
 
-	return &CommandResult{
+	return &CmdResult{
 		Stdout:   stdout.Bytes(),
 		Stderr:   stderr.Bytes(),
 		ExitCode: exitCode,

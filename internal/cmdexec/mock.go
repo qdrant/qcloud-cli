@@ -6,7 +6,7 @@ import (
 )
 
 type mockResponse struct {
-	result *CommandResult
+	result *CmdResult
 	err    error
 }
 
@@ -24,14 +24,14 @@ func NewMockRunner() *MockRunner {
 
 // Respond configures the response returned when a command with the given name
 // is executed. Returns the receiver for chaining.
-func (m *MockRunner) Respond(cmd []string, result *CommandResult, err error) *MockRunner {
+func (m *MockRunner) Respond(cmd []string, result *CmdResult, err error) *MockRunner {
 	m.responses[m.cmdKey(cmd)] = mockResponse{result: result, err: err}
 	return m
 }
 
 // Run records the call and returns the configured response for the command name.
 // Returns an error if no response is configured.
-func (m *MockRunner) Run(cmd ...string) (*CommandResult, error) {
+func (m *MockRunner) Run(cmd ...string) (*CmdResult, error) {
 	m.calls = append(m.calls, cmd)
 	resp, ok := m.responses[m.cmdKey(cmd)]
 	if !ok {

@@ -8,10 +8,14 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmdexec"
 )
 
+type CmdRunner interface {
+	Run(cmd ...string) (*cmdexec.CmdResult, error)
+}
+
 // IsHomebrewInstall reports whether the running binary was installed via
 // Homebrew by checking if exePath lives under <brew --prefix>/Caskroom/.
 // The runner is used to execute "brew --prefix".
-func IsHomebrewInstall(runner cmdexec.CommandRunner, exePath string) bool {
+func IsHomebrewInstall(runner CmdRunner, exePath string) bool {
 	if exePath == "" {
 		return false
 	}

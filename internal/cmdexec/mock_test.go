@@ -10,7 +10,7 @@ import (
 
 func TestMockRunner_RecordsCalls(t *testing.T) {
 	runner := NewMockRunner().
-		Respond([]string{"git", "status"}, &CommandResult{Stdout: []byte("ok")}, nil)
+		Respond([]string{"git", "status"}, &CmdResult{Stdout: []byte("ok")}, nil)
 
 	result, err := runner.Run("git", "status")
 
@@ -44,8 +44,8 @@ func TestMockRunner_RespondWithError(t *testing.T) {
 
 func TestMockRunner_MultipleCalls(t *testing.T) {
 	runner := NewMockRunner().
-		Respond([]string{"ls", "-la"}, &CommandResult{}, nil).
-		Respond([]string{"ls", "-R"}, &CommandResult{}, nil)
+		Respond([]string{"ls", "-la"}, &CmdResult{}, nil).
+		Respond([]string{"ls", "-R"}, &CmdResult{}, nil)
 
 	_, _ = runner.Run("ls", "-la")
 	_, _ = runner.Run("ls", "-R")
