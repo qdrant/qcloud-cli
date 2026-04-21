@@ -1,5 +1,5 @@
 [tools]
-go = "1.26.0"
+go = "1.26.2"
 "github:golangci/golangci-lint" = "2.11.3"
 "github:goreleaser/goreleaser" = "v2.15.3"
 
