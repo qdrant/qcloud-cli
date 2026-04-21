@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.23.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.23.0)
+
+### Features
+
+- add e2e initial tests that check on cluster creation flow (#119)
+
+### Bug Fixes
+
+- **cd**: bump goreleaser and use homebrew_casks to publish homebrew (#123)
+
 ## [v0.22.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.22.0)
 
 ### Features
