@@ -10,7 +10,7 @@ type mockResponse struct {
 	err    error
 }
 
-// MockRunner is a test double for CommandRunner that records invocations
+// MockRunner is a test double for CmdRunner that records invocations
 // and returns pre-configured responses keyed by command name.
 type MockRunner struct {
 	responses map[string]mockResponse
@@ -55,4 +55,3 @@ func (m *MockRunner) Call(n int) []string {
 func (m *MockRunner) cmdKey(cmd []string) string {
 	return strings.Join(cmd, "###")
 }
-

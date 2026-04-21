@@ -86,10 +86,11 @@ func TestIsHomebrewInstall(t *testing.T) {
 
 func TestIsHomebrewInstall_CallsBrewPrefix(t *testing.T) {
 	runner := cmdexec.NewMockRunner().
-		Respond([]string{"brew"}, &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")}, nil)
+		Respond([]string{"brew", "--prefix"}, &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")}, nil)
 
-	IsHomebrewInstall(runner, "/some/path/qcloud")
+	got := IsHomebrewInstall(runner, "/opt/homebrew/Caskroom/qcloud/0.23.0/qcloud")
 
+	assert.True(t, got)
 	require.Equal(t, 1, runner.CallCount())
 	assert.Equal(t, []string{"brew", "--prefix"}, runner.Call(0))
 }

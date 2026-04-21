@@ -32,7 +32,9 @@ func NewCommand(s *state.State) *cobra.Command {
 			check, _ := cmd.Flags().GetBool("check")
 			force, _ := cmd.Flags().GetBool("force")
 
-			if !check && upgrade.IsHomebrewInstall(s.CmdRunner, upgrade.ResolveExecutablePath()) {
+			isHomebrew := upgrade.IsHomebrewInstall(s.CmdRunner, upgrade.ResolveExecutablePath())
+
+			if isHomebrew && !check {
 				return fmt.Errorf("this installation is managed by Homebrew; use \"brew upgrade qcloud\" instead")
 			}
 
@@ -67,6 +69,9 @@ func NewCommand(s *state.State) *cobra.Command {
 
 			if check {
 				fmt.Fprintf(out, "New version available: %s (current: %s)\n", release.Version(), currentVersion)
+				if isHomebrew {
+					fmt.Fprintln(out, "This installation is managed by Homebrew; use \"brew upgrade qcloud\" instead.")
+				}
 				return nil
 			}
 
