@@ -8,6 +8,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmdexec"
 )
 
+// CmdRunner abstracts command execution for testability.
 type CmdRunner interface {
 	Run(cmd ...string) (*cmdexec.CmdResult, error)
 }

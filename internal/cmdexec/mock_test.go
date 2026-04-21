@@ -26,7 +26,7 @@ func TestMockRunner_UnconfiguredCommandReturnsError(t *testing.T) {
 	result, err := runner.Run("unknown")
 
 	assert.Nil(t, result)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown")
 }
 
@@ -37,7 +37,7 @@ func TestMockRunner_RespondWithError(t *testing.T) {
 	result, err := runner.Run("brew", "--prefix")
 
 	assert.Nil(t, result)
-	assert.EqualError(t, err, "not found")
+	require.EqualError(t, err, "not found")
 	require.Equal(t, 1, runner.CallCount())
 	assert.Equal(t, []string{"brew", "--prefix"}, runner.Call(0))
 }
