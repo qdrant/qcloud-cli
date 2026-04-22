@@ -1,34 +1,34 @@
 package selfupgrade
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/qdrant/qcloud-cli/internal/cmdexec"
 )
 
+// homebrewPrefixes lists well-known paths where Homebrew installs packages.
+// /opt/homebrew/ is exclusive to Homebrew on Apple Silicon.
+// /usr/local/Cellar/ and /usr/local/Caskroom/ are Homebrew-specific
+// subdirectories on Intel Macs (the /usr/local/ prefix itself is shared).
+var homebrewPrefixes = []string{
+	"/opt/homebrew/",
+	"/usr/local/Cellar/",
+	"/usr/local/Caskroom/",
+}
+
 // IsHomebrewInstall reports whether the running binary was installed via
-// Homebrew by checking if exePath lives under <brew --prefix>/Caskroom/.
-// The runner is used to execute "brew --prefix".
-func IsHomebrewInstall(ctx context.Context, runner cmdexec.Runner, exePath string) bool {
+// Homebrew by checking if exePath lives under a known Homebrew prefix.
+func IsHomebrewInstall(exePath string) bool {
 	if exePath == "" {
 		return false
 	}
 
-	result, err := runner.Run(ctx, "brew", "--prefix")
-	if err != nil || result.ExitCode != 0 {
-		return false
+	for _, prefix := range homebrewPrefixes {
+		if strings.HasPrefix(exePath, prefix) {
+			return true
+		}
 	}
-
-	prefix := strings.TrimSpace(string(result.Stdout))
-	if prefix == "" {
-		return false
-	}
-
-	caskroomDir := filepath.Join(prefix, "Caskroom") + string(filepath.Separator)
-	return strings.HasPrefix(exePath, caskroomDir)
+	return false
 }
 
 // ResolveExecutablePath returns the real path of the running binary,
