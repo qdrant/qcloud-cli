@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+// Call records the name and arguments of a single command execution.
+type Call struct {
+	Name string
+	Args []string
+}
+
 type mockResponse struct {
 	result *CmdResult
 	err    error
@@ -15,7 +21,7 @@ type mockResponse struct {
 // and returns pre-configured responses keyed by command.
 type MockRunner struct {
 	responses map[string]mockResponse
-	calls     []Invocation
+	calls     []Call
 }
 
 // NewMockRunner creates a MockRunner with no configured responses.
@@ -36,7 +42,7 @@ func (m *MockRunner) Run(_ context.Context, name string, args ...string) (*CmdRe
 	if args == nil {
 		args = []string{}
 	}
-	m.calls = append(m.calls, Invocation{Name: name, Args: args})
+	m.calls = append(m.calls, Call{Name: name, Args: args})
 	resp, ok := m.responses[m.cmdKey(name, args)]
 	if !ok {
 		return nil, fmt.Errorf("MockRunner: no response configured for command %q", name+" "+strings.Join(args, " "))
@@ -52,7 +58,7 @@ func (m *MockRunner) CallCount() int {
 
 // Call returns the recorded invocation at index n.
 // Panics if n is out of range.
-func (m *MockRunner) Call(n int) Invocation {
+func (m *MockRunner) Call(n int) Call {
 	return m.calls[n]
 }
 

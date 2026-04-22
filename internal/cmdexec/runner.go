@@ -14,8 +14,3 @@ type CmdResult struct {
 	ExitCode int
 }
 
-// Invocation records the name and arguments of a single command execution.
-type Invocation struct {
-	Name string
-	Args []string
-}

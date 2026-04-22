@@ -104,5 +104,5 @@ func TestSelfUpgrade_HomebrewCheckPassesRunnerThrough(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "already up to date")
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, cmdexec.Invocation{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
+	assert.Equal(t, cmdexec.Call{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
 }

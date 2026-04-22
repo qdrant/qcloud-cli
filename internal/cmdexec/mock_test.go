@@ -18,7 +18,7 @@ func TestMockRunner_RecordsCalls(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte("ok"), result.Stdout)
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, Invocation{Name: "git", Args: []string{"status"}}, runner.Call(0))
+	assert.Equal(t, Call{Name: "git", Args: []string{"status"}}, runner.Call(0))
 }
 
 func TestMockRunner_UnconfiguredCommandReturnsError(t *testing.T) {
@@ -40,7 +40,7 @@ func TestMockRunner_RespondWithError(t *testing.T) {
 	assert.Nil(t, result)
 	require.EqualError(t, err, "not found")
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, Invocation{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
+	assert.Equal(t, Call{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
 }
 
 func TestMockRunner_MultipleCalls(t *testing.T) {
@@ -52,8 +52,8 @@ func TestMockRunner_MultipleCalls(t *testing.T) {
 	_, _ = runner.Run(context.Background(), "ls", "-R")
 
 	require.Equal(t, 2, runner.CallCount())
-	assert.Equal(t, Invocation{Name: "ls", Args: []string{"-la"}}, runner.Call(0))
-	assert.Equal(t, Invocation{Name: "ls", Args: []string{"-R"}}, runner.Call(1))
+	assert.Equal(t, Call{Name: "ls", Args: []string{"-la"}}, runner.Call(0))
+	assert.Equal(t, Call{Name: "ls", Args: []string{"-R"}}, runner.Call(1))
 }
 
 func TestMockRunner_NoCalls(t *testing.T) {

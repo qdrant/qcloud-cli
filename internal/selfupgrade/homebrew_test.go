@@ -93,5 +93,5 @@ func TestIsHomebrewInstall_CallsBrewPrefix(t *testing.T) {
 
 	assert.True(t, got)
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, cmdexec.Invocation{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
+	assert.Equal(t, cmdexec.Call{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
 }
