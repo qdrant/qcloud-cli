@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.24.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.24.0)
+
+### Features
+
+- avoid self upgrade with homebrew (#127)
+
 ## [v0.23.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.23.0)
 
 ### Features
