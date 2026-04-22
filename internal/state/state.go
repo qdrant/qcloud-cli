@@ -23,17 +23,12 @@ type Updater interface {
 	UpdateSelf(ctx context.Context, currentVersion string) (*selfupgrade.ReleaseInfo, error)
 }
 
-// CmdRunner executes external commands.
-type CmdRunner interface {
-	Run(cmd ...string) (*cmdexec.CmdResult, error)
-}
-
 // State holds shared dependencies for all commands.
 type State struct {
 	Version   string
 	Config    *config.Config
 	Logger    *slog.Logger
-	CmdRunner CmdRunner
+	CmdRunner cmdexec.Runner
 	client    *qcloudapi.Client
 	updater   Updater
 }

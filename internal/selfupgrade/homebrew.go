@@ -1,6 +1,7 @@
 package selfupgrade
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,20 +9,15 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmdexec"
 )
 
-// CmdRunner abstracts command execution for testability.
-type CmdRunner interface {
-	Run(cmd ...string) (*cmdexec.CmdResult, error)
-}
-
 // IsHomebrewInstall reports whether the running binary was installed via
 // Homebrew by checking if exePath lives under <brew --prefix>/Caskroom/.
 // The runner is used to execute "brew --prefix".
-func IsHomebrewInstall(runner CmdRunner, exePath string) bool {
+func IsHomebrewInstall(ctx context.Context, runner cmdexec.Runner, exePath string) bool {
 	if exePath == "" {
 		return false
 	}
 
-	result, err := runner.Run("brew", "--prefix")
+	result, err := runner.Run(ctx, "brew", "--prefix")
 	if err != nil || result.ExitCode != 0 {
 		return false
 	}

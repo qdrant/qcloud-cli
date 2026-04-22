@@ -1,6 +1,7 @@
 package selfupgrade
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -72,12 +73,12 @@ func TestIsHomebrewInstall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := cmdexec.NewMockRunner()
 			if tt.runErr != nil {
-				runner.Respond([]string{"brew", "--prefix"}, nil, tt.runErr)
+				runner.Respond("brew", []string{"--prefix"}, nil, tt.runErr)
 			} else {
-				runner.Respond([]string{"brew", "--prefix"}, tt.result, nil)
+				runner.Respond("brew", []string{"--prefix"}, tt.result, nil)
 			}
 
-			got := IsHomebrewInstall(runner, tt.exePath)
+			got := IsHomebrewInstall(context.Background(), runner, tt.exePath)
 
 			assert.Equal(t, tt.want, got)
 		})
@@ -86,11 +87,11 @@ func TestIsHomebrewInstall(t *testing.T) {
 
 func TestIsHomebrewInstall_CallsBrewPrefix(t *testing.T) {
 	runner := cmdexec.NewMockRunner().
-		Respond([]string{"brew", "--prefix"}, &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")}, nil)
+		Respond("brew", []string{"--prefix"}, &cmdexec.CmdResult{Stdout: []byte("/opt/homebrew\n")}, nil)
 
-	got := IsHomebrewInstall(runner, "/opt/homebrew/Caskroom/qcloud/0.23.0/qcloud")
+	got := IsHomebrewInstall(context.Background(), runner, "/opt/homebrew/Caskroom/qcloud/0.23.0/qcloud")
 
 	assert.True(t, got)
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, []string{"brew", "--prefix"}, runner.Call(0))
+	assert.Equal(t, cmdexec.Invocation{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
 }

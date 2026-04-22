@@ -2,9 +2,15 @@ package cmdexec
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os/exec"
 )
+
+// Runner executes external commands.
+type Runner interface {
+	Run(ctx context.Context, name string, args ...string) (*CmdResult, error)
+}
 
 // CmdResult holds the output of an executed command.
 type CmdResult struct {
@@ -13,17 +19,19 @@ type CmdResult struct {
 	ExitCode int
 }
 
-// ExecRunner is the default CmdRunner that delegates to os/exec.
+// Invocation records the name and arguments of a single command execution.
+type Invocation struct {
+	Name string
+	Args []string
+}
+
+// ExecRunner is the default Runner that delegates to os/exec.
 type ExecRunner struct{}
 
 // Run executes a command and returns its stdout, stderr, and exit code.
 // The returned error is non-nil only when the command cannot be started.
-// Panics if no arguments are provided.
-func (ExecRunner) Run(cmd ...string) (*CmdResult, error) {
-	if len(cmd) == 0 {
-		panic("cmdexec: Run called with no arguments")
-	}
-	c := exec.Command(cmd[0], cmd[1:]...)
+func (ExecRunner) Run(ctx context.Context, name string, args ...string) (*CmdResult, error) {
+	c := exec.CommandContext(ctx, name, args...)
 	var stdout, stderr bytes.Buffer
 	c.Stdout = &stdout
 	c.Stderr = &stderr

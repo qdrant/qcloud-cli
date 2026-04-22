@@ -1,6 +1,7 @@
 package cmdexec
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,20 +11,20 @@ import (
 
 func TestMockRunner_RecordsCalls(t *testing.T) {
 	runner := NewMockRunner().
-		Respond([]string{"git", "status"}, &CmdResult{Stdout: []byte("ok")}, nil)
+		Respond("git", []string{"status"}, &CmdResult{Stdout: []byte("ok")}, nil)
 
-	result, err := runner.Run("git", "status")
+	result, err := runner.Run(context.Background(), "git", "status")
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte("ok"), result.Stdout)
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, []string{"git", "status"}, runner.Call(0))
+	assert.Equal(t, Invocation{Name: "git", Args: []string{"status"}}, runner.Call(0))
 }
 
 func TestMockRunner_UnconfiguredCommandReturnsError(t *testing.T) {
 	runner := NewMockRunner()
 
-	result, err := runner.Run("unknown")
+	result, err := runner.Run(context.Background(), "unknown")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -32,27 +33,27 @@ func TestMockRunner_UnconfiguredCommandReturnsError(t *testing.T) {
 
 func TestMockRunner_RespondWithError(t *testing.T) {
 	runner := NewMockRunner().
-		Respond([]string{"brew", "--prefix"}, nil, fmt.Errorf("not found"))
+		Respond("brew", []string{"--prefix"}, nil, fmt.Errorf("not found"))
 
-	result, err := runner.Run("brew", "--prefix")
+	result, err := runner.Run(context.Background(), "brew", "--prefix")
 
 	assert.Nil(t, result)
 	require.EqualError(t, err, "not found")
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, []string{"brew", "--prefix"}, runner.Call(0))
+	assert.Equal(t, Invocation{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
 }
 
 func TestMockRunner_MultipleCalls(t *testing.T) {
 	runner := NewMockRunner().
-		Respond([]string{"ls", "-la"}, &CmdResult{}, nil).
-		Respond([]string{"ls", "-R"}, &CmdResult{}, nil)
+		Respond("ls", []string{"-la"}, &CmdResult{}, nil).
+		Respond("ls", []string{"-R"}, &CmdResult{}, nil)
 
-	_, _ = runner.Run("ls", "-la")
-	_, _ = runner.Run("ls", "-R")
+	_, _ = runner.Run(context.Background(), "ls", "-la")
+	_, _ = runner.Run(context.Background(), "ls", "-R")
 
 	require.Equal(t, 2, runner.CallCount())
-	assert.Equal(t, []string{"ls", "-la"}, runner.Call(0))
-	assert.Equal(t, []string{"ls", "-R"}, runner.Call(1))
+	assert.Equal(t, Invocation{Name: "ls", Args: []string{"-la"}}, runner.Call(0))
+	assert.Equal(t, Invocation{Name: "ls", Args: []string{"-R"}}, runner.Call(1))
 }
 
 func TestMockRunner_NoCalls(t *testing.T) {

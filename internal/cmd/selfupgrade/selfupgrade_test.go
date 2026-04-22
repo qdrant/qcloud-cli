@@ -90,7 +90,7 @@ func TestSelfUpgrade_HomebrewCheckPassesRunnerThrough(t *testing.T) {
 	// Simulate "brew not found" — the homebrew check should return false,
 	// allowing the upgrade flow to proceed normally.
 	runner := cmdexec.NewMockRunner().
-		Respond([]string{"brew", "--prefix"}, nil, fmt.Errorf("brew not found"))
+		Respond("brew", []string{"--prefix"}, nil, fmt.Errorf("brew not found"))
 
 	env.State.CmdRunner = runner
 
@@ -104,5 +104,5 @@ func TestSelfUpgrade_HomebrewCheckPassesRunnerThrough(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "already up to date")
 	require.Equal(t, 1, runner.CallCount())
-	assert.Equal(t, []string{"brew", "--prefix"}, runner.Call(0))
+	assert.Equal(t, cmdexec.Invocation{Name: "brew", Args: []string{"--prefix"}}, runner.Call(0))
 }
