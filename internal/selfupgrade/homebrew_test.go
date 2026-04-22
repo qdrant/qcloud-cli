@@ -33,6 +33,11 @@ func TestIsHomebrewInstall(t *testing.T) {
 			want:    true,
 		},
 		{
+			name:    "Linuxbrew formula",
+			exePath: "/home/linuxbrew/.linuxbrew/Cellar/qcloud/0.23.0/bin/qcloud",
+			want:    true,
+		},
+		{
 			name:    "direct download in /usr/local/bin",
 			exePath: "/usr/local/bin/qcloud",
 			want:    false,

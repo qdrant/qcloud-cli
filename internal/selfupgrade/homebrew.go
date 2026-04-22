@@ -14,6 +14,7 @@ var homebrewPrefixes = []string{
 	"/opt/homebrew/",
 	"/usr/local/Cellar/",
 	"/usr/local/Caskroom/",
+	"/home/linuxbrew/.linuxbrew/",
 }
 
 // IsHomebrewInstall reports whether the running binary was installed via
