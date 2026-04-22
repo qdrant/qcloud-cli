@@ -81,4 +81,3 @@ func TestSelfUpgrade_DevVersionRequiresForce(t *testing.T) {
 	assert.Contains(t, stdout, "--force")
 	assert.False(t, mock.updateCalled)
 }
-
