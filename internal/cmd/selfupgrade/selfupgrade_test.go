@@ -92,7 +92,7 @@ func TestSelfUpgrade_HomebrewCheckPassesRunnerThrough(t *testing.T) {
 	runner := cmdexec.NewMockRunner().
 		Respond("brew", []string{"--prefix"}, nil, fmt.Errorf("brew not found"))
 
-	env.State.CmdRunner = runner
+	env.State.SetCmdRunner(runner)
 
 	mock := &mockUpdater{
 		latestRelease: selfupgrade.NewReleaseInfo("0.4.0"),

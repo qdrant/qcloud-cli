@@ -28,7 +28,7 @@ type State struct {
 	Version   string
 	Config    *config.Config
 	Logger    *slog.Logger
-	CmdRunner cmdexec.Runner
+	cmdRunner cmdexec.Runner
 	client    *qcloudapi.Client
 	updater   Updater
 }
@@ -39,8 +39,18 @@ func New(version string) *State {
 		Version:   version,
 		Config:    config.New(),
 		Logger:    slog.New(slog.DiscardHandler),
-		CmdRunner: cmdexec.ExecRunner{},
+		cmdRunner: cmdexec.ExecRunner{},
 	}
+}
+
+// CmdRunner returns the command runner.
+func (s *State) CmdRunner() cmdexec.Runner {
+	return s.cmdRunner
+}
+
+// SetCmdRunner injects a command runner implementation.
+func (s *State) SetCmdRunner(r cmdexec.Runner) {
+	s.cmdRunner = r
 }
 
 // Client returns the gRPC client, creating it lazily on first call.
