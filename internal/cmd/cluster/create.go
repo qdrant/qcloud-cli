@@ -144,6 +144,7 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 						cloudProvider,
 						&cloudRegion,
 						packageValue,
+						multiAz,
 					)
 					if err != nil {
 						return nil, err
