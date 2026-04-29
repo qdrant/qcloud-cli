@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.24.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.24.1)
+
+### Bug Fixes
+
+- resolve named packages with multi-az flag (#131)
+
 ## [v0.24.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.24.0)
 
 ### Features
