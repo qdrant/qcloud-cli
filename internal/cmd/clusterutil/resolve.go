@@ -112,13 +112,19 @@ func ResolvePackageByName(
 	accountID, cloudProvider string,
 	cloudRegion *string,
 	name string,
+	multiAz bool,
 ) (*bookingv1.Package, error) {
-	resp, err := booking.ListPackages(ctx, &bookingv1.ListPackagesRequest{
+	req := &bookingv1.ListPackagesRequest{
 		AccountId:             accountID,
 		CloudProviderId:       cloudProvider,
 		CloudProviderRegionId: cloudRegion,
 		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
-	})
+	}
+	if multiAz {
+		req.MultiAz = new(true)
+	}
+
+	resp, err := booking.ListPackages(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list packages: %w", err)
 	}

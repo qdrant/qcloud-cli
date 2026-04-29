@@ -234,6 +234,38 @@ func TestCreateCluster_PackageByName(t *testing.T) {
 	assert.Equal(t, "pkg-uuid-123", req.GetCluster().GetConfiguration().GetPackageId())
 }
 
+func TestCreateCluster_PackageByNameMultiAZ(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-multiaz", Name: "starter", MultiAz: true},
+		},
+	}, nil)
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-named-multiaz-pkg"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "starter",
+		"--multi-az",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "pkg-multiaz", req.GetCluster().GetConfiguration().GetPackageId())
+
+	listReq, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, listReq.MultiAz)
+	assert.True(t, *listReq.MultiAz)
+}
+
 func TestCreateCluster_PackageNameNotFound(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
