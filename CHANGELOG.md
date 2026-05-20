@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.24.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.24.2)
+
+### Bug Fixes
+
+- disallow releaser-pleaser on forks (#139)
+
 ## [v0.24.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.24.1)
 
 ### Bug Fixes
