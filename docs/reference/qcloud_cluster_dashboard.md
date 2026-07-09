@@ -1,26 +1,34 @@
-## qcloud context delete
+## qcloud cluster dashboard
 
-Delete a context
+Open a cluster's dashboard in your browser
+
+### Synopsis
+
+Open a cluster's dashboard in your default browser.
+
+The command builds the Cloud UI dashboard URL and opens it. The Cloud UI page
+handles authentication using your existing browser session and redirects to the
+cluster's dashboard.
 
 ```
-qcloud context delete <name> [flags]
+qcloud cluster dashboard <cluster-id> [flags]
 ```
 
 ### Examples
 
 ```
-# Delete a context
-qcloud context delete staging
+# Open a cluster's dashboard in your default browser
+qcloud cluster dashboard 7b2ea926-724b-4de2-b73a-8675c42a6ebe
 
-# Delete without confirmation
-qcloud context delete staging --force
+# Print the dashboard URL instead of opening a browser (headless/SSH)
+qcloud cluster dashboard 7b2ea926-724b-4de2-b73a-8675c42a6ebe --print-url
 ```
 
 ### Options
 
 ```
-  -f, --force   Skip confirmation prompt
-  -h, --help    help for delete
+  -h, --help        help for dashboard
+      --print-url   Print the dashboard URL instead of opening a browser
 ```
 
 ### Options inherited from parent commands
@@ -38,5 +46,5 @@ qcloud context delete staging --force
 
 ### SEE ALSO
 
-* [qcloud context](qcloud_context.md)	 - Manage named configuration contexts
+* [qcloud cluster](qcloud_cluster.md)	 - Manage Qdrant Cloud clusters
 
