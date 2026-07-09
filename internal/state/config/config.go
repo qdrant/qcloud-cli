@@ -18,6 +18,7 @@ import (
 
 const (
 	defaultAPIEndpoint = "grpc.cloud.qdrant.io:443"
+	defaultConsoleURL  = "https://cloud.qdrant.io"
 	envPrefix          = "QDRANT_CLOUD"
 
 	// KeyAPIKey is the config key for the Management API key.
@@ -26,6 +27,8 @@ const (
 	KeyAccountID = "account_id"
 	// KeyEndpoint is the config key for the API endpoint.
 	KeyEndpoint = "endpoint"
+	// KeyConsoleURL is the config key for the web console base URL.
+	KeyConsoleURL = "console_url"
 )
 
 // ContextEntry holds the configuration for a single named context.
@@ -68,6 +71,7 @@ func New() *Config {
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	v.AutomaticEnv()
 	v.SetDefault(KeyEndpoint, defaultAPIEndpoint)
+	v.SetDefault(KeyConsoleURL, defaultConsoleURL)
 	return &Config{v: v}
 }
 
@@ -173,6 +177,11 @@ func (c *Config) SetAccountID(id string) {
 // Endpoint returns the API endpoint from config/env/flags.
 func (c *Config) Endpoint() string {
 	return c.v.GetString(KeyEndpoint)
+}
+
+// ConsoleURL returns the web console base URL from config/env/flags.
+func (c *Config) ConsoleURL() string {
+	return c.v.GetString(KeyConsoleURL)
 }
 
 // JSONOutput returns whether JSON output is enabled.
