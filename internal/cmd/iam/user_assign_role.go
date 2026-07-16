@@ -46,10 +46,12 @@ qcloud iam user assign-role user@example.com --role admin,viewer`,
 			if err != nil {
 				return err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return err
 			}
+
 			user, err := resolveUser(cmd, client, accountID, args[0])
 			if err != nil {
 				return err

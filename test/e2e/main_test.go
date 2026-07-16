@@ -20,5 +20,6 @@ func TestMain(m *testing.M) {
 			log.Fatalf("e2e: resolving qcloud binary: %v", err)
 		}
 	}
+
 	os.Exit(m.Run())
 }

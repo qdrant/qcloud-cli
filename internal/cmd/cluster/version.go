@@ -35,16 +35,19 @@ qcloud cluster version list`,
 			if err != nil {
 				return nil, err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return nil, err
 			}
+
 			resp, err := client.Cluster().ListQdrantReleases(ctx, &clusterv1.ListQdrantReleasesRequest{
 				AccountId: accountID,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to list versions: %w", err)
 			}
+
 			return resp, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListQdrantReleasesResponse) (output.TableRenderer, error) {

@@ -46,6 +46,7 @@ func TestBackupCreate_WithRetention(t *testing.T) {
 	if req.GetBackup().GetRetentionPeriod() != nil {
 		capturedRetention = int64(req.GetBackup().GetRetentionPeriod().AsDuration().Hours()) / 24
 	}
+
 	assert.Equal(t, int64(7), capturedRetention)
 }
 

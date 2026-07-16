@@ -25,6 +25,7 @@ func ConfirmAction(force bool, w io.Writer, prompt string) bool {
 	if force {
 		return true
 	}
+
 	fmt.Fprintf(w, "%s [y/N]: ", prompt)
 	reader := bufio.NewReader(os.Stdin)
 	answer, _ := reader.ReadString('\n')
@@ -45,6 +46,7 @@ func ExactArgs(n int, usage string) cobra.PositionalArgs {
 		if len(args) != n {
 			return fmt.Errorf("requires %s\n\nUsage: %s", usage, cmd.UseLine())
 		}
+
 		return nil
 	}
 }

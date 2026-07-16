@@ -91,5 +91,6 @@ func (s *State) AccountID() (string, error) {
 	if id == "" {
 		return "", errNoAccountID
 	}
+
 	return id, nil
 }

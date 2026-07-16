@@ -81,26 +81,31 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 				if updated.Configuration == nil {
 					updated.Configuration = &hybridv1.HybridCloudEnvironmentConfiguration{}
 				}
+
 				cfg := updated.Configuration
 
 				if cmd.Flags().Changed("namespace") {
 					ns, _ := cmd.Flags().GetString("namespace")
 					cfg.Namespace = ns
 				}
+
 				if cmd.Flags().Changed("database-storage-class") {
 					v, _ := cmd.Flags().GetString("database-storage-class")
 					cfg.DatabaseStorageClass = &v
 				}
+
 				if cmd.Flags().Changed("snapshot-storage-class") {
 					v, _ := cmd.Flags().GetString("snapshot-storage-class")
 					cfg.SnapshotStorageClass = &v
 				}
+
 				if cmd.Flags().Changed("log-level") {
 					lvlStr, _ := cmd.Flags().GetString("log-level")
 					lvl, err := parseLogLevel(lvlStr)
 					if err != nil {
 						return nil, err
 					}
+
 					cfg.LogLevel = &lvl
 				}
 			}

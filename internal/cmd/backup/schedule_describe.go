@@ -22,6 +22,7 @@ func nextScheduleRun(cronExpr string) (time.Time, bool) {
 	if err != nil {
 		return time.Time{}, false
 	}
+
 	return s.Next(time.Now().UTC()), true
 }
 
@@ -56,6 +57,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			if err != nil {
 				return nil, fmt.Errorf("failed to get backup schedule: %w", err)
 			}
+
 			return resp.GetBackupSchedule(), nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, sched *backupv1.BackupSchedule) error {
@@ -65,15 +67,18 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			if next, ok := nextScheduleRun(sched.GetSchedule()); ok {
 				fmt.Fprintf(w, "Next Run:  %s  (%s)\n", output.HumanTime(next), output.FullDateTime(next))
 			}
+
 			fmt.Fprintf(w, "Status:    %s\n", output.BackupScheduleStatus(sched.GetStatus()))
 			if sched.GetCreatedAt() != nil {
 				t := sched.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:   %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
 			if sched.GetRetentionPeriod() != nil {
 				days := int64(sched.GetRetentionPeriod().AsDuration().Hours()) / 24
 				fmt.Fprintf(w, "Retention: %d days\n", days)
 			}
+
 			return nil
 		},
 	}.CobraCommand(s)

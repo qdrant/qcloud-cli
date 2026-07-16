@@ -60,6 +60,7 @@ qcloud cluster wait 7b2ea926-724b-4de2-b73a-8675c42a6ebe --timeout 30m`,
 				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) is ready.\n",
 					cluster.GetId(), cluster.GetName())
 			}
+
 			return nil
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),

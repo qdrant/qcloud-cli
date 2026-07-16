@@ -46,6 +46,7 @@ func WaitForClusterHealthy(
 			if s, ok := status.FromError(err); ok && s.Code() == codes.DeadlineExceeded {
 				return nil, fmt.Errorf("timed out waiting for cluster to become healthy: %w", err)
 			}
+
 			return nil, fmt.Errorf("failed to get cluster status: %w", err)
 		}
 
@@ -58,10 +59,12 @@ func WaitForClusterHealthy(
 		if phase == clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
 			return cluster, nil
 		}
+
 		if clusterFailurePhases[phase] {
 			reason := cluster.GetState().GetReason()
 			return nil, fmt.Errorf("failed waiting for cluster to become healthy: phase=%s, reason=%s", phaseStr, reason)
 		}
+
 		return nil, nil //nolint:nilnil // nil cluster means keep polling
 	}
 

@@ -37,6 +37,7 @@ func scheduleIDCompletion(s *state.State) func(*cobra.Command, []string, string)
 		for _, sched := range resp.GetItems() {
 			completions = append(completions, sched.GetId()+"\tcluster:"+sched.GetClusterId()+" | "+sched.GetSchedule())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }

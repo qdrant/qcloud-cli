@@ -56,6 +56,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			if err != nil {
 				return nil, fmt.Errorf("failed to get backup schedule: %w", err)
 			}
+
 			return resp.GetBackupSchedule(), nil
 		},
 		Update: func(s *state.State, cmd *cobra.Command, sched *backupv1.BackupSchedule) (*backupv1.BackupSchedule, error) {
@@ -75,6 +76,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 				if retentionDays < 1 {
 					return nil, fmt.Errorf("--retention-days must be at least 1")
 				}
+
 				d := time.Duration(retentionDays) * 24 * time.Hour
 				sched.RetentionPeriod = durationpb.New(d)
 			}
@@ -85,6 +87,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			if err != nil {
 				return nil, fmt.Errorf("failed to update backup schedule: %w", err)
 			}
+
 			return resp.GetBackupSchedule(), nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, sched *backupv1.BackupSchedule) {

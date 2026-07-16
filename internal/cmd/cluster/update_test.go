@@ -43,6 +43,7 @@ func TestUpdateCluster_SetLabels(t *testing.T) {
 	for _, kv := range req.GetCluster().GetLabels() {
 		capturedLabels[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"env": "prod", "team": "platform"}, capturedLabels)
 }
 
@@ -110,6 +111,7 @@ func TestUpdateCluster_ApplyLabels(t *testing.T) {
 	for _, kv := range req.GetCluster().GetLabels() {
 		capturedLabels[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"env": "prod", "team": "infra"}, capturedLabels)
 }
 
@@ -144,6 +146,7 @@ func TestUpdateCluster_RemoveLabel(t *testing.T) {
 	for _, kv := range req.GetCluster().GetLabels() {
 		capturedLabels[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"env": "staging"}, capturedLabels)
 }
 
@@ -813,6 +816,7 @@ func TestUpdateCluster_HybridKeyValueFlags(t *testing.T) {
 		for _, kv := range kvs {
 			m[kv.GetKey()] = kv.GetValue()
 		}
+
 		return m
 	}
 

@@ -14,6 +14,7 @@ func HumanTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
+
 	return humanize.Time(t)
 }
 
@@ -23,6 +24,7 @@ func FullDateTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
+
 	return t.UTC().Format("2006-01-02 15:04:05 UTC")
 }
 
@@ -42,6 +44,7 @@ func BoolYesNo(v bool) string {
 	if v {
 		return boolYes
 	}
+
 	return "no"
 }
 
@@ -50,6 +53,7 @@ func BoolMark(v bool) string {
 	if v {
 		return boolYes
 	}
+
 	return ""
 }
 
@@ -67,6 +71,7 @@ func OptionalValue(v any, fallback string) string {
 		if b {
 			return boolYes
 		}
+
 		return "no"
 	}
 

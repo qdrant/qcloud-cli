@@ -76,11 +76,13 @@ qcloud cluster restart 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force --wait`,
 			if err != nil {
 				return err
 			}
+
 			if ep := cluster.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
 				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) is ready. Endpoint: %s\n", cluster.GetId(), cluster.GetName(), ep.GetUrl())
 			} else {
 				fmt.Fprintf(cmd.OutOrStdout(), "Cluster %s (%s) is ready.\n", cluster.GetId(), cluster.GetName())
 			}
+
 			return nil
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),

@@ -77,12 +77,14 @@ func ApplyLabels(existing []*commonv1.KeyValue, changes *LabelChanges) []*common
 	for key := range changes.Remove {
 		delete(merged, key)
 	}
+
 	maps.Copy(merged, changes.Set)
 
 	result := make([]*commonv1.KeyValue, 0, len(merged))
 	for k, v := range merged {
 		result = append(result, &commonv1.KeyValue{Key: k, Value: v})
 	}
+
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].GetKey() < result[j].GetKey()
 	})

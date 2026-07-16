@@ -73,6 +73,7 @@ func ParseByteQuantity(s string) (ByteQuantity, error) {
 	if err != nil {
 		return 0, fmt.Errorf("cannot parse %q as a byte quantity", s)
 	}
+
 	return ByteQuantity(n) * GiB, nil
 }
 
@@ -82,6 +83,7 @@ func (b *ByteQuantity) Set(s string) error {
 	if err != nil {
 		return err
 	}
+
 	*b = v
 	return nil
 }
@@ -92,11 +94,13 @@ func (b ByteQuantity) String() string {
 	if b == 0 {
 		return ""
 	}
+
 	for _, u := range unitTable {
 		if b%u.mult == 0 {
 			return fmt.Sprintf("%d%s", int64(b/u.mult), u.suffix)
 		}
 	}
+
 	return fmt.Sprintf("%d", int64(b))
 }
 
@@ -119,6 +123,7 @@ func FormatByteQuantity(b ByteQuantity, unit string) string {
 			return fmt.Sprintf("%d%s", int64(b/u.mult), u.suffix)
 		}
 	}
+
 	return fmt.Sprintf("%d", int64(b))
 }
 

@@ -37,6 +37,7 @@ func envIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]s
 		for _, env := range resp.GetItems() {
 			completions = append(completions, env.GetId()+"\t"+env.GetName())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }

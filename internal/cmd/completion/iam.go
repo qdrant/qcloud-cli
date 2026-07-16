@@ -32,6 +32,7 @@ func RoleCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 		for _, r := range resp.GetItems() {
 			completions = append(completions, r.GetName()+"\t"+r.GetId())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -65,6 +66,7 @@ func RoleIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]
 		for _, r := range resp.GetItems() {
 			completions = append(completions, r.GetId()+"\t"+r.GetName())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -94,6 +96,7 @@ func PermissionCompletion(s *state.State) func(*cobra.Command, []string, string)
 		for _, p := range resp.GetPermissions() {
 			completions = append(completions, p.GetValue()+"\t"+p.GetCategory())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }

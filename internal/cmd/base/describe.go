@@ -34,14 +34,17 @@ func (dc DescribeCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			if s.Config.JSONOutput() {
 				return output.PrintJSON(cmd.OutOrStdout(), resource)
 			}
+
 			return dc.PrintText(cmd, cmd.OutOrStdout(), resource)
 		},
 	}
 	if dc.ValidArgsFunction != nil {
 		cmd.ValidArgsFunction = dc.ValidArgsFunction
 	}
+
 	return cmd
 }

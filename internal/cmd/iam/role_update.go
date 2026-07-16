@@ -70,6 +70,7 @@ qcloud iam role update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --description "Updat
 				name, _ := cmd.Flags().GetString("name")
 				role.Name = name
 			}
+
 			if cmd.Flags().Changed("description") {
 				description, _ := cmd.Flags().GetString("description")
 				role.Description = description
@@ -88,6 +89,7 @@ qcloud iam role update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --description "Updat
 			if role == nil {
 				return
 			}
+
 			fmt.Fprintf(out, "Role %s (%s) updated.\n", role.GetId(), role.GetName())
 		},
 	}.CobraCommand(s)

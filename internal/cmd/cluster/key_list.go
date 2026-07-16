@@ -61,12 +61,14 @@ qcloud cluster key list 7b2ea926-724b-4de2-b73a-8675c42a6ebe`,
 				if v.GetCreatedAt() != nil {
 					return output.HumanTime(v.GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.AddField("EXPIRES", func(v *clusterauthv2.DatabaseApiKey) string {
 				if v.GetExpiresAt() != nil {
 					return output.FullDateTime(v.GetExpiresAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.GetItems())

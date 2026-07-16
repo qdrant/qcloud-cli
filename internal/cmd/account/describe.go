@@ -63,17 +63,21 @@ qcloud account describe --json`,
 					fmt.Fprintf(w, "Domain:      %s\n", company.GetDomain())
 				}
 			}
+
 			if privs := acct.GetPrivileges(); len(privs) > 0 {
 				fmt.Fprintf(w, "Privileges:  %s\n", strings.Join(privs, ", "))
 			}
+
 			if acct.GetCreatedAt() != nil {
 				t := acct.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:     %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
 			if acct.GetLastModifiedAt() != nil {
 				t := acct.GetLastModifiedAt().AsTime()
 				fmt.Fprintf(w, "Modified:    %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
 			return nil
 		},
 		ValidArgsFunction: completion.AccountIDCompletion(s),
@@ -85,5 +89,6 @@ func resolveAccountID(s *state.State, args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
+
 	return s.AccountID()
 }

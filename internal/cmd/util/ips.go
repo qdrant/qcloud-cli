@@ -64,6 +64,7 @@ func ApplyIPs(existing []string, changes *IPChanges) []string {
 		if changes.Remove[ip] {
 			continue
 		}
+
 		if !seen[ip] {
 			seen[ip] = true
 			result = append(result, ip)

@@ -401,6 +401,7 @@ func TestConfigFileTagsAreSnakeCase(t *testing.T) {
 				if val == "" || val == "-" {
 					continue
 				}
+
 				name, _, _ := strings.Cut(val, ",")
 				assert.Truef(t, snakeCase.MatchString(name),
 					"%s.%s: tag %q value %q is not snake_case", typ.Name(), field.Name, tagName, name)

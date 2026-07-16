@@ -29,6 +29,7 @@ func (r *ReleaseInfo) Version() string {
 	if r.Release != nil {
 		return r.Release.Version()
 	}
+
 	return r.version
 }
 
@@ -37,6 +38,7 @@ func (r *ReleaseInfo) Equal(version string) bool {
 	if r.Release != nil {
 		return r.Release.Equal(version)
 	}
+
 	return r.version == version
 }
 
@@ -68,6 +70,7 @@ func (g *GithubUpdater) DetectLatest(ctx context.Context) (*ReleaseInfo, bool, e
 	if err != nil || !found {
 		return nil, found, err
 	}
+
 	return NewReleaseInfoFromSelfUpdate(rel), true, nil
 }
 
@@ -77,5 +80,6 @@ func (g *GithubUpdater) UpdateSelf(ctx context.Context, currentVersion string) (
 	if err != nil {
 		return nil, err
 	}
+
 	return NewReleaseInfoFromSelfUpdate(rel), nil
 }

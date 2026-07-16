@@ -63,6 +63,7 @@ qcloud account member list --json`,
 				if v.GetAccountMember().GetCreatedAt() != nil {
 					return output.HumanTime(v.GetAccountMember().GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.GetItems())

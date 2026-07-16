@@ -22,6 +22,7 @@ func ParseMillicores(s string) (Millicores, error) {
 
 		return Millicores(v), nil
 	}
+
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return 0, fmt.Errorf("cannot parse %q as a millicore value", s)
@@ -36,6 +37,7 @@ func (m *Millicores) Set(s string) error {
 	if err != nil {
 		return err
 	}
+
 	*m = v
 	return nil
 }
@@ -46,9 +48,11 @@ func (m Millicores) String() string {
 	if m == 0 {
 		return ""
 	}
+
 	if int64(m)%1000 == 0 {
 		return strconv.FormatInt(int64(m)/1000, 10)
 	}
+
 	return fmt.Sprintf("%dm", int64(m))
 }
 

@@ -56,6 +56,7 @@ qcloud cluster logs abc-123 --json`,
 				if err != nil {
 					return nil, fmt.Errorf("invalid --since %q: must be RFC3339 or YYYY-MM-DD", sinceStr)
 				}
+
 				req.Since = timestamppb.New(t)
 			}
 
@@ -65,6 +66,7 @@ qcloud cluster logs abc-123 --json`,
 				if err != nil {
 					return nil, fmt.Errorf("invalid --until %q: must be RFC3339 or YYYY-MM-DD", untilStr)
 				}
+
 				req.Until = timestamppb.New(t)
 			}
 
@@ -72,6 +74,7 @@ qcloud cluster logs abc-123 --json`,
 			if err != nil {
 				return nil, fmt.Errorf("failed to get cluster logs: %w", err)
 			}
+
 			return resp, nil
 		},
 		PrintText: func(cmd *cobra.Command, w io.Writer, resp *monitoringv1.GetClusterLogsResponse) error {
@@ -83,6 +86,7 @@ qcloud cluster logs abc-123 --json`,
 					fmt.Fprintln(w, entry.GetMessage())
 				}
 			}
+
 			return nil
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
@@ -100,5 +104,6 @@ func parseLogTime(s string) (time.Time, error) {
 	if err == nil {
 		return t, nil
 	}
+
 	return time.Parse("2006-01-02", s)
 }

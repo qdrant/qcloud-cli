@@ -81,6 +81,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 				default:
 					return nil, fmt.Errorf("invalid --access-type %q: must be manage or read-only", accessType)
 				}
+
 				key.AccessRules = []*clusterauthv2.AccessRule{
 					{
 						Scope: &clusterauthv2.AccessRule_GlobalAccess{
@@ -97,6 +98,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 				if err != nil {
 					return nil, fmt.Errorf("invalid --expires %q: must be in YYYY-MM-DD format", expiresStr)
 				}
+
 				key.ExpiresAt = timestamppb.New(t)
 			}
 
@@ -166,12 +168,14 @@ func newKeyProbe(
 		if port == 0 {
 			port = defaultQdrantRESTPort
 		}
+
 		endpointURL := fmt.Sprintf("%s:%d", ep.GetUrl(), port)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpointURL, nil)
 		if err != nil {
 			return err
 		}
+
 		req.Header.Set("api-key", apiKey)
 		resp, err := httpClient.Do(req)
 		if err != nil {
@@ -182,6 +186,7 @@ func newKeyProbe(
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return nil
 		}
+
 		return fmt.Errorf("cluster endpoint responded with HTTP %d at %s", resp.StatusCode, endpointURL)
 	}
 }

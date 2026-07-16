@@ -27,22 +27,27 @@ func (cc CreateCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	if cc.Long != "" {
 		cmd.Long = cc.Long
 	}
+
 	cmd.Example = cc.Example
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		resource, err := cc.Run(s, cmd, args)
 		if err != nil {
 			return err
 		}
+
 		if s.Config.JSONOutput() {
 			return output.PrintJSON(cmd.OutOrStdout(), resource)
 		}
+
 		if cc.PrintResource != nil {
 			cc.PrintResource(cmd, cmd.OutOrStdout(), resource)
 		}
+
 		return nil
 	}
 	if cc.ValidArgsFunction != nil {
 		cmd.ValidArgsFunction = cc.ValidArgsFunction
 	}
+
 	return cmd
 }

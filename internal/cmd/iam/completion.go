@@ -15,11 +15,13 @@ func userCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 		ctx := cmd.Context()
 		client, err := s.Client(ctx)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
+
 		accountID, err := s.AccountID()
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
@@ -34,6 +36,7 @@ func userCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 		for _, u := range resp.GetItems() {
 			completions = append(completions, u.GetId()+"\t"+u.GetEmail())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }

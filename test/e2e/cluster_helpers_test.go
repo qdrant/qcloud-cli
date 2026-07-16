@@ -37,12 +37,15 @@ func createCluster(t *testing.T, env *framework.Env, opts createClusterOpts) str
 	if opts.Name == "" {
 		opts.Name = e2eClusterPrefix + randomSuffix(t)
 	}
+
 	if opts.CloudProvider == "" {
 		opts.CloudProvider = "aws"
 	}
+
 	if opts.CloudRegion == "" {
 		opts.CloudRegion = "eu-central-1"
 	}
+
 	if opts.Package == "" {
 		opts.Package = "free2"
 	}
@@ -81,6 +84,7 @@ func deleteCluster(t *testing.T, env *framework.Env, id string) {
 	if id == "" {
 		return
 	}
+
 	res := env.RunAllowFail(t, "cluster", "delete", id, "--force")
 	if res.Err != nil {
 		t.Logf("cleanup: cluster delete %s failed: %v", id, res.Err)
@@ -106,6 +110,7 @@ func sweepLeakedClusters(t *testing.T, env *framework.Env, maxAge time.Duration)
 		t.Logf("leak sweep: cluster list failed: %v", res.Err)
 		return
 	}
+
 	if err := json.Unmarshal([]byte(res.Stdout), &resp); err != nil {
 		t.Logf("leak sweep: decoding cluster list: %v", err)
 		return
@@ -116,9 +121,11 @@ func sweepLeakedClusters(t *testing.T, env *framework.Env, maxAge time.Duration)
 		if !strings.HasPrefix(c.Name, e2eClusterPrefix) {
 			continue
 		}
+
 		if !c.CreatedAt.IsZero() && c.CreatedAt.After(cutoff) {
 			continue
 		}
+
 		t.Logf("leak sweep: deleting stale cluster %s (%s, created %s)",
 			c.ID, c.Name, c.CreatedAt.Format(time.RFC3339))
 		deleteCluster(t, env, c.ID)
@@ -132,5 +139,6 @@ func randomSuffix(t *testing.T) string {
 	if _, err := rand.Read(b[:]); err != nil {
 		t.Fatalf("rand: %v", err)
 	}
+
 	return hex.EncodeToString(b[:])
 }

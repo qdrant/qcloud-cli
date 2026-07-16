@@ -39,6 +39,7 @@ func waitForKeyReady(
 			fmt.Fprintf(out, "waiting for API key... %v (%s)\n", err, elapsed)
 			continue
 		}
+
 		fmt.Fprintf(out, "API key is active (%s)\n", elapsed)
 		return nil
 	}

@@ -56,6 +56,7 @@ func resolveBinary() (string, error) {
 		if _, err := os.Stat(p); err != nil {
 			return "", fmt.Errorf("%s=%s: %w", envBinary, p, err)
 		}
+
 		return p, nil
 	}
 
@@ -99,14 +100,17 @@ func resolveBinary() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	defer func() { _ = os.Remove(tmp) }()
 
 	if err := extractQcloud(tmp, binary); err != nil {
 		return "", err
 	}
+
 	if err := os.Chmod(binary, 0o755); err != nil {
 		return "", fmt.Errorf("chmod binary: %w", err)
 	}
+
 	return binary, nil
 }
 
@@ -115,6 +119,7 @@ func binaryCacheDir(sha string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolving user cache dir: %w", err)
 	}
+
 	return filepath.Join(root, "qcloud-e2e", sha[:16]), nil
 }
 
@@ -129,6 +134,7 @@ func fetchExpectedSHA(url, archive string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	defer func() { _ = body.Close() }()
 
 	scan := bufio.NewScanner(body)
@@ -137,13 +143,16 @@ func fetchExpectedSHA(url, archive string) (string, error) {
 		if len(fields) != 2 {
 			continue
 		}
+
 		if fields[1] == archive {
 			return fields[0], nil
 		}
 	}
+
 	if err := scan.Err(); err != nil {
 		return "", fmt.Errorf("reading checksums: %w", err)
 	}
+
 	return "", fmt.Errorf("%s not listed in %s", archive, url)
 }
 
@@ -154,12 +163,14 @@ func downloadVerified(url, expected string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	defer func() { _ = body.Close() }()
 
 	tmp, err := os.CreateTemp("", "qcloud-e2e-*.tar.gz")
 	if err != nil {
 		return "", fmt.Errorf("creating temp archive: %w", err)
 	}
+
 	defer func() { _ = tmp.Close() }()
 
 	h := sha256.New()
@@ -173,6 +184,7 @@ func downloadVerified(url, expected string) (string, error) {
 		_ = os.Remove(tmp.Name())
 		return "", fmt.Errorf("checksum mismatch for %s: got %s, want %s", url, got, expected)
 	}
+
 	return tmp.Name(), nil
 }
 
@@ -182,10 +194,12 @@ func httpGetBody(url string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("GET %s: %w", url, err)
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
 		return nil, fmt.Errorf("GET %s: %s", url, resp.Status)
 	}
+
 	return resp.Body, nil
 }
 
@@ -196,12 +210,14 @@ func extractQcloud(src, dst string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = f.Close() }()
 
 	gr, err := gzip.NewReader(f)
 	if err != nil {
 		return fmt.Errorf("gzip reader: %w", err)
 	}
+
 	defer func() { _ = gr.Close() }()
 
 	tr := tar.NewReader(gr)
@@ -210,9 +226,11 @@ func extractQcloud(src, dst string) error {
 		if errors.Is(err, io.EOF) {
 			return fmt.Errorf("qcloud binary not found in %s", src)
 		}
+
 		if err != nil {
 			return fmt.Errorf("tar reader: %w", err)
 		}
+
 		if filepath.Base(hdr.Name) != "qcloud" {
 			continue
 		}
@@ -221,10 +239,12 @@ func extractQcloud(src, dst string) error {
 		if err != nil {
 			return err
 		}
+
 		if _, err := io.Copy(out, tr); err != nil {
 			_ = out.Close()
 			return err
 		}
+
 		return out.Close()
 	}
 }

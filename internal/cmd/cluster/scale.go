@@ -245,6 +245,7 @@ match.`,
 					}
 				}
 			}
+
 			newStorageTier := storageTierString(cluster.Configuration.GetClusterStorageConfiguration().GetStorageTierType())
 
 			force, _ := cmd.Flags().GetBool("force")
@@ -294,10 +295,12 @@ match.`,
 			if updated == nil {
 				return
 			}
+
 			if updated.GetState().GetPhase() != clusterv1.ClusterPhase_CLUSTER_PHASE_HEALTHY {
 				fmt.Fprintf(out, "Cluster %s (%s) is scaling, it will take some time to take effect. Use 'cluster wait %s' to wait for it to become healthy\n", updated.GetId(), updated.GetName(), updated.GetId())
 				return
 			}
+
 			fmt.Fprintf(out, "Cluster %s (%s) scaled successfully.\n", updated.GetId(), updated.GetName())
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
@@ -340,9 +343,11 @@ func scaleConfirmPrompt(
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
 		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(oldRC.GetGpu(), newRC.GetGpu()))
 	}
+
 	if oldStorageTier != "" || newStorageTier != "" {
 		prompt += fmt.Sprintf("\n  Storage tier: %s", output.DiffValue(oldStorageTier, newStorageTier))
 	}
+
 	prompt += "\nProceed?"
 	return prompt
 }

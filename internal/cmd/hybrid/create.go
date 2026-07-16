@@ -72,20 +72,24 @@ If your account does not have access, you will be prompted to contact us.`,
 					ns, _ := cmd.Flags().GetString("namespace")
 					env.Configuration.Namespace = ns
 				}
+
 				if cmd.Flags().Changed("database-storage-class") {
 					v, _ := cmd.Flags().GetString("database-storage-class")
 					env.Configuration.DatabaseStorageClass = &v
 				}
+
 				if cmd.Flags().Changed("snapshot-storage-class") {
 					v, _ := cmd.Flags().GetString("snapshot-storage-class")
 					env.Configuration.SnapshotStorageClass = &v
 				}
+
 				if cmd.Flags().Changed("log-level") {
 					lvlStr, _ := cmd.Flags().GetString("log-level")
 					lvl, err := parseLogLevel(lvlStr)
 					if err != nil {
 						return nil, err
 					}
+
 					env.Configuration.LogLevel = &lvl
 				}
 			}
@@ -97,6 +101,7 @@ If your account does not have access, you will be prompted to contact us.`,
 				if s, ok := status.FromError(err); ok && s.Code() == codes.PermissionDenied {
 					return nil, fmt.Errorf("your account does not have access to Hybrid Cloud\n\nTo get started, contact us at: https://qdrant.tech/contact-us/")
 				}
+
 				return nil, fmt.Errorf("failed to create hybrid cloud environment: %w", err)
 			}
 

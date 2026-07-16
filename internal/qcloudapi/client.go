@@ -52,6 +52,7 @@ func NewWithDialOptions(endpoint, apiKey string, opts ...grpc.DialOption) (*Clie
 	if err != nil {
 		return nil, err
 	}
+
 	return newFromConn(conn), nil
 }
 
@@ -146,6 +147,7 @@ func authInterceptor(apiKey string) grpc.UnaryClientInterceptor {
 				return fmt.Errorf("%w (trace ID: %s)", err, strings.Join(ids, "|"))
 			}
 		}
+
 		return err
 	}
 }

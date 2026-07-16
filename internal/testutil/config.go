@@ -47,6 +47,7 @@ func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts m
 	for name := range contexts {
 		names = append(names, name)
 	}
+
 	sort.Strings(names)
 
 	for _, name := range names {
@@ -82,5 +83,6 @@ func FindContextEntry(t *testing.T, path, name string) *config.ContextEntry {
 			return &fd.Contexts[i]
 		}
 	}
+
 	return nil
 }

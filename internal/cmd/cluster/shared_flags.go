@@ -71,6 +71,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		cluster.Labels = util.ApplyLabels(cluster.Labels, changes)
 	}
 
@@ -78,6 +79,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 	if cluster.Configuration == nil {
 		cluster.Configuration = &clusterv1.ClusterConfiguration{}
 	}
+
 	cfg := cluster.Configuration
 
 	// Version
@@ -93,9 +95,11 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		if cfg.ClusterStorageConfiguration == nil {
 			cfg.ClusterStorageConfiguration = &clusterv1.ClusterStorageConfiguration{}
 		}
+
 		cfg.ClusterStorageConfiguration.StorageTierType = tierType
 	}
 
@@ -110,19 +114,23 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if cfg.ClusterStorageConfiguration == nil {
 			cfg.ClusterStorageConfiguration = &clusterv1.ClusterStorageConfiguration{}
 		}
+
 		sc := cfg.ClusterStorageConfiguration
 		if cmd.Flags().Changed("database-storage-class") {
 			v, _ := cmd.Flags().GetString("database-storage-class")
 			sc.DatabaseStorageClass = &v
 		}
+
 		if cmd.Flags().Changed("snapshot-storage-class") {
 			v, _ := cmd.Flags().GetString("snapshot-storage-class")
 			sc.SnapshotStorageClass = &v
 		}
+
 		if cmd.Flags().Changed("volume-snapshot-class") {
 			v, _ := cmd.Flags().GetString("volume-snapshot-class")
 			sc.VolumeSnapshotClass = &v
 		}
+
 		if cmd.Flags().Changed("volume-attributes-class") {
 			v, _ := cmd.Flags().GetString("volume-attributes-class")
 			sc.VolumeAttributesClass = &v
@@ -134,19 +142,23 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if cfg.DatabaseConfiguration == nil {
 			cfg.DatabaseConfiguration = &clusterv1.DatabaseConfiguration{}
 		}
+
 		dbCfg := cfg.DatabaseConfiguration
 
 		if util.AnyFlagChanged(cmd, performanceFlags) {
 			if dbCfg.Storage == nil {
 				dbCfg.Storage = &clusterv1.DatabaseConfigurationStorage{}
 			}
+
 			if dbCfg.Storage.Performance == nil {
 				dbCfg.Storage.Performance = &clusterv1.DatabaseConfigurationStoragePerformance{}
 			}
+
 			if cmd.Flags().Changed("async-scorer") {
 				v, _ := cmd.Flags().GetBool("async-scorer")
 				dbCfg.Storage.Performance.AsyncScorer = &v
 			}
+
 			if cmd.Flags().Changed("optimizer-cpu-budget") {
 				v, _ := cmd.Flags().GetInt32("optimizer-cpu-budget")
 				dbCfg.Storage.Performance.OptimizerCpuBudget = &v
@@ -157,19 +169,23 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 			if dbCfg.Collection == nil {
 				dbCfg.Collection = &clusterv1.DatabaseConfigurationCollection{}
 			}
+
 			if cmd.Flags().Changed("replication-factor") {
 				v, _ := cmd.Flags().GetUint32("replication-factor")
 				dbCfg.Collection.ReplicationFactor = &v
 			}
+
 			if cmd.Flags().Changed("write-consistency-factor") {
 				v, _ := cmd.Flags().GetInt32("write-consistency-factor")
 				dbCfg.Collection.WriteConsistencyFactor = &v
 			}
+
 			if cmd.Flags().Changed("vectors-on-disk") {
 				v, _ := cmd.Flags().GetBool("vectors-on-disk")
 				if dbCfg.Collection.Vectors == nil {
 					dbCfg.Collection.Vectors = &clusterv1.DatabaseConfigurationCollectionVectors{}
 				}
+
 				dbCfg.Collection.Vectors.OnDisk = &v
 			}
 		}
@@ -180,6 +196,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 			if err != nil {
 				return err
 			}
+
 			dbCfg.LogLevel = ll.Enum()
 		}
 
@@ -187,24 +204,29 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 			if dbCfg.Service == nil {
 				dbCfg.Service = &clusterv1.DatabaseConfigurationService{}
 			}
+
 			if cmd.Flags().Changed("enable-tls") {
 				v, _ := cmd.Flags().GetBool("enable-tls")
 				dbCfg.Service.EnableTls = &v
 			}
+
 			if cmd.Flags().Changed("api-key-secret") {
 				v, _ := cmd.Flags().GetString("api-key-secret")
 				ref, err := parseSecretKeyRef(v)
 				if err != nil {
 					return fmt.Errorf("--api-key-secret: %w", err)
 				}
+
 				dbCfg.Service.ApiKey = ref
 			}
+
 			if cmd.Flags().Changed("read-only-api-key-secret") {
 				v, _ := cmd.Flags().GetString("read-only-api-key-secret")
 				ref, err := parseSecretKeyRef(v)
 				if err != nil {
 					return fmt.Errorf("--read-only-api-key-secret: %w", err)
 				}
+
 				dbCfg.Service.ReadOnlyApiKey = ref
 			}
 		}
@@ -213,20 +235,24 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 			if dbCfg.Tls == nil {
 				dbCfg.Tls = &clusterv1.DatabaseConfigurationTls{}
 			}
+
 			if cmd.Flags().Changed("tls-cert-secret") {
 				v, _ := cmd.Flags().GetString("tls-cert-secret")
 				ref, err := parseSecretKeyRef(v)
 				if err != nil {
 					return fmt.Errorf("--tls-cert-secret: %w", err)
 				}
+
 				dbCfg.Tls.Cert = ref
 			}
+
 			if cmd.Flags().Changed("tls-key-secret") {
 				v, _ := cmd.Flags().GetString("tls-key-secret")
 				ref, err := parseSecretKeyRef(v)
 				if err != nil {
 					return fmt.Errorf("--tls-key-secret: %w", err)
 				}
+
 				dbCfg.Tls.Key = ref
 			}
 		}
@@ -235,22 +261,27 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 			if dbCfg.AuditLogging == nil {
 				dbCfg.AuditLogging = &clusterv1.DatabaseConfigurationAuditLogging{}
 			}
+
 			if cmd.Flags().Changed("audit-logging") {
 				v, _ := cmd.Flags().GetBool("audit-logging")
 				dbCfg.AuditLogging.Enabled = v
 			}
+
 			if cmd.Flags().Changed("audit-log-rotation") {
 				v, _ := cmd.Flags().GetString("audit-log-rotation")
 				r, err := parseAuditLogRotation(v)
 				if err != nil {
 					return err
 				}
+
 				dbCfg.AuditLogging.Rotation = r.Enum()
 			}
+
 			if cmd.Flags().Changed("audit-log-max-files") {
 				v, _ := cmd.Flags().GetUint32("audit-log-max-files")
 				dbCfg.AuditLogging.MaxLogFiles = &v
 			}
+
 			if cmd.Flags().Changed("audit-log-trust-forwarded-headers") {
 				v, _ := cmd.Flags().GetBool("audit-log-trust-forwarded-headers")
 				dbCfg.AuditLogging.TrustForwardedHeaders = &v
@@ -265,6 +296,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		cfg.AllowedIpSourceRanges = util.ApplyIPs(cfg.AllowedIpSourceRanges, changes)
 	}
 
@@ -275,6 +307,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		cfg.RestartPolicy = mode.Enum()
 	}
 
@@ -285,6 +318,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		cfg.RebalanceStrategy = strat.Enum()
 	}
 
@@ -295,6 +329,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return fmt.Errorf("--node-selector: %w", err)
 		}
+
 		cfg.NodeSelector = util.ApplyLabels(cfg.NodeSelector, changes)
 	}
 
@@ -304,6 +339,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return fmt.Errorf("--annotation: %w", err)
 		}
+
 		cfg.Annotations = util.ApplyLabels(cfg.Annotations, changes)
 	}
 
@@ -313,6 +349,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return fmt.Errorf("--pod-label: %w", err)
 		}
+
 		cfg.PodLabels = util.ApplyLabels(cfg.PodLabels, changes)
 	}
 
@@ -322,6 +359,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return fmt.Errorf("--service-annotation: %w", err)
 		}
+
 		cfg.ServiceAnnotations = util.ApplyLabels(cfg.ServiceAnnotations, changes)
 	}
 
@@ -341,6 +379,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		cfg.Tolerations = tols
 	}
 
@@ -350,6 +389,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		cfg.TopologySpreadConstraints = tscs
 	}
 
@@ -359,6 +399,7 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 		if err != nil {
 			return err
 		}
+
 		cfg.ServiceType = st.Enum()
 	}
 

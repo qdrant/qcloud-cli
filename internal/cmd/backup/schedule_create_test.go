@@ -51,6 +51,7 @@ func TestScheduleCreate_WithRetention(t *testing.T) {
 	if req.GetBackupSchedule().GetRetentionPeriod() != nil {
 		retentionDays = int64(req.GetBackupSchedule().GetRetentionPeriod().AsDuration().Hours()) / 24
 	}
+
 	assert.Equal(t, int64(30), retentionDays)
 }
 

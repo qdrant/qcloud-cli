@@ -40,6 +40,7 @@ func newListCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to list backups: %w", err)
 			}
+
 			return resp, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupsResponse) (output.TableRenderer, error) {
@@ -60,6 +61,7 @@ func newListCommand(s *state.State) *cobra.Command {
 				if v.GetCreatedAt() != nil {
 					return output.HumanTime(v.GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.GetItems())

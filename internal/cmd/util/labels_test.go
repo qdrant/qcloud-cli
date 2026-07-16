@@ -95,6 +95,7 @@ func TestParseLabels(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.wantError)
 				return
 			}
+
 			require.NoError(t, err)
 
 			if tt.wantSet != nil {
@@ -107,6 +108,7 @@ func TestParseLabels(t *testing.T) {
 			for k := range changes.Remove {
 				gotRm = append(gotRm, k)
 			}
+
 			if tt.wantRm != nil {
 				assert.ElementsMatch(t, tt.wantRm, gotRm)
 			} else {
@@ -176,6 +178,7 @@ func TestApplyLabels(t *testing.T) {
 			if changes.Set == nil {
 				changes.Set = make(map[string]string)
 			}
+
 			for _, k := range tt.remove {
 				changes.Remove[k] = true
 			}
@@ -186,6 +189,7 @@ func TestApplyLabels(t *testing.T) {
 			for _, kv := range result {
 				got[kv.GetKey()] = kv.GetValue()
 			}
+
 			assert.Equal(t, tt.want, got)
 
 			// Verify sorted by key
@@ -202,5 +206,6 @@ func kvs(pairs ...string) []*commonv1.KeyValue {
 	for i := 0; i < len(pairs); i += 2 {
 		result = append(result, &commonv1.KeyValue{Key: pairs[i], Value: pairs[i+1]})
 	}
+
 	return result
 }

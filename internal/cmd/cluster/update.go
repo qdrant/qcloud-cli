@@ -156,6 +156,7 @@ remove a constraint.`,
 			if updated == nil {
 				return
 			}
+
 			fmt.Fprintf(out, "Cluster %s (%s) updated successfully.\n", updated.GetId(), updated.GetName())
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
@@ -185,6 +186,7 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 		if oldVersion == "" {
 			oldVersion = old.GetConfiguration().GetVersion()
 		}
+
 		lines = append(lines, fmt.Sprintf("  Version:                         %s", output.DiffValue(oldVersion, updated.GetConfiguration().GetVersion())))
 	}
 
@@ -203,45 +205,57 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 			if oldCol != nil {
 				oldRF = oldCol.ReplicationFactor
 			}
+
 			lines = append(lines, fmt.Sprintf("  Replication factor:              %s", output.DiffValue(output.OptionalValue(oldRF, notSet), fmt.Sprintf("%d", newCol.GetReplicationFactor()))))
 		}
+
 		if cmd.Flags().Changed("write-consistency-factor") {
 			var oldWCF *int32
 			if oldCol != nil {
 				oldWCF = oldCol.WriteConsistencyFactor
 			}
+
 			lines = append(lines, fmt.Sprintf("  Write consistency factor:        %s", output.DiffValue(output.OptionalValue(oldWCF, notSet), fmt.Sprintf("%d", newCol.GetWriteConsistencyFactor()))))
 		}
+
 		if cmd.Flags().Changed("vectors-on-disk") {
 			var oldVOD *bool
 			if oldCol != nil && oldCol.Vectors != nil {
 				oldVOD = oldCol.Vectors.OnDisk
 			}
+
 			var newVOD *bool
 			if newCol != nil && newCol.Vectors != nil {
 				newVOD = newCol.Vectors.OnDisk
 			}
+
 			lines = append(lines, fmt.Sprintf("  Vectors on disk:                 %s", output.DiffValue(output.OptionalValue(oldVOD, notSet), output.OptionalValue(newVOD, notSet))))
 		}
+
 		if cmd.Flags().Changed("async-scorer") {
 			var oldAS *bool
 			if oldPerf != nil {
 				oldAS = oldPerf.AsyncScorer
 			}
+
 			lines = append(lines, fmt.Sprintf("  Async scorer:                    %s", output.DiffValue(output.OptionalValue(oldAS, notSet), output.BoolYesNo(newPerf.GetAsyncScorer()))))
 		}
+
 		if cmd.Flags().Changed("optimizer-cpu-budget") {
 			var oldBudget *int32
 			if oldPerf != nil {
 				oldBudget = oldPerf.OptimizerCpuBudget
 			}
+
 			lines = append(lines, fmt.Sprintf("  Optimizer CPU budget:            %s", output.DiffValue(output.OptionalValue(oldBudget, notSet), fmt.Sprintf("%d", newPerf.GetOptimizerCpuBudget()))))
 		}
+
 		if cmd.Flags().Changed("db-log-level") {
 			oldLL := old.GetConfiguration().GetDatabaseConfiguration().GetLogLevel()
 			newLL := updated.GetConfiguration().GetDatabaseConfiguration().GetLogLevel()
 			lines = append(lines, fmt.Sprintf("  DB log level:                    %s", output.DiffValue(dbLogLevelString(oldLL), dbLogLevelString(newLL))))
 		}
+
 		if cmd.Flags().Changed("audit-logging") {
 			var oldEnabled string
 			if oldAudit != nil {
@@ -249,48 +263,62 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 			} else {
 				oldEnabled = notSet
 			}
+
 			lines = append(lines, fmt.Sprintf("  Audit logging:                   %s", output.DiffValue(oldEnabled, output.BoolYesNo(newAudit.GetEnabled()))))
 		}
+
 		if cmd.Flags().Changed("audit-log-rotation") {
 			var oldRot string
 			if oldAudit != nil {
 				oldRot = auditLogRotationString(oldAudit.GetRotation())
 			}
+
 			if oldRot == "" {
 				oldRot = notSet
 			}
+
 			lines = append(lines, fmt.Sprintf("  Audit log rotation:              %s", output.DiffValue(oldRot, auditLogRotationString(newAudit.GetRotation()))))
 		}
+
 		if cmd.Flags().Changed("audit-log-max-files") {
 			var oldMax *uint32
 			if oldAudit != nil {
 				oldMax = oldAudit.MaxLogFiles
 			}
+
 			lines = append(lines, fmt.Sprintf("  Audit log max files:             %s", output.DiffValue(output.OptionalValue(oldMax, notSet), fmt.Sprintf("%d", newAudit.GetMaxLogFiles()))))
 		}
+
 		if cmd.Flags().Changed("audit-log-trust-forwarded-headers") {
 			var oldTFH *bool
 			if oldAudit != nil {
 				oldTFH = oldAudit.TrustForwardedHeaders
 			}
+
 			lines = append(lines, fmt.Sprintf("  Audit log trust fwd headers:     %s", output.DiffValue(output.OptionalValue(oldTFH, notSet), output.BoolYesNo(newAudit.GetTrustForwardedHeaders()))))
 		}
+
 		if cmd.Flags().Changed("enable-tls") {
 			var oldTLS *bool
 			if oldSvc != nil {
 				oldTLS = oldSvc.EnableTls
 			}
+
 			lines = append(lines, fmt.Sprintf("  Enable TLS:                      %s", output.DiffValue(output.OptionalValue(oldTLS, notSet), output.BoolYesNo(newSvc.GetEnableTls()))))
 		}
+
 		if cmd.Flags().Changed("api-key-secret") {
 			lines = append(lines, "  API key secret:                  (changed)")
 		}
+
 		if cmd.Flags().Changed("read-only-api-key-secret") {
 			lines = append(lines, "  Read-only API key secret:        (changed)")
 		}
+
 		if cmd.Flags().Changed("tls-cert-secret") {
 			lines = append(lines, "  TLS cert secret:                 (changed)")
 		}
+
 		if cmd.Flags().Changed("tls-key-secret") {
 			lines = append(lines, "  TLS key secret:                  (changed)")
 		}
@@ -302,20 +330,25 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 			newST := updated.GetConfiguration().GetServiceType()
 			lines = append(lines, fmt.Sprintf("  Service type:                    %s", output.DiffValue(serviceTypeString(oldST), serviceTypeString(newST))))
 		}
+
 		if cmd.Flags().Changed("reserved-cpu-percentage") {
 			var oldPct *uint32
 			if cfg := old.GetConfiguration(); cfg != nil {
 				oldPct = cfg.ReservedCpuPercentage
 			}
+
 			lines = append(lines, fmt.Sprintf("  Reserved CPU %%:                  %s", output.DiffValue(output.OptionalValue(oldPct, notSet), fmt.Sprintf("%d", updated.GetConfiguration().GetReservedCpuPercentage()))))
 		}
+
 		if cmd.Flags().Changed("reserved-memory-percentage") {
 			var oldPct *uint32
 			if cfg := old.GetConfiguration(); cfg != nil {
 				oldPct = cfg.ReservedMemoryPercentage
 			}
+
 			lines = append(lines, fmt.Sprintf("  Reserved memory %%:               %s", output.DiffValue(output.OptionalValue(oldPct, notSet), fmt.Sprintf("%d", updated.GetConfiguration().GetReservedMemoryPercentage()))))
 		}
+
 		for _, flag := range undiffableFlags {
 			if cmd.Flags().Changed(flag) {
 				lines = append(lines, fmt.Sprintf("  %-32s (changed)", flag+":"))

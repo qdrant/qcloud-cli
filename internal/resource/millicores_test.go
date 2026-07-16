@@ -38,6 +38,7 @@ func TestParseMillicores(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
@@ -63,6 +64,7 @@ func TestMillicores_Set(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, m)
 		})

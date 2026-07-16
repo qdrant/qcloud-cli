@@ -21,6 +21,7 @@ func resolveUser(cmd *cobra.Command, client *qcloudapi.Client, accountID, idOrEm
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
+
 	for _, u := range resp.GetItems() {
 		if util.IsUUID(idOrEmail) {
 			if u.GetId() == idOrEmail {
@@ -32,6 +33,7 @@ func resolveUser(cmd *cobra.Command, client *qcloudapi.Client, accountID, idOrEm
 			}
 		}
 	}
+
 	return nil, fmt.Errorf("user %s not found", idOrEmail)
 }
 
@@ -58,6 +60,7 @@ func resolveRoleIDs(ctx context.Context, client *qcloudapi.Client, accountID str
 		if err != nil {
 			return nil, fmt.Errorf("failed to list roles: %w", err)
 		}
+
 		rolesByName = make(map[string]string, len(resp.GetItems()))
 		for _, r := range resp.GetItems() {
 			rolesByName[r.GetName()] = r.GetId()
@@ -73,9 +76,11 @@ func resolveRoleIDs(ctx context.Context, client *qcloudapi.Client, accountID str
 			if !ok {
 				return nil, fmt.Errorf("role %q not found", v)
 			}
+
 			ids = append(ids, id)
 		}
 	}
+
 	return ids, nil
 }
 

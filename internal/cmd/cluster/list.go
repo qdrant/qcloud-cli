@@ -50,6 +50,7 @@ qcloud cluster list --page-size 10`,
 			if cloudProviderChanged {
 				cloudProvider, _ = cmd.Flags().GetString("cloud-provider")
 			}
+
 			if cloudRegionChanged {
 				cloudRegion, _ = cmd.Flags().GetString("cloud-region")
 			}
@@ -63,22 +64,28 @@ qcloud cluster list --page-size 10`,
 					if nextToken != nil {
 						req.PageToken = nextToken
 					}
+
 					if cloudProviderChanged {
 						req.CloudProviderId = &cloudProvider
 					}
+
 					if cloudRegionChanged {
 						req.CloudProviderRegionId = &cloudRegion
 					}
+
 					resp, err := client.Cluster().ListClusters(ctx, req)
 					if err != nil {
 						return nil, fmt.Errorf("failed to list clusters: %w", err)
 					}
+
 					allItems = append(allItems, resp.Items...)
 					if resp.NextPageToken == nil || *resp.NextPageToken == "" {
 						break
 					}
+
 					nextToken = resp.NextPageToken
 				}
+
 				return &clusterv1.ListClustersResponse{Items: allItems}, nil
 			}
 
@@ -88,20 +95,25 @@ qcloud cluster list --page-size 10`,
 				ps, _ := cmd.Flags().GetInt32("page-size")
 				req.PageSize = &ps
 			}
+
 			if pageTokenChanged {
 				pt, _ := cmd.Flags().GetString("page-token")
 				req.PageToken = &pt
 			}
+
 			if cloudProviderChanged {
 				req.CloudProviderId = &cloudProvider
 			}
+
 			if cloudRegionChanged {
 				req.CloudProviderRegionId = &cloudRegion
 			}
+
 			resp, err := client.Cluster().ListClusters(ctx, req)
 			if err != nil {
 				return nil, fmt.Errorf("failed to list clusters: %w", err)
 			}
+
 			return resp, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) (output.TableRenderer, error) {
@@ -116,12 +128,14 @@ qcloud cluster list --page-size 10`,
 				if v.GetState() != nil {
 					return output.ClusterPhase(v.GetState().GetPhase())
 				}
+
 				return ""
 			})
 			t.AddField("VERSION", func(v *clusterv1.Cluster) string {
 				if v.GetConfiguration() != nil {
 					return v.GetConfiguration().GetVersion()
 				}
+
 				return ""
 			})
 			t.AddField("CLOUD", func(v *clusterv1.Cluster) string {
@@ -134,6 +148,7 @@ qcloud cluster list --page-size 10`,
 				if v.GetCreatedAt() != nil {
 					return output.HumanTime(v.GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.Items)
