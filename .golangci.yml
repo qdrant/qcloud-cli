@@ -9,6 +9,7 @@ linters:
     - goconst
     - godot
     - importas
+    - modernize
     - nilerr
     - promlinter
     - revive
@@ -16,16 +17,19 @@ linters:
     - testifylint
     - unparam
     - usestdlibvars
+    - wsl_v5
   settings:
-    errcheck:
-      exclude-functions:
-        - fmt.Fprint
-        - fmt.Fprintf
-        - fmt.Fprintln
-        - (*os.File).Write
     revive:
       rules:
         - name: exported
+    wsl_v5:
+      default: none
+      enable:
+        - after-block
+        - err
+  exclusions:
+    presets:
+      - std-error-handling
 formatters:
   enable:
     - gci
