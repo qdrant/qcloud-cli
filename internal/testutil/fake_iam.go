@@ -21,6 +21,7 @@ type FakeIAMService struct {
 	UpdateRoleCalls           MethodSpy[*iamv1.UpdateRoleRequest, *iamv1.UpdateRoleResponse]
 	DeleteRoleCalls           MethodSpy[*iamv1.DeleteRoleRequest, *iamv1.DeleteRoleResponse]
 	ListPermissionsCalls      MethodSpy[*iamv1.ListPermissionsRequest, *iamv1.ListPermissionsResponse]
+	DeleteUserCalls           MethodSpy[*iamv1.DeleteUserRequest, *iamv1.DeleteUserResponse]
 }
 
 // GetAuthenticatedUser records the call and dispatches via GetAuthenticatedUserCalls.
@@ -81,4 +82,10 @@ func (f *FakeIAMService) DeleteRole(ctx context.Context, req *iamv1.DeleteRoleRe
 func (f *FakeIAMService) ListPermissions(ctx context.Context, req *iamv1.ListPermissionsRequest) (*iamv1.ListPermissionsResponse, error) {
 	f.ListPermissionsCalls.record(req)
 	return f.ListPermissionsCalls.dispatch(ctx, req, f.UnimplementedIAMServiceServer.ListPermissions)
+}
+
+// DeleteUser records the call and dispatches via DeleteUserCalls.
+func (f *FakeIAMService) DeleteUser(ctx context.Context, req *iamv1.DeleteUserRequest) (*iamv1.DeleteUserResponse, error) {
+	f.DeleteUserCalls.record(req)
+	return f.DeleteUserCalls.dispatch(ctx, req, f.UnimplementedIAMServiceServer.DeleteUser)
 }
