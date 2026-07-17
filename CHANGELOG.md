@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.25.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.25.0)
+
+### Features
+
+- add qcloud user delete command (#163)
+- **cluster**: add cluster dashboard command to open up a browser tab with the qdrant web ui automatically authenticated
+
 ## [v0.24.2](https://github.com/qdrant/qcloud-cli/releases/tag/v0.24.2)
 
 ### Bug Fixes
