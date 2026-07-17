@@ -40,6 +40,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to get backup: %w", err)
 			}
+
 			return resp.GetBackup(), nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, b *backupv1.Backup) error {
@@ -51,18 +52,22 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 				t := b.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:   %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
 			if b.GetBackupScheduleId() != "" {
 				fmt.Fprintf(w, "Schedule:  %s\n", b.GetBackupScheduleId())
 			}
+
 			if b.GetRetentionPeriod() != nil {
 				days := int64(b.GetRetentionPeriod().AsDuration().Hours()) / 24
 				fmt.Fprintf(w, "Retention: %d days\n", days)
 			}
+
 			if b.GetClusterInfo() != nil {
 				ci := b.GetClusterInfo()
 				fmt.Fprintf(w, "Cloud:     %s\n", ci.GetCloudProviderId())
 				fmt.Fprintf(w, "Region:    %s\n", ci.GetCloudProviderRegionId())
 			}
+
 			return nil
 		},
 	}.CobraCommand(s)

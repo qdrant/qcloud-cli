@@ -67,20 +67,24 @@ func FilteredPackages(
 				continue
 			}
 		}
+
 		if f.RAM != 0 {
 			pkgRAM, _ := resource.ParseByteQuantity(rc.GetRam())
 			if pkgRAM != f.RAM {
 				continue
 			}
 		}
+
 		if f.GPU != 0 {
 			pkgGPU, _ := resource.ParseMillicores(rc.GetGpu())
 			if pkgGPU != f.GPU {
 				continue
 			}
 		}
+
 		result = append(result, p)
 	}
+
 	return result, nil
 }
 
@@ -134,6 +138,7 @@ func ResolvePackageByName(
 			return p, nil
 		}
 	}
+
 	return nil, fmt.Errorf("package %q not found for provider=%s", name, cloudProvider)
 }
 
@@ -186,18 +191,21 @@ func ResolvePackageByResources(
 				continue
 			}
 		}
+
 		if q.RAM != 0 {
 			pkgRAM, _ := resource.ParseByteQuantity(rc.GetRam())
 			if pkgRAM != q.RAM {
 				continue
 			}
 		}
+
 		if q.GPU != 0 {
 			pkgGPU, _ := resource.ParseMillicores(rc.GetGpu())
 			if pkgGPU != q.GPU {
 				continue
 			}
 		}
+
 		matches = append(matches, p)
 	}
 
@@ -205,12 +213,15 @@ func ResolvePackageByResources(
 	if q.CPU != 0 {
 		filterDesc = append(filterDesc, fmt.Sprintf("cpu=%q", q.CPU.String()))
 	}
+
 	if q.RAM != 0 {
 		filterDesc = append(filterDesc, fmt.Sprintf("ram=%q", q.RAM.String()))
 	}
+
 	if q.GPU != 0 {
 		filterDesc = append(filterDesc, fmt.Sprintf("gpu=%q", q.GPU.String()))
 	}
+
 	desc := strings.Join(filterDesc, " ")
 
 	switch len(matches) {
@@ -223,6 +234,7 @@ func ResolvePackageByResources(
 		for i, p := range matches {
 			names[i] = p.GetName()
 		}
+
 		return nil, fmt.Errorf("multiple packages match %s: %s; use 'package list' to see available packages", desc, strings.Join(names, ", "))
 	}
 }
@@ -235,12 +247,15 @@ func CalculateAdditionalDisk(requestedDisk resource.ByteQuantity, pkg *bookingv1
 	if pkgDiskStr == "" {
 		return 0, nil
 	}
+
 	pkgDisk, err := resource.ParseByteQuantity(pkgDiskStr)
 	if err != nil {
 		return 0, err
 	}
+
 	if requestedDisk > pkgDisk {
 		return uint32(requestedDisk.GiB() - pkgDisk.GiB()), nil
 	}
+
 	return 0, nil
 }

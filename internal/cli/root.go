@@ -39,11 +39,13 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 			if err := s.Config.Load(configPath); err != nil {
 				return err
 			}
+
 			if debug {
 				s.Logger = slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{
 					Level: slog.LevelDebug,
 				}))
 			}
+
 			return nil
 		},
 		SilenceUsage:  true,

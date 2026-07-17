@@ -38,6 +38,7 @@ func CloudProviderCompletion(s *state.State) func(*cobra.Command, []string, stri
 		for _, p := range resp.GetItems() {
 			completions = append(completions, p.GetId()+"\t"+p.GetName())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -73,6 +74,7 @@ func CloudRegionCompletion(s *state.State) func(*cobra.Command, []string, string
 		for _, r := range resp.GetItems() {
 			completions = append(completions, r.GetId()+"\t"+r.GetName())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -106,6 +108,7 @@ func ManagementKeyIDCompletion(s *state.State) func(*cobra.Command, []string, st
 		for _, k := range resp.GetItems() {
 			completions = append(completions, k.GetId()+"\t"+k.GetPrefix())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -143,6 +146,7 @@ func BackupIDCompletion(s *state.State) func(*cobra.Command, []string, string) (
 		for _, b := range resp.GetItems() {
 			completions = append(completions, b.GetId()+"\t"+b.GetName())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -174,6 +178,7 @@ func ClusterIDCompletion(s *state.State) func(*cobra.Command, []string, string) 
 		for _, c := range clusters {
 			completions = append(completions, c.GetId()+"\t"+c.GetName())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -204,28 +209,36 @@ func VersionCompletion(s *state.State) func(*cobra.Command, []string, string) ([
 			if r.GetUnavailable() {
 				continue
 			}
+
 			desc := ""
 			if r.GetDefault() {
 				desc += "(default)"
 			}
+
 			if r.GetEndOfLife() {
 				if desc != "" {
 					desc += " "
 				}
+
 				desc += "(end of life)"
 			}
+
 			if remarks := r.GetRemarks(); remarks != "" {
 				if desc != "" {
 					desc += " "
 				}
+
 				desc += remarks
 			}
+
 			entry := r.GetVersion()
 			if desc != "" {
 				entry += "\t" + desc
 			}
+
 			completions = append(completions, entry)
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -252,6 +265,7 @@ func AccountIDCompletion(s *state.State) func(*cobra.Command, []string, string) 
 		for _, a := range resp.GetItems() {
 			completions = append(completions, a.GetId()+"\t"+a.GetName())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -285,6 +299,7 @@ func AccountMemberIDCompletion(s *state.State) func(*cobra.Command, []string, st
 		for _, m := range resp.GetItems() {
 			completions = append(completions, m.GetAccountMember().GetId()+"\t"+m.GetAccountMember().GetEmail())
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }

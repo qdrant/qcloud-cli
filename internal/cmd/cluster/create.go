@@ -89,8 +89,10 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 				if err != nil {
 					return nil, fmt.Errorf("failed to suggest cluster name: %w", err)
 				}
+
 				name = suggested.GetName()
 			}
+
 			cloudProvider, _ := cmd.Flags().GetString("cloud-provider")
 			cloudRegion, _ := cmd.Flags().GetString("cloud-region")
 			nodes, _ := cmd.Flags().GetUint32("nodes")
@@ -106,9 +108,11 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 			if cpuChanged {
 				cpu = *cmd.Flags().Lookup("cpu").Value.(*resource.Millicores)
 			}
+
 			if ramChanged {
 				ram = *cmd.Flags().Lookup("ram").Value.(*resource.ByteQuantity)
 			}
+
 			if cmd.Flags().Changed("gpu") {
 				gpu = *cmd.Flags().Lookup("gpu").Value.(*resource.Millicores)
 			}
@@ -149,6 +153,7 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 					if err != nil {
 						return nil, err
 					}
+
 					packageID = pkg.GetId()
 				}
 			} else {
@@ -164,6 +169,7 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 				if err != nil {
 					return nil, err
 				}
+
 				packageID = pkg.GetId()
 			}
 
@@ -188,6 +194,7 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 				if err != nil {
 					return nil, err
 				}
+
 				if additionalDisk > 0 {
 					cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
 						Disk: additionalDisk,

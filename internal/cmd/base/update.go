@@ -29,26 +29,32 @@ func (uc UpdateCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	if uc.Long != "" {
 		cmd.Long = uc.Long
 	}
+
 	cmd.Example = uc.Example
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		resource, err := uc.Fetch(s, cmd, args)
 		if err != nil {
 			return err
 		}
+
 		updated, err := uc.Update(s, cmd, resource)
 		if err != nil {
 			return err
 		}
+
 		if s.Config.JSONOutput() {
 			return output.PrintJSON(cmd.OutOrStdout(), updated)
 		}
+
 		if uc.PrintResource != nil {
 			uc.PrintResource(cmd, cmd.OutOrStdout(), updated)
 		}
+
 		return nil
 	}
 	if uc.ValidArgsFunction != nil {
 		cmd.ValidArgsFunction = uc.ValidArgsFunction
 	}
+
 	return cmd
 }

@@ -42,11 +42,13 @@ func CPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 				cobra.CompErrorln(fmt.Sprintf("package %s: %v", p.GetName(), err))
 				continue
 			}
+
 			if _, ok := seen[v]; !ok {
 				seen[v] = struct{}{}
 				completions = append(completions, v.String())
 			}
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -80,11 +82,13 @@ func RAMCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 				cobra.CompErrorln(fmt.Sprintf("package %s: %v", p.GetName(), err))
 				continue
 			}
+
 			if _, ok := seen[v]; !ok {
 				seen[v] = struct{}{}
 				completions = append(completions, resource.FormatByteQuantity(v, resource.UnitGiB))
 			}
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -120,11 +124,13 @@ func DiskCompletion(s *state.State) func(*cobra.Command, []string, string) ([]st
 				cobra.CompErrorln(fmt.Sprintf("package %s: %v", p.GetName(), err))
 				continue
 			}
+
 			if _, ok := seen[v]; !ok {
 				seen[v] = struct{}{}
 				completions = append(completions, v.String())
 			}
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -157,11 +163,13 @@ func GPUCompletion(s *state.State) func(*cobra.Command, []string, string) ([]str
 			if err != nil || m <= 0 || int64(m)%1000 != 0 {
 				continue
 			}
+
 			if _, ok := seen[m]; !ok {
 				seen[m] = struct{}{}
 				completions = append(completions, m.String())
 			}
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
@@ -202,9 +210,11 @@ func PackageNameCompletion(s *state.State) func(*cobra.Command, []string, string
 			if rc := p.GetResourceConfiguration(); rc != nil {
 				desc += fmt.Sprintf(" | %s RAM / %s CPU / %s disk", rc.GetRam(), rc.GetCpu(), rc.GetDisk())
 			}
+
 			desc += " | " + output.FormatMillicents(p.GetUnitIntPricePerHour(), p.GetCurrency()) + "/hr"
 			completions = append(completions, p.GetName()+"\t"+desc)
 		}
+
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }

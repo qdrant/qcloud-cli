@@ -58,9 +58,11 @@ qcloud iam role describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 			if role.GetCreatedAt() != nil {
 				fmt.Fprintf(w, "Created:       %s\n", output.FullDateTime(role.GetCreatedAt().AsTime()))
 			}
+
 			if role.GetLastModifiedAt() != nil {
 				fmt.Fprintf(w, "Last Modified: %s\n", output.FullDateTime(role.GetLastModifiedAt().AsTime()))
 			}
+
 			fmt.Fprintf(w, "\nPermissions:\n")
 			for _, p := range role.GetPermissions() {
 				if cat := p.GetCategory(); cat != "" {
@@ -69,6 +71,7 @@ qcloud iam role describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 					fmt.Fprintf(w, "  %s\n", p.GetValue())
 				}
 			}
+
 			return nil
 		},
 	}.CobraCommand(s)

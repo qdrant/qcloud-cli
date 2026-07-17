@@ -34,16 +34,20 @@ func (c *ClusterClient) ListAllClusters(ctx context.Context, accountID string) (
 		if nextToken != nil {
 			req.PageToken = nextToken
 		}
+
 		resp, err := c.ListClusters(ctx, req)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list clusters: %w", err)
 		}
+
 		all = append(all, resp.Items...)
 		if resp.NextPageToken == nil || *resp.NextPageToken == "" {
 			break
 		}
+
 		nextToken = resp.NextPageToken
 	}
+
 	return all, nil
 }
 
@@ -55,20 +59,25 @@ func (c *ClusterClient) listFiltered(ctx context.Context, accountID string, hybr
 		if nextToken != nil {
 			req.PageToken = nextToken
 		}
+
 		resp, err := c.ListClusters(ctx, req)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list clusters: %w", err)
 		}
+
 		for _, cluster := range resp.Items {
 			isHybrid := cluster.GetCloudProviderId() == HybridCloudProviderID
 			if isHybrid == hybrid {
 				all = append(all, cluster)
 			}
 		}
+
 		if resp.NextPageToken == nil || *resp.NextPageToken == "" {
 			break
 		}
+
 		nextToken = resp.NextPageToken
 	}
+
 	return all, nil
 }

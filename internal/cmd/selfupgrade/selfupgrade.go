@@ -72,6 +72,7 @@ func NewCommand(s *state.State) *cobra.Command {
 				if isHomebrew {
 					fmt.Fprintln(out, "This installation is managed by Homebrew; use \"brew upgrade qcloud\" instead.")
 				}
+
 				return nil
 			}
 
@@ -95,8 +96,10 @@ func NewCommand(s *state.State) *cobra.Command {
 					if runtime.GOOS == "windows" {
 						hint = "running as Administrator"
 					}
+
 					return fmt.Errorf("permission denied: try %s", hint)
 				}
+
 				return fmt.Errorf("failed to update: %w", err)
 			}
 

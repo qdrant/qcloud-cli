@@ -39,10 +39,12 @@ qcloud iam user describe user@example.com --json`,
 			if err != nil {
 				return nil, err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return nil, err
 			}
+
 			return resolveUser(cmd, client, accountID, args[0])
 		},
 		PrintText: func(cmd *cobra.Command, w io.Writer, user *iamv1.User) error {
@@ -51,10 +53,12 @@ qcloud iam user describe user@example.com --json`,
 			if err != nil {
 				return err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return err
 			}
+
 			rolesResp, err := client.IAM().ListUserRoles(ctx, &iamv1.ListUserRolesRequest{
 				AccountId: accountID,
 				UserId:    user.GetId(),
@@ -62,6 +66,7 @@ qcloud iam user describe user@example.com --json`,
 			if err != nil {
 				return fmt.Errorf("failed to list user roles: %w", err)
 			}
+
 			roles := rolesResp.GetRoles()
 			return printUserWithRoles(w, user, roles, effectivePermissions(roles))
 		},
@@ -76,16 +81,19 @@ func printUserWithRoles(w io.Writer, user *iamv1.User, roles []*iamv1.Role, perm
 		t := user.GetCreatedAt().AsTime()
 		fmt.Fprintf(w, "Created: %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 	}
+
 	if len(roles) > 0 {
 		fmt.Fprintln(w)
 		fmt.Fprintln(w, "Roles:")
 		printRoles(w, roles)
 	}
+
 	if len(permissions) > 0 {
 		fmt.Fprintln(w)
 		fmt.Fprintln(w, "Effective Permissions:")
 		printPermissions(w, permissions)
 	}
+
 	return nil
 }
 
@@ -130,6 +138,7 @@ func effectivePermissions(roles []*iamv1.Role) []rolePermission {
 			}
 		}
 	}
+
 	sort.Strings(order)
 	out := make([]rolePermission, 0, len(order))
 	for _, v := range order {
@@ -137,5 +146,6 @@ func effectivePermissions(roles []*iamv1.Role) []rolePermission {
 		sort.Strings(e.roleNames)
 		out = append(out, rolePermission{permission: e.permission, roleNames: e.roleNames})
 	}
+
 	return out
 }

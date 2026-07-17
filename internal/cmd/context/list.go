@@ -32,6 +32,7 @@ qcloud context list`,
 				if name == current {
 					return "*"
 				}
+
 				return ""
 			})
 			t.AddField("NAME", func(name string) string {

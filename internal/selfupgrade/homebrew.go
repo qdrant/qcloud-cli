@@ -29,6 +29,7 @@ func IsHomebrewInstall(exePath string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -39,9 +40,11 @@ func ResolveExecutablePath() string {
 	if err != nil {
 		return ""
 	}
+
 	resolved, err := filepath.EvalSymlinks(exe)
 	if err != nil {
 		return ""
 	}
+
 	return resolved
 }

@@ -159,6 +159,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	if cfg.version != "" {
 		dialOpts = append(dialOpts, grpc.WithUserAgent("qcloud-cli/"+cfg.version))
 	}
+
 	client, err := qcloudapi.NewWithDialOptions("passthrough:///bufnet", cfg.apiKey, dialOpts...)
 	if err != nil {
 		t.Fatalf("failed to create test client: %v", err)

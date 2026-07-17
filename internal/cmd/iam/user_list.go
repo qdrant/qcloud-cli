@@ -32,16 +32,19 @@ qcloud iam user list --json`,
 			if err != nil {
 				return nil, err
 			}
+
 			accountID, err := s.AccountID()
 			if err != nil {
 				return nil, err
 			}
+
 			resp, err := client.IAM().ListUsers(ctx, &iamv1.ListUsersRequest{
 				AccountId: accountID,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to list users: %w", err)
 			}
+
 			return resp, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *iamv1.ListUsersResponse) (output.TableRenderer, error) {
@@ -53,6 +56,7 @@ qcloud iam user list --json`,
 				if v.GetCreatedAt() != nil {
 					return output.HumanTime(v.GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.GetItems())

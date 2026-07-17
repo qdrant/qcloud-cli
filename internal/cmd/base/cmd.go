@@ -22,6 +22,7 @@ func (gc Cmd) CobraCommand(s *state.State) *cobra.Command {
 	if gc.Long != "" {
 		cmd.Long = gc.Long
 	}
+
 	cmd.Example = gc.Example
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return gc.Run(s, cmd, args)
@@ -29,5 +30,6 @@ func (gc Cmd) CobraCommand(s *state.State) *cobra.Command {
 	if gc.ValidArgsFunction != nil {
 		cmd.ValidArgsFunction = gc.ValidArgsFunction
 	}
+
 	return cmd
 }

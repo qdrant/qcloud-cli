@@ -160,11 +160,13 @@ func TestKeyCreate_WaitSuccess(t *testing.T) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+
 		n := calls.Add(1)
 		if n <= 2 {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
 	}))
 

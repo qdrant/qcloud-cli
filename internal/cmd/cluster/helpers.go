@@ -208,6 +208,7 @@ func applyTolerations(existing []*clusterv1.Toleration, raw []string) ([]*cluste
 			if err != nil {
 				return nil, err
 			}
+
 			adds = append(adds, tol)
 		}
 	}
@@ -218,6 +219,7 @@ func applyTolerations(existing []*clusterv1.Toleration, raw []string) ([]*cluste
 			result = append(result, t)
 		}
 	}
+
 	return append(result, adds...), nil
 }
 
@@ -237,6 +239,7 @@ func applyTopologySpreadConstraints(existing []*commonv1.TopologySpreadConstrain
 			if err != nil {
 				return nil, err
 			}
+
 			adds = append(adds, tsc)
 		}
 	}
@@ -253,5 +256,6 @@ func applyTopologySpreadConstraints(existing []*commonv1.TopologySpreadConstrain
 			result = append(result, t)
 		}
 	}
+
 	return append(result, adds...), nil
 }

@@ -57,6 +57,7 @@ func DefaultConfigPath() string {
 	if err != nil {
 		return ""
 	}
+
 	return filepath.Join(home, ".config", "qcloud", "config.yaml")
 }
 
@@ -78,6 +79,7 @@ func (c *Config) Load(configPath string) error {
 	if configPath == "" {
 		configPath = c.v.GetString("config")
 	}
+
 	if configPath != "" {
 		c.v.SetConfigFile(configPath)
 	} else {
@@ -85,6 +87,7 @@ func (c *Config) Load(configPath string) error {
 		if err != nil {
 			return fmt.Errorf("resolving home directory: %w", err)
 		}
+
 		c.v.SetConfigName("config")
 		c.v.AddConfigPath(filepath.Join(home, ".config", "qcloud"))
 	}
@@ -114,6 +117,7 @@ func (c *Config) Load(configPath string) error {
 			if ctx.Endpoint != "" {
 				flat[KeyEndpoint] = ctx.Endpoint
 			}
+
 			if ctx.APIKey != "" {
 				flat[KeyAPIKey] = ctx.APIKey
 			} else if ctx.APIKeyCommand != "" {
@@ -121,11 +125,14 @@ func (c *Config) Load(configPath string) error {
 				if err != nil {
 					return err
 				}
+
 				flat[KeyAPIKey] = key
 			}
+
 			if ctx.AccountID != "" {
 				flat[KeyAccountID] = ctx.AccountID
 			}
+
 			_ = c.v.MergeConfigMap(flat)
 			break
 		}
@@ -183,6 +190,7 @@ func (c *Config) ActiveContext() string {
 	if ctx := c.v.GetString("context"); ctx != "" {
 		return ctx
 	}
+
 	return c.file.CurrentContext
 }
 
@@ -192,6 +200,7 @@ func (c *Config) ContextNames() []string {
 	for _, ctx := range c.file.Contexts {
 		names = append(names, ctx.Name)
 	}
+
 	sort.Strings(names)
 	return names
 }
@@ -203,6 +212,7 @@ func (c *Config) GetContext(name string) (ContextEntry, bool) {
 			return ctx, true
 		}
 	}
+
 	return ContextEntry{}, false
 }
 
@@ -224,6 +234,7 @@ func (c *Config) UpsertContext(ctx ContextEntry) {
 			return
 		}
 	}
+
 	c.file.Contexts = append(c.file.Contexts, ctx)
 }
 
@@ -236,6 +247,7 @@ func (c *Config) DeleteContext(name string) {
 			filtered = append(filtered, ctx)
 		}
 	}
+
 	c.file.Contexts = filtered
 	if c.file.CurrentContext == name {
 		c.file.CurrentContext = ""
@@ -261,6 +273,7 @@ func (c *Config) WriteToFile() error {
 		if err != nil {
 			return fmt.Errorf("marshaling config: %w", err)
 		}
+
 		data = append(data, '\n')
 	} else {
 		data, err = yaml.Marshal(c.file)
@@ -292,11 +305,14 @@ func resolveAPIKeyCommand(command string) (string, error) {
 		if msg != "" {
 			return "", fmt.Errorf("api_key_command failed: %w: %s", err, msg)
 		}
+
 		return "", fmt.Errorf("api_key_command failed: %w", err)
 	}
+
 	key := strings.TrimSpace(stdout.String())
 	if key == "" {
 		return "", fmt.Errorf("api_key_command returned empty output")
 	}
+
 	return key, nil
 }

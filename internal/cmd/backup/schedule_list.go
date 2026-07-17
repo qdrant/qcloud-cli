@@ -40,6 +40,7 @@ func newScheduleListCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to list backup schedules: %w", err)
 			}
+
 			return resp, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupSchedulesResponse) (output.TableRenderer, error) {
@@ -60,12 +61,14 @@ func newScheduleListCommand(s *state.State) *cobra.Command {
 				if next, ok := nextScheduleRun(v.GetSchedule()); ok {
 					return output.HumanTime(next)
 				}
+
 				return ""
 			})
 			t.AddField("CREATED", func(v *backupv1.BackupSchedule) string {
 				if v.GetCreatedAt() != nil {
 					return output.HumanTime(v.GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.GetItems())

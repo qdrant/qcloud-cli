@@ -24,6 +24,7 @@ func (m *MethodSpy[Req, Resp]) OnCall(i int, fn func(context.Context, Req) (Resp
 	for len(m.handlers) <= i {
 		m.handlers = append(m.handlers, nil)
 	}
+
 	m.handlers[i] = fn
 	return m
 }
@@ -68,6 +69,7 @@ func (m *MethodSpy[Req, Resp]) Last() (Req, bool) {
 		var zero Req
 		return zero, false
 	}
+
 	return m.requests[len(m.requests)-1], true
 }
 
@@ -96,13 +98,16 @@ func (m *MethodSpy[Req, Resp]) dispatch(ctx context.Context, req Req, unimpl fun
 	if idx >= 0 && idx < len(m.handlers) {
 		handler = m.handlers[idx]
 	}
+
 	if handler == nil {
 		handler = m.fallback
 	}
+
 	m.mu.Unlock()
 
 	if handler != nil {
 		return handler(ctx, req)
 	}
+
 	return unimpl(ctx, req)
 }

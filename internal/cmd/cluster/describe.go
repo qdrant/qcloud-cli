@@ -57,28 +57,33 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 			if cluster.GetState() != nil {
 				fmt.Fprintf(w, "Status:   %s\n", output.ClusterPhase(cluster.GetState().GetPhase()))
 			}
+
 			if cluster.GetConfiguration() != nil {
 				cfg := cluster.GetConfiguration()
 				fmt.Fprintf(w, "Version:  %s\n", cfg.GetVersion())
 				fmt.Fprintf(w, "Nodes:    %d\n", cfg.GetNumberOfNodes())
 				fmt.Fprintf(w, "Package:  %s\n", cfg.GetPackageId())
 			}
+
 			fmt.Fprintf(w, "Cloud:    %s\n", cluster.GetCloudProviderId())
 			if isHybrid {
 				fmt.Fprintf(w, "Environment: %s\n", cluster.GetCloudProviderRegionId())
 			} else {
 				fmt.Fprintf(w, "Region:   %s\n", cluster.GetCloudProviderRegionId())
 			}
+
 			if cluster.GetCreatedAt() != nil {
 				t := cluster.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:  %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
 			if labels := cluster.GetLabels(); len(labels) > 0 {
 				fmt.Fprintf(w, "Labels:   ")
 				for i, kv := range labels {
 					if i > 0 {
 						fmt.Fprintf(w, "          ")
 					}
+
 					fmt.Fprintf(w, "%s=%s\n", kv.GetKey(), kv.GetValue())
 				}
 			}
@@ -101,18 +106,22 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 						if cfg.ServiceType != nil {
 							fmt.Fprintf(w, "  Service Type:              %s\n", serviceTypeString(cfg.GetServiceType()))
 						}
+
 						if cfg.ReservedCpuPercentage != nil {
 							fmt.Fprintf(w, "  Reserved CPU %%:            %d\n", cfg.GetReservedCpuPercentage())
 						}
+
 						if cfg.ReservedMemoryPercentage != nil {
 							fmt.Fprintf(w, "  Reserved Memory %%:         %d\n", cfg.GetReservedMemoryPercentage())
 						}
+
 						if ns := cfg.GetNodeSelector(); len(ns) > 0 {
 							fmt.Fprintf(w, "  Node Selectors:\n")
 							for _, kv := range ns {
 								fmt.Fprintf(w, "    %s=%s\n", kv.GetKey(), kv.GetValue())
 							}
 						}
+
 						if tols := cfg.GetTolerations(); len(tols) > 0 {
 							fmt.Fprintf(w, "  Tolerations:\n")
 							for _, t := range tols {
@@ -125,6 +134,7 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 								}
 							}
 						}
+
 						if tscs := cfg.GetTopologySpreadConstraints(); len(tscs) > 0 {
 							fmt.Fprintf(w, "  Topology Spread Constraints:\n")
 							for _, tsc := range tscs {
@@ -132,24 +142,29 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 								if tsc.MaxSkew != nil {
 									fmt.Fprintf(w, " maxSkew=%d", tsc.GetMaxSkew())
 								}
+
 								if tsc.WhenUnsatisfiable != nil {
 									fmt.Fprintf(w, " whenUnsatisfiable=%s", strings.TrimPrefix(tsc.GetWhenUnsatisfiable().String(), "TOPOLOGY_SPREAD_CONSTRAINT_WHEN_UNSATISFIABLE_"))
 								}
+
 								fmt.Fprintln(w)
 							}
 						}
+
 						if anns := cfg.GetAnnotations(); len(anns) > 0 {
 							fmt.Fprintf(w, "  Annotations:\n")
 							for _, kv := range anns {
 								fmt.Fprintf(w, "    %s=%s\n", kv.GetKey(), kv.GetValue())
 							}
 						}
+
 						if pl := cfg.GetPodLabels(); len(pl) > 0 {
 							fmt.Fprintf(w, "  Pod Labels:\n")
 							for _, kv := range pl {
 								fmt.Fprintf(w, "    %s=%s\n", kv.GetKey(), kv.GetValue())
 							}
 						}
+
 						if sa := cfg.GetServiceAnnotations(); len(sa) > 0 {
 							fmt.Fprintf(w, "  Service Annotations:\n")
 							for _, kv := range sa {
@@ -167,12 +182,15 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 						if sc.DatabaseStorageClass != nil {
 							fmt.Fprintf(w, "  Database Storage Class:    %s\n", sc.GetDatabaseStorageClass())
 						}
+
 						if sc.SnapshotStorageClass != nil {
 							fmt.Fprintf(w, "  Snapshot Storage Class:    %s\n", sc.GetSnapshotStorageClass())
 						}
+
 						if sc.VolumeSnapshotClass != nil {
 							fmt.Fprintf(w, "  Volume Snapshot Class:     %s\n", sc.GetVolumeSnapshotClass())
 						}
+
 						if sc.VolumeAttributesClass != nil {
 							fmt.Fprintf(w, "  Volume Attributes Class:   %s\n", sc.GetVolumeAttributesClass())
 						}
@@ -228,31 +246,38 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 							if svc.EnableTls != nil {
 								fmt.Fprintf(w, "    Enable TLS:                %s\n", output.BoolYesNo(svc.GetEnableTls()))
 							}
+
 							if svc.ApiKey != nil {
 								fmt.Fprintf(w, "    API Key Secret:            %s\n", secretKeyRefString(svc.GetApiKey()))
 							}
+
 							if svc.ReadOnlyApiKey != nil {
 								fmt.Fprintf(w, "    Read-Only API Key Secret:  %s\n", secretKeyRefString(svc.GetReadOnlyApiKey()))
 							}
 						}
+
 						if tls := dbCfg.GetTls(); tls != nil && (tls.Cert != nil || tls.Key != nil) {
 							fmt.Fprintln(w, "  TLS:")
 							if tls.Cert != nil {
 								fmt.Fprintf(w, "    Cert Secret:               %s\n", secretKeyRefString(tls.GetCert()))
 							}
+
 							if tls.Key != nil {
 								fmt.Fprintf(w, "    Key Secret:                %s\n", secretKeyRefString(tls.GetKey()))
 							}
 						}
+
 						if al := dbCfg.GetAuditLogging(); al != nil {
 							fmt.Fprintln(w, "  Audit Logging:")
 							fmt.Fprintf(w, "    Enabled:                   %s\n", output.BoolYesNo(al.GetEnabled()))
 							if al.Rotation != nil {
 								fmt.Fprintf(w, "    Rotation:                  %s\n", auditLogRotationString(al.GetRotation()))
 							}
+
 							if al.MaxLogFiles != nil {
 								fmt.Fprintf(w, "    Max Log Files:             %d\n", al.GetMaxLogFiles())
 							}
+
 							if al.TrustForwardedHeaders != nil {
 								fmt.Fprintf(w, "    Trust Forwarded Headers:   %s\n", output.BoolYesNo(al.GetTrustForwardedHeaders()))
 							}
@@ -271,9 +296,11 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 					if len(ips) > 0 {
 						fmt.Fprintf(w, "  Allowed IPs:          %s\n", strings.Join(ips, ", "))
 					}
+
 					if restartMode != "" {
 						fmt.Fprintf(w, "  Restart Mode:         %s\n", restartMode)
 					}
+
 					if rebalance != "" {
 						fmt.Fprintf(w, "  Rebalance Strategy:   %s\n", rebalance)
 					}
@@ -303,17 +330,21 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 						if tier != "" {
 							tierSuffix = fmt.Sprintf(" (tier: %s)\n", tier)
 						}
+
 						fmt.Fprintf(w, "  Disk:  %s base, %s available"+tierSuffix,
 							formatGiB(disk.GetBase()), formatGiB(disk.GetAvailable()))
 					}
+
 					if ram := res.GetRam(); ram != nil {
 						fmt.Fprintf(w, "  RAM:   %s base, %s reserved, %s available\n",
 							formatGiB(ram.GetBase()), formatGiB(ram.GetReserved()), formatGiB(ram.GetAvailable()))
 					}
+
 					if cpu := res.GetCpu(); cpu != nil {
 						fmt.Fprintf(w, "  CPU:   %s base, %s reserved, %s available\n",
 							formatMillicores(cpu.GetBase()), formatMillicores(cpu.GetReserved()), formatMillicores(cpu.GetAvailable()))
 					}
+
 					if gpu := res.GetGpu(); gpu != nil {
 						fmt.Fprintf(w, "  GPU:   %s base, %s reserved, %s available\n",
 							formatMillicores(gpu.GetBase()), formatMillicores(gpu.GetReserved()), formatMillicores(gpu.GetAvailable()))
@@ -328,6 +359,7 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 						if n.GetStartedAt() != nil {
 							started = "started " + output.HumanTime(n.GetStartedAt().AsTime())
 						}
+
 						fmt.Fprintf(w, "  %-40s  %-12s  %-10s  %s\n",
 							n.GetName(), output.ClusterNodeState(n.GetState()), n.GetVersion(), started)
 					}

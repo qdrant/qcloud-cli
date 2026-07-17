@@ -77,6 +77,7 @@ still take precedence over the command at runtime.`,
 				for k := range apiKeyHelpers {
 					names = append(names, k)
 				}
+
 				sort.Strings(names)
 				return names, cobra.ShellCompDirectiveNoFileComp
 			})
@@ -139,6 +140,7 @@ still take precedence over the command at runtime.`,
 				s.Config.SetCurrentContext(name)
 				activated = true
 			}
+
 			if err := s.Config.WriteToFile(); err != nil {
 				return err
 			}
@@ -147,6 +149,7 @@ still take precedence over the command at runtime.`,
 			if activated {
 				fmt.Fprintf(cmd.OutOrStdout(), "Switched to context %q.\n", name)
 			}
+
 			return nil
 		},
 	}.CobraCommand(s)
@@ -173,6 +176,7 @@ func resolveAPIKeyFlags(cmd *cobra.Command) (string, error) {
 		for k := range apiKeyHelpers {
 			names = append(names, k)
 		}
+
 		sort.Strings(names)
 		return "", fmt.Errorf("unknown api-key-helper %q (supported: %s)", helper, strings.Join(names, ", "))
 	}
@@ -184,6 +188,7 @@ func flagChangedWithValue(cmd *cobra.Command, name string) (string, bool) {
 	if !cmd.Flags().Changed(name) {
 		return "", false
 	}
+
 	v, _ := cmd.Flags().GetString(name)
 	return v, true
 }

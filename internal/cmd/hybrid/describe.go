@@ -48,10 +48,12 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			if env.GetStatus() != nil {
 				fmt.Fprintf(w, "Status:              %s\n", output.HybridEnvironmentPhase(env.GetStatus().GetPhase()))
 			}
+
 			if env.GetCreatedAt() != nil {
 				t := env.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created:             %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
 			fmt.Fprintf(w, "Bootstrap Generated: %s\n", output.BoolYesNo(env.GetBootstrapCommandsGenerated()))
 
 			if cfg := env.GetConfiguration(); cfg != nil {
@@ -60,15 +62,19 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 				if cfg.DatabaseStorageClass != nil {
 					fmt.Fprintf(w, "  Database Storage Class: %s\n", cfg.GetDatabaseStorageClass())
 				}
+
 				if cfg.SnapshotStorageClass != nil {
 					fmt.Fprintf(w, "  Snapshot Storage Class: %s\n", cfg.GetSnapshotStorageClass())
 				}
+
 				if cfg.LogLevel != nil {
 					fmt.Fprintf(w, "  Log Level:              %s\n", logLevelString(cfg.GetLogLevel()))
 				}
+
 				if cfg.HttpProxyUrl != nil {
 					fmt.Fprintf(w, "  HTTP Proxy:             %s\n", cfg.GetHttpProxyUrl())
 				}
+
 				if cfg.HttpsProxyUrl != nil {
 					fmt.Fprintf(w, "  HTTPS Proxy:            %s\n", cfg.GetHttpsProxyUrl())
 				}
@@ -79,10 +85,12 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 				if st.KubernetesVersion != "" {
 					fmt.Fprintf(w, "  Kubernetes Version:   %s\n", st.GetKubernetesVersion())
 				}
+
 				if st.KubernetesDistribution != nil {
 					dist := st.GetKubernetesDistribution().String()
 					fmt.Fprintf(w, "  Distribution:         %s\n", dist)
 				}
+
 				fmt.Fprintf(w, "  Node Count:           %d\n", st.GetNumberOfNodes())
 				fmt.Fprintf(w, "  Cluster Creation:     %s\n", output.ClusterCreationStatus(st.GetClusterCreationReadiness()))
 				if len(st.GetComponentStatuses()) > 0 {

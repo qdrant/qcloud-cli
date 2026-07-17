@@ -12,6 +12,7 @@ func contextNameCompletion(s *state.State) func(*cobra.Command, []string, string
 		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
+
 		return s.Config.ContextNames(), cobra.ShellCompDirectiveNoFileComp
 	}
 }

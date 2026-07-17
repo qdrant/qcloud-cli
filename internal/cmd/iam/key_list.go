@@ -54,6 +54,7 @@ qcloud iam key list --json`,
 				if v.GetCreatedAt() != nil {
 					return output.HumanTime(v.GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.GetItems())

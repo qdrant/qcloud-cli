@@ -73,6 +73,7 @@ func TestParseIPs(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.wantError)
 				return
 			}
+
 			require.NoError(t, err)
 
 			if tt.wantAdd != nil {
@@ -85,6 +86,7 @@ func TestParseIPs(t *testing.T) {
 			for k := range changes.Remove {
 				gotRm = append(gotRm, k)
 			}
+
 			if tt.wantRm != nil {
 				assert.ElementsMatch(t, tt.wantRm, gotRm)
 			} else {

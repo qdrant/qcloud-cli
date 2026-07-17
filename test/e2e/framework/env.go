@@ -72,6 +72,7 @@ func mustEnv(t *testing.T, name string) string {
 	if v == "" {
 		t.Fatalf("%s must be set", name)
 	}
+
 	return v
 }
 
@@ -83,6 +84,7 @@ func writeEmptyConfig(t *testing.T) string {
 	if err := os.WriteFile(path, []byte{}, 0o600); err != nil {
 		t.Fatalf("writing empty config: %v", err)
 	}
+
 	return path
 }
 
@@ -109,6 +111,7 @@ func (e *Env) RunWithTimeout(t *testing.T, timeout time.Duration, args ...string
 	if res.Err != nil {
 		t.Fatalf("qcloud %s failed: %v", strings.Join(args, " "), res.Err)
 	}
+
 	return res
 }
 
@@ -149,6 +152,7 @@ func (e *Env) runRaw(t *testing.T, timeout time.Duration, args []string) RunResu
 	if cmd.ProcessState != nil {
 		exitCode = cmd.ProcessState.ExitCode()
 	}
+
 	return RunResult{
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
@@ -168,6 +172,7 @@ func (e *Env) commandEnv() []string {
 	if e.Endpoint != "" {
 		env = append(env, fmt.Sprintf("%s=%s", envEndpoint, e.Endpoint))
 	}
+
 	return env
 }
 
@@ -177,6 +182,7 @@ func (e *Env) homeDir() string {
 	if dir := filepath.Dir(e.configPath); dir != "." {
 		return dir
 	}
+
 	return os.TempDir()
 }
 
@@ -186,6 +192,7 @@ func (e *Env) Redact(s string) string {
 	if e.APIKey != "" {
 		s = strings.ReplaceAll(s, e.APIKey, "[REDACTED]")
 	}
+
 	return jwtLikeRe.ReplaceAllString(s, "[REDACTED]")
 }
 
@@ -209,9 +216,11 @@ func (w testLogWriter) Write(p []byte) (int, error) {
 	if w.redact != "" {
 		s = strings.ReplaceAll(s, w.redact, "[REDACTED]")
 	}
+
 	s = jwtLikeRe.ReplaceAllString(s, "[REDACTED]")
 	for line := range strings.SplitSeq(strings.TrimRight(s, "\n"), "\n") {
 		w.t.Log(w.prefix + line)
 	}
+
 	return len(p), nil
 }

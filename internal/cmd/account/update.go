@@ -80,10 +80,12 @@ qcloud account update --name "New Name" --json`,
 				if updated.Company == nil {
 					updated.Company = &accountv1.Company{}
 				}
+
 				if cmd.Flags().Changed("company-name") {
 					name, _ := cmd.Flags().GetString("company-name")
 					updated.Company.Name = name
 				}
+
 				if cmd.Flags().Changed("company-domain") {
 					domain, _ := cmd.Flags().GetString("company-domain")
 					updated.Company.Domain = &domain
@@ -103,6 +105,7 @@ qcloud account update --name "New Name" --json`,
 			if acct == nil {
 				return
 			}
+
 			fmt.Fprintf(out, "Account %s (%s) updated successfully.\n", acct.GetId(), acct.GetName())
 		},
 	}.CobraCommand(s)

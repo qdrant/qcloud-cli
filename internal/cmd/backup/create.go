@@ -61,6 +61,7 @@ func newCreateCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to create backup: %w", err)
 			}
+
 			return resp.GetBackup(), nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, b *backupv1.Backup) {

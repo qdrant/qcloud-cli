@@ -19,5 +19,6 @@ func FormatMillicents(mc int32, currency string) string {
 	if mc == 0 {
 		return "free"
 	}
+
 	return fmt.Sprintf("%.4f %s", float64(mc)/100_000.0, currency)
 }

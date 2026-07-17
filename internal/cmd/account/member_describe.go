@@ -59,6 +59,7 @@ qcloud account member describe a1b2c3d4-e5f6-7890-abcd-ef1234567890 --json`,
 				t := user.GetCreatedAt().AsTime()
 				fmt.Fprintf(w, "Created: %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
+
 			return nil
 		},
 		ValidArgsFunction: completion.AccountMemberIDCompletion(s),

@@ -38,6 +38,7 @@ func TestCreateCluster_WithLabels(t *testing.T) {
 	for _, kv := range req.GetCluster().GetLabels() {
 		capturedLabels[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"env": "prod", "team": "platform"}, capturedLabels)
 }
 
@@ -965,6 +966,7 @@ func TestCreateCluster_HybridKubernetesPlacement(t *testing.T) {
 	for _, kv := range cfg.GetNodeSelector() {
 		nodeSelectors[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"disktype": "ssd", "zone": "us-east"}, nodeSelectors)
 
 	require.Len(t, cfg.GetTolerations(), 2)
@@ -983,18 +985,21 @@ func TestCreateCluster_HybridKubernetesPlacement(t *testing.T) {
 	for _, kv := range cfg.GetAnnotations() {
 		annotations[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"prometheus.io/scrape": "true"}, annotations)
 
 	podLabels := make(map[string]string)
 	for _, kv := range cfg.GetPodLabels() {
 		podLabels[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"app": "qdrant"}, podLabels)
 
 	svcAnnotations := make(map[string]string)
 	for _, kv := range cfg.GetServiceAnnotations() {
 		svcAnnotations[kv.GetKey()] = kv.GetValue()
 	}
+
 	assert.Equal(t, map[string]string{"service.beta.kubernetes.io/aws-load-balancer-type": "nlb"}, svcAnnotations)
 }
 

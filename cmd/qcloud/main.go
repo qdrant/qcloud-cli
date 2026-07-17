@@ -18,6 +18,7 @@ func versionString() string {
 	if versionPrerelease != "" {
 		return version + "-" + versionPrerelease
 	}
+
 	return version
 }
 

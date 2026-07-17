@@ -31,6 +31,7 @@ func (lc ListCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	if posArgs == nil {
 		posArgs = cobra.NoArgs
 	}
+
 	cmd := &cobra.Command{
 		Use:     lc.Use,
 		Short:   lc.Short,
@@ -42,13 +43,16 @@ func (lc ListCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			if s.Config.JSONOutput() {
 				return output.PrintJSON(cmd.OutOrStdout(), resp)
 			}
+
 			r, err := lc.OutputTable(cmd, cmd.OutOrStdout(), resp)
 			if err != nil {
 				return err
 			}
+
 			noHeaders, _ := cmd.Flags().GetBool("no-headers")
 			r.SetNoHeaders(noHeaders)
 			r.Render()
@@ -59,5 +63,6 @@ func (lc ListCmd[T]) CobraCommand(s *state.State) *cobra.Command {
 	if lc.ValidArgsFunction != nil {
 		cmd.ValidArgsFunction = lc.ValidArgsFunction
 	}
+
 	return cmd
 }

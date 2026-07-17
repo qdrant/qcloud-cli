@@ -35,6 +35,7 @@ func newListCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to list hybrid cloud environments: %w", err)
 			}
+
 			return resp, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *hybridv1.ListHybridCloudEnvironmentsResponse) (output.TableRenderer, error) {
@@ -49,18 +50,21 @@ func newListCommand(s *state.State) *cobra.Command {
 				if v.GetStatus() != nil {
 					return output.HybridEnvironmentPhase(v.GetStatus().GetPhase())
 				}
+
 				return ""
 			})
 			t.AddField("NODES", func(v *hybridv1.HybridCloudEnvironment) string {
 				if v.GetStatus() != nil {
 					return fmt.Sprintf("%d", v.GetStatus().GetNumberOfNodes())
 				}
+
 				return ""
 			})
 			t.AddField("CREATED", func(v *hybridv1.HybridCloudEnvironment) string {
 				if v.GetCreatedAt() != nil {
 					return output.HumanTime(v.GetCreatedAt().AsTime())
 				}
+
 				return ""
 			})
 			t.SetItems(resp.Items)

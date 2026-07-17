@@ -40,6 +40,7 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 					*t.TrailerAddr = metadata.Pairs(traceIDTrailer, "abc-123")
 				}
 			}
+
 			return orig
 		}
 		err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)
@@ -55,6 +56,7 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 					*t.TrailerAddr = metadata.Pairs(traceIDTrailer, "id-1", traceIDTrailer, "id-2")
 				}
 			}
+
 			return orig
 		}
 		err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)

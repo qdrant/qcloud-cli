@@ -62,6 +62,7 @@ func parseToleration(s string) (*clusterv1.Toleration, error) {
 		if key == "" {
 			return nil, fmt.Errorf("invalid toleration %q: key must not be empty", s)
 		}
+
 		tol.Key = &key
 		tol.Value = &value
 		op := clusterv1.TolerationOperator_TOLERATION_OPERATOR_EQUAL
@@ -71,6 +72,7 @@ func parseToleration(s string) (*clusterv1.Toleration, error) {
 			if err != nil {
 				return nil, fmt.Errorf("invalid toleration %q: %w", s, err)
 			}
+
 			tol.Effect = &effect
 		}
 	} else {
@@ -80,6 +82,7 @@ func parseToleration(s string) (*clusterv1.Toleration, error) {
 		if key == "" {
 			return nil, fmt.Errorf("invalid toleration %q: key must not be empty", s)
 		}
+
 		tol.Key = &key
 
 		if len(parts) >= 2 {
@@ -92,6 +95,7 @@ func parseToleration(s string) (*clusterv1.Toleration, error) {
 					if err != nil {
 						return nil, fmt.Errorf("invalid toleration %q: %w", s, err)
 					}
+
 					tol.Effect = &effect
 				}
 			default:
@@ -100,6 +104,7 @@ func parseToleration(s string) (*clusterv1.Toleration, error) {
 				if err != nil {
 					return nil, fmt.Errorf("invalid toleration %q: %w", s, err)
 				}
+
 				tol.Effect = &effect
 			}
 		}
@@ -220,6 +225,7 @@ func parseTopologySpreadConstraint(s string) (*commonv1.TopologySpreadConstraint
 		if err != nil {
 			return nil, fmt.Errorf("invalid topology spread constraint %q: maxSkew must be an integer", s)
 		}
+
 		v := int32(skew)
 		tsc.MaxSkew = &v
 	}
@@ -229,6 +235,7 @@ func parseTopologySpreadConstraint(s string) (*commonv1.TopologySpreadConstraint
 		if err != nil {
 			return nil, fmt.Errorf("invalid topology spread constraint %q: %w", s, err)
 		}
+
 		tsc.WhenUnsatisfiable = wu.Enum()
 	}
 
@@ -253,6 +260,7 @@ func parseSecretKeyRef(s string) (*commonv1.SecretKeyRef, error) {
 	if !ok || name == "" || key == "" {
 		return nil, fmt.Errorf("invalid secret key ref %q: must be in format 'secretName:key'", s)
 	}
+
 	return &commonv1.SecretKeyRef{Name: name, Key: key}, nil
 }
 
@@ -260,5 +268,6 @@ func secretKeyRefString(ref *commonv1.SecretKeyRef) string {
 	if ref == nil {
 		return ""
 	}
+
 	return ref.GetName() + ":" + ref.GetKey()
 }

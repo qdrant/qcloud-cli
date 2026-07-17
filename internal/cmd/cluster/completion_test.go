@@ -154,6 +154,7 @@ func TestCPUCompletion(t *testing.T) {
 			count++
 		}
 	}
+
 	assert.Equal(t, 1, count, "1 core should appear only once")
 }
 
@@ -177,6 +178,7 @@ func TestCPUCompletion_FilteredByRAM(t *testing.T) {
 			found = true
 		}
 	}
+
 	assert.True(t, found, "expected '1' core in completions")
 	assert.NotContains(t, stdout, "500m")
 }
@@ -243,6 +245,7 @@ func TestGPUCompletion(t *testing.T) {
 			count++
 		}
 	}
+
 	assert.Equal(t, 1, count, "GPU count 1 should appear only once")
 }
 
@@ -275,10 +278,12 @@ func TestRAMCompletion_APIFormatMismatch(t *testing.T) {
 		if l == "1" {
 			found1 = true
 		}
+
 		if l == "2" {
 			found2 = true
 		}
 	}
+
 	assert.True(t, found1, "expected '1' core in completions")
 	assert.False(t, found2, "expected '2' cores not in completions")
 }
@@ -302,6 +307,7 @@ func TestCPUCompletion_NormalizedOutput(t *testing.T) {
 			found = true
 		}
 	}
+
 	assert.True(t, found, "expected '1' core in completions")
 }
 

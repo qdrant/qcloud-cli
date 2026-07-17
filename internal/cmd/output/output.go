@@ -83,6 +83,7 @@ func (t *Table[T]) render(items []T) {
 		for i, h := range t.headers {
 			header[i] = h
 		}
+
 		tw.AppendHeader(header)
 	}
 
@@ -91,8 +92,10 @@ func (t *Table[T]) render(items []T) {
 		for i, fn := range t.fields {
 			row[i] = fn(item)
 		}
+
 		tw.AppendRow(row)
 	}
+
 	tw.Render()
 }
 
@@ -105,10 +108,12 @@ func PrintJSON(w io.Writer, v any) error {
 		if err != nil {
 			return err
 		}
+
 		_, _ = w.Write(b)
 		fmt.Fprintln(w)
 		return nil
 	}
+
 	// Fallback: standard JSON.
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

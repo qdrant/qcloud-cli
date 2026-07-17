@@ -57,6 +57,7 @@ qcloud package list --cloud-provider hybrid`,
 				if cloudRegion == "" {
 					return nil, fmt.Errorf("--cloud-region is required when --cloud-provider is not %q", qcloudapi.HybridCloudProviderID)
 				}
+
 				cloudRegionPtr = &cloudRegion
 			}
 
@@ -87,18 +88,21 @@ qcloud package list --cloud-provider hybrid`,
 				if rc := p.GetResourceConfiguration(); rc != nil {
 					return rc.GetRam()
 				}
+
 				return ""
 			})
 			t.AddField("CPU", func(p *bookingv1.Package) string {
 				if rc := p.GetResourceConfiguration(); rc != nil {
 					return rc.GetCpu()
 				}
+
 				return ""
 			})
 			t.AddField("DISK", func(p *bookingv1.Package) string {
 				if rc := p.GetResourceConfiguration(); rc != nil {
 					return rc.GetDisk()
 				}
+
 				return ""
 			})
 			t.AddField("GPU", func(p *bookingv1.Package) string {
@@ -107,6 +111,7 @@ qcloud package list --cloud-provider hybrid`,
 						return v
 					}
 				}
+
 				return "n/a"
 			})
 			t.AddField("MULTI-AZ", func(p *bookingv1.Package) string {

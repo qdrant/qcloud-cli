@@ -65,6 +65,7 @@ func newScheduleCreateCommand(s *state.State) *cobra.Command {
 			if err != nil {
 				return nil, fmt.Errorf("failed to create backup schedule: %w", err)
 			}
+
 			return resp.GetBackupSchedule(), nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, sched *backupv1.BackupSchedule) {
