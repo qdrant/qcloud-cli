@@ -75,6 +75,7 @@ cluster's dashboard.`,
 				fmt.Fprintf(cmd.ErrOrStderr(), "Could not open a browser. Open this URL manually:\n%s\n", dashURL)
 				return fmt.Errorf("failed to open browser: %w", err)
 			}
+
 			return nil
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
@@ -88,5 +89,6 @@ func dashboardURL(consoleBase, accountID, clusterID string) (string, error) {
 	if _, err := url.Parse(base); err != nil {
 		return "", fmt.Errorf("invalid console URL %q: %w", consoleBase, err)
 	}
+
 	return url.JoinPath(base, "accounts", accountID, "clusters", clusterID, "dashboard")
 }

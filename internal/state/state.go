@@ -76,6 +76,7 @@ func (s *State) OpenBrowser(url string) error {
 	if s.openBrowser != nil {
 		return s.openBrowser(url)
 	}
+
 	return browser.OpenURL(url)
 }
 
