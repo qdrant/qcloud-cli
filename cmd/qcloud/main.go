@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	version           = "0.24.2" // x-releaser-pleaser-version
+	version           = "0.25.0" // x-releaser-pleaser-version
 	versionPrerelease = "dev"
 )
 
