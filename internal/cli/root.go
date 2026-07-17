@@ -57,6 +57,7 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 	cmd.PersistentFlags().String("api-key", "", "Management API Key (env: QDRANT_CLOUD_API_KEY)")
 	cmd.PersistentFlags().String("account-id", "", "Qdrant Cloud Account ID (env: QDRANT_CLOUD_ACCOUNT_ID)")
 	cmd.PersistentFlags().String("endpoint", "", "gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)")
+	cmd.PersistentFlags().String("console-url", "", "Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)")
 	cmd.PersistentFlags().Bool("json", false, "Output as JSON")
 	cmd.PersistentFlags().String("context", "", "Override the active context (env: QDRANT_CLOUD_CONTEXT)")
 	_ = cmd.MarkFlagFilename("config")
@@ -67,6 +68,7 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 	s.Config.BindPFlag(config.KeyAPIKey, cmd.PersistentFlags().Lookup("api-key"))
 	s.Config.BindPFlag(config.KeyAccountID, cmd.PersistentFlags().Lookup("account-id"))
 	s.Config.BindPFlag(config.KeyEndpoint, cmd.PersistentFlags().Lookup("endpoint"))
+	s.Config.BindPFlag(config.KeyConsoleURL, cmd.PersistentFlags().Lookup("console-url"))
 
 	cmd.AddCommand(account.NewCommand(s))
 	cmd.AddCommand(version.NewCommand(s))

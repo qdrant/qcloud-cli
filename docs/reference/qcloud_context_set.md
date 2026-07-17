@@ -66,10 +66,11 @@ qcloud context set staging --api-key-helper 1password --api-key-ref op://vault/q
 ### Options inherited from parent commands
 
 ```
-  -c, --config string    Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
-      --context string   Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug            Enable debug logging to stderr
-      --json             Output as JSON
+  -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
+      --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
+      --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
+      --debug                Enable debug logging to stderr
+      --json                 Output as JSON
 ```
 
 ### SEE ALSO

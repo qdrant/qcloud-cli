@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/pkg/browser"
+
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
@@ -22,13 +24,17 @@ type Updater interface {
 	UpdateSelf(ctx context.Context, currentVersion string) (*selfupgrade.ReleaseInfo, error)
 }
 
+// BrowserOpener opens a URL in the user's default browser.
+type BrowserOpener func(url string) error
+
 // State holds shared dependencies for all commands.
 type State struct {
-	Version string
-	Config  *config.Config
-	Logger  *slog.Logger
-	client  *qcloudapi.Client
-	updater Updater
+	Version     string
+	Config      *config.Config
+	Logger      *slog.Logger
+	client      *qcloudapi.Client
+	updater     Updater
+	openBrowser BrowserOpener
 }
 
 // New creates a new State with the given version string.
@@ -63,6 +69,20 @@ func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 // SetClient injects a pre-built client, bypassing lazy creation.
 func (s *State) SetClient(c *qcloudapi.Client) {
 	s.client = c
+}
+
+// OpenBrowser opens the given URL in the user's default browser.
+func (s *State) OpenBrowser(url string) error {
+	if s.openBrowser != nil {
+		return s.openBrowser(url)
+	}
+
+	return browser.OpenURL(url)
+}
+
+// SetBrowserOpener injects a browser opener, bypassing the default. For testing.
+func (s *State) SetBrowserOpener(fn BrowserOpener) {
+	s.openBrowser = fn
 }
 
 // Updater returns the CLI updater, creating it lazily on first call.
