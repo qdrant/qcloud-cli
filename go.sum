@@ -73,8 +73,8 @@ github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c h1:+mdjkGKdHQG3305AYmd
 github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjLxUqIJNnCWiEdr3bn6IUYi15bNlnbCCU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qdrant/qdrant-cloud-public-api v0.158.0 h1:NUo++Q5+s50H8lQcYUJly42Kfed/+3fsSJ/w+6/5omc=
-github.com/qdrant/qdrant-cloud-public-api v0.158.0/go.mod h1:mrRXvd4THos5p7iwVUYAJoM18q3jMjLbn+OOF2NchOk=
+github.com/qdrant/qdrant-cloud-public-api v0.164.0 h1:4jANTzTeawAFA+htExvABPdFfmIR0876jWi5zJJJxP4=
+github.com/qdrant/qdrant-cloud-public-api v0.164.0/go.mod h1:NFBEyGmfJlXdtqjUjtGCcgrRor9J51du+CG+/d1qiPQ=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
