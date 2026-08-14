@@ -1,6 +1,6 @@
 module github.com/qdrant/qcloud-cli
 
-go 1.26.0
+go 1.26.6
 
 require (
 	github.com/creativeprojects/go-selfupdate v1.6.0
