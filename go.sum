@@ -1,5 +1,5 @@
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 h1:fXh8CsdNpjRr8R5vFdqtIxPt/Lno2IIJlYOdZBIZn0w=
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1 h1:6nlcxMOui23ZRVAfJM451duu79P1npA5JRdZqMilrrQ=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1/go.mod h1:TCt1lluMFnctISJXvkIQ4x3ABrPuUKCWKyjKdkJNBpw=
 code.gitea.io/sdk/gitea v0.23.2 h1:iJB1FDmLegwfwjX8gotBDHdPSbk/ZR8V9VmEJaVsJYg=
 code.gitea.io/sdk/gitea v0.23.2/go.mod h1:yyF5+GhljqvA30sRDreoyHILruNiy4ASufugzYg0VHM=
 github.com/42wim/httpsig v1.2.4 h1:mI5bH0nm4xn7K18fo1K3okNDRq8CCJ0KbBYWyA6r8lU=
@@ -73,8 +73,8 @@ github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c h1:+mdjkGKdHQG3305AYmd
 github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjLxUqIJNnCWiEdr3bn6IUYi15bNlnbCCU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qdrant/qdrant-cloud-public-api v0.164.0 h1:4jANTzTeawAFA+htExvABPdFfmIR0876jWi5zJJJxP4=
-github.com/qdrant/qdrant-cloud-public-api v0.164.0/go.mod h1:NFBEyGmfJlXdtqjUjtGCcgrRor9J51du+CG+/d1qiPQ=
+github.com/qdrant/qdrant-cloud-public-api v0.170.0 h1:B01TJV2EVKdoQkhlsQQXYnjhnA9hl44+lqPZ1txmegg=
+github.com/qdrant/qdrant-cloud-public-api v0.170.0/go.mod h1:DZfiEUkwf6gWyHGmwLvT6FQQEMZIjyb4BtT71k5lg1c=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
@@ -156,8 +156,8 @@ google.golang.org/genproto/googleapis/rpc v0.0.0-20260713224248-f5fc221cf8c4 h1:
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260713224248-f5fc221cf8c4/go.mod h1:4Hqkh8ycfw05ld/3BWL7rJOSfebL2Q+DVDeRgYgxUU8=
 google.golang.org/grpc v1.83.0 h1:JeNZEKJFbQxArAMl+hiytHauacDNqJUllNfmIMmpqnQ=
 google.golang.org/grpc v1.83.0/go.mod h1:kDyl6SKsiHKt0uylY5gtn5cEjkrIOhQOGDgIc4JGwzQ=
-google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
-google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
+google.golang.org/protobuf v1.36.12 h1:pJOKDDOyeXErUroCihFAd5LQuwXBSpVnKGrj5o/fwxc=
+google.golang.org/protobuf v1.36.12/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 h1:YR8cESwS4TdDjEe65xsg0ogRM/Nc3DYOhEAlW+xobZo=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

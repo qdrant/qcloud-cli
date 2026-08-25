@@ -8,19 +8,19 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/qdrant/qdrant-cloud-public-api v0.164.0
+	github.com/qdrant/qdrant-cloud-public-api v0.170.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.83.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1 // indirect
 	code.gitea.io/sdk/gitea v0.23.2 // indirect
 	github.com/42wim/httpsig v1.2.4 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
