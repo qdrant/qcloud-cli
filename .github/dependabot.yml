@@ -1,12 +1,40 @@
 version: 2
-
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
+    # Do not pull a version that was published hours ago, so a compromised
+    # release has time to be caught and yanked. Security updates are exempt from
+    # cooldown, so CVE fixes still arrive immediately.
     cooldown:
       default-days: 7
+    groups:
+      # Batch low-risk bumps into a single PR. Anything that does not match a
+      # group keeps getting its own PR, so major bumps stay individually
+      # reviewable without needing a group of their own.
+      go-minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      docker-minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -14,3 +42,13 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    groups:
+      # No update-types filter, so majors are batched here too. Actions are
+      # SHA-pinned with a version comment, and a major bump is usually a runner
+      # or Node runtime bump rather than an interface change, so one PR for all
+      # of them is the useful granularity.
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+
