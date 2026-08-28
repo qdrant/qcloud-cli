@@ -5,12 +5,13 @@ on:
     tags:
       - "v*.*.*"
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -64,6 +65,7 @@ jobs:
         working-directory: landing_page
         env:
           GH_TOKEN: ${{ secrets.LANDING_PAGE_PAT }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           if git diff --quiet -- qdrant-landing/content/documentation/cloud-cli/reference; then
             echo "no changes to sync"
@@ -73,15 +75,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          branch="qcloud-cli-docs-sync-${{ github.ref_name }}"
+          branch="qcloud-cli-docs-sync-${REF_NAME}"
           git checkout -b "$branch"
           git add qdrant-landing/content/documentation/cloud-cli/reference
-          git commit -m "docs: sync qcloud CLI command reference for ${{ github.ref_name }}"
+          git commit -m "docs: sync qcloud CLI command reference for ${REF_NAME}"
           git push -u origin "$branch" --force
 
           gh pr create \
-            --title "docs: sync qcloud CLI command reference for ${{ github.ref_name }}" \
-            --body "Auto-generated from [qdrant/qcloud-cli@${{ github.ref_name }}](https://github.com/qdrant/qcloud-cli/releases/tag/${{ github.ref_name }}) by the release workflow." \
+            --title "docs: sync qcloud CLI command reference for ${REF_NAME}" \
+            --body "Auto-generated from [qdrant/qcloud-cli@${REF_NAME}](https://github.com/qdrant/qcloud-cli/releases/tag/${REF_NAME}) by the release workflow." \
             --head "$branch" \
             --base main \
             || echo "PR already exists for $branch"
