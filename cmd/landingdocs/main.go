@@ -35,6 +35,7 @@ func rewriteLinks(text string) string {
 		if target == "qcloud" {
 			return fmt.Sprintf("[%s](/documentation/cloud-cli/reference/)", label)
 		}
+
 		return fmt.Sprintf("[%s](/documentation/cloud-cli/reference/%s/)", label, target)
 	})
 }
@@ -52,6 +53,7 @@ func demoteHeadings(text string) string {
 			}
 		}
 	}
+
 	return strings.Join(lines, "\n")
 }
 
@@ -66,9 +68,11 @@ func annotateCodeFences(text string) string {
 			if !inFence {
 				lines[i] = "```bash"
 			}
+
 			inFence = !inFence
 		}
 	}
+
 	return strings.Join(lines, "\n")
 }
 
@@ -83,12 +87,14 @@ func convert(srcPath string) (page, error) {
 	if err != nil {
 		return page{}, err
 	}
+
 	lines := strings.Split(string(raw), "\n")
 
 	titleLine := lines[0]
 	if !strings.HasPrefix(titleLine, "## ") {
 		return page{}, fmt.Errorf("unexpected heading in %s: %q", srcPath, titleLine)
 	}
+
 	title := strings.TrimSpace(strings.TrimPrefix(titleLine, "## "))
 
 	description := ""
@@ -112,6 +118,7 @@ func frontmatter(title, description string, weight int) string {
 	if len(short) > 120 {
 		short = strings.TrimSpace(short[:117]) + "..."
 	}
+
 	return fmt.Sprintf(
 		"---\ntitle: %s\nshort_description: %q\ndescription: %q\nweight: %d\n---\n\n",
 		title, short, description, weight,
@@ -127,6 +134,7 @@ func run(srcDir, destDir string) error {
 	if err != nil {
 		return err
 	}
+
 	for _, f := range existing {
 		if err := os.Remove(f); err != nil {
 			return err
@@ -137,9 +145,11 @@ func run(srcDir, destDir string) error {
 	if err != nil {
 		return err
 	}
+
 	if len(files) == 0 {
 		return fmt.Errorf("no markdown files found in %s", srcDir)
 	}
+
 	sort.Strings(files)
 
 	for i, src := range files {
