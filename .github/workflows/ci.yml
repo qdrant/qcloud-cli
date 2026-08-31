@@ -47,6 +47,10 @@ jobs:
       - name: Run tests
         run: go test -coverpkg=./internal/... -coverprofile=build/coverage.txt -v -race ./...
 
+      - name: Run cmd/landingdocs  tests
+        run: go test ./...
+        working-directory: cmd/landingdocs
+
   go-mod-tidy:
     runs-on: ubuntu-latest
     steps:
