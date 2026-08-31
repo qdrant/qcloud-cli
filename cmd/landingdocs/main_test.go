@@ -27,6 +27,7 @@ func TestRun_GeneratesGoldenPages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("glob generated files: %v", err)
 	}
+
 	if len(got) != len(wantFiles) {
 		t.Fatalf("generated %d files, want %d: %v", len(got), len(wantFiles), got)
 	}
@@ -44,6 +45,7 @@ func TestRun_GeneratesGoldenPages(t *testing.T) {
 			if err := os.WriteFile(goldenPath, gotContent, 0o644); err != nil {
 				t.Fatalf("update golden file %s: %v", goldenPath, err)
 			}
+
 			continue
 		}
 
