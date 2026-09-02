@@ -3,6 +3,7 @@ title: Command Reference
 short_description: "Root command"
 description: "Root command"
 weight: 0
+partition: deploy
 ---
 
 # qcloud
