@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.26.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.26.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.25.0...v0.26.0)
+
+### Features
+
+- add docs syncing script, but make it golang (#187) ([fc9b79d](https://github.com/qdrant/qcloud-cli/commit/fc9b79d8db080e24259d9d2f76183114ff0822e3))
+
 ## [v0.25.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.25.0)
 
 ### Features
