@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.26.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.26.1)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.26.0...v0.26.1)
+
+### Bug Fixes
+
+- **cd**: make the docs sync job open a PR (#190) ([fc5281a](https://github.com/qdrant/qcloud-cli/commit/fc5281a83adf6854c048552adf21f3a2d6d1d822))
+
 ## [v0.26.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.26.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.25.0...v0.26.0)
