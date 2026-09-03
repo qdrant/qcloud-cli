@@ -32,6 +32,8 @@ jobs:
   sync-docs:
     runs-on: ubuntu-latest
     needs: release
+    permissions:
+      contents: read
     steps:
       - name: Checkout qcloud-cli
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -68,23 +70,36 @@ jobs:
           GH_TOKEN: ${{ secrets.LANDING_PAGE_PAT }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          if git diff --quiet -- qdrant-landing/content/documentation/cloud-cli/reference; then
-            echo "no changes to sync"
-            exit 0
-          fi
+          set -euo pipefail
+
+          reference="qdrant-landing/content/documentation/cloud-cli/reference"
+          branch="qcloud-cli-docs-sync-${REF_NAME}"
+          base="$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          branch="qcloud-cli-docs-sync-${REF_NAME}"
           git checkout -b "$branch"
-          git add qdrant-landing/content/documentation/cloud-cli/reference
+
+          # Staging is the only view that sees the untracked pages a new
+          # command adds; git diff on the worktree misses them entirely.
+          git add -A -- "$reference"
+          if git diff --cached --quiet -- "$reference"; then
+            echo "command reference is unchanged, nothing to sync"
+            exit 0
+          fi
+
           git commit -m "docs: sync qcloud CLI command reference for ${REF_NAME}"
-          git push -u origin "$branch" --force
+
+          # The branch belongs to this workflow; re-running a tag reuses it.
+          git push --force origin "$branch"
+
+          if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            echo "PR for $branch is already open, updated it in place"
+            exit 0
+          fi
 
           gh pr create \
             --title "docs: sync qcloud CLI command reference for ${REF_NAME}" \
             --body "Auto-generated from [qdrant/qcloud-cli@${REF_NAME}](https://github.com/qdrant/qcloud-cli/releases/tag/${REF_NAME}) by the release workflow." \
             --head "$branch" \
-            --base main \
-            || echo "PR already exists for $branch"
+            --base "$base"

@@ -113,16 +113,23 @@ func convert(srcPath string) (page, error) {
 	return page{title: title, description: description, body: body}, nil
 }
 
-func frontmatter(title, description string, weight int) string {
+func frontmatter(title, description string, weight int, partition string) string {
 	short := description
 	if len(short) > 120 {
 		short = strings.TrimSpace(short[:117]) + "..."
 	}
 
-	return fmt.Sprintf(
-		"---\ntitle: %s\nshort_description: %q\ndescription: %q\nweight: %d\n---\n\n",
+	fm := fmt.Sprintf(
+		"---\ntitle: %s\nshort_description: %q\ndescription: %q\nweight: %d\n",
 		title, short, description, weight,
 	)
+
+	// Only section indexes carry a partition in the landing_page docs tree.
+	if partition != "" {
+		fm += fmt.Sprintf("partition: %s\n", partition)
+	}
+
+	return fm + "---\n\n"
 }
 
 func run(srcDir, destDir string) error {
@@ -162,10 +169,10 @@ func run(srcDir, destDir string) error {
 		var destName, fm string
 		if name == "qcloud.md" {
 			destName = "_index.md"
-			fm = frontmatter("Command Reference", p.description, 0)
+			fm = frontmatter("Command Reference", p.description, 0, "deploy")
 		} else {
 			destName = name
-			fm = frontmatter(p.title, p.description, i+1)
+			fm = frontmatter(p.title, p.description, i+1, "")
 		}
 
 		dest := filepath.Join(destDir, destName)
