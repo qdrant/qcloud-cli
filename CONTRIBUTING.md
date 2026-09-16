@@ -60,6 +60,8 @@ Regenerate the base64 values with `base64 -i <file> | pbcopy` (macOS `base64` do
 
 The certificate expires after five years and the App Store Connect API key can be revoked at any time. Neither is checked before release time, so an expired certificate or a revoked key shows up as a failed release rather than an early warning.
 
+The release submits the notarization request but does not wait for Apple's verdict. Polling the notary service for the result got us `429 Too Many Requests` and failed the release, so `wait` is off. A rejected submission now shows up in App Store Connect rather than as a red release job.
+
 
 ## Conventions
 
