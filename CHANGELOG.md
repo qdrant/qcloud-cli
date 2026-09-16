@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.27.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.27.1)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.27.0...v0.27.1)
+
+### Bug Fixes
+
+- **cd**: do not wait for the Apple notarization verdict (#196) ([2890c39](https://github.com/qdrant/qcloud-cli/commit/2890c39f8d2052225c46423d0eb3db086650bd97))
+
 ## [v0.27.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.27.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.26.1...v0.27.0)
