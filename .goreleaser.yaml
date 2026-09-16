@@ -38,7 +38,7 @@ notarize:
         issuer_id: "{{ .Env.APPLE_NOTARY_ISSUER }}"
         key_id: "{{ .Env.APPLE_NOTARY_KEY_ID }}"
         key: "{{ .Env.APPLE_NOTARY_KEY }}"
-        wait: true
+        wait: false
         timeout: 20m
 
 archives:
