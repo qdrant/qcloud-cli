@@ -44,6 +44,22 @@ After merging to `main`, releaser-pleaser opens or updates a "release PR" that b
 
 No manual tagging is needed.
 
+### macOS code signing
+
+The darwin binaries are signed with a Qdrant Developer ID Application certificate and notarized by Apple during the release, so macOS Gatekeeper accepts them without the usual quarantine workaround. GoReleaser does this itself on the Linux runner; there is no macOS runner involved.
+
+It relies on five repository secrets:
+
+- `APPLE_CERTIFICATE_P12_FILE` — base64 of the Developer ID Application `.p12`, exported with its private key
+- `APPLE_CERTIFICATE_P12_PASSWORD` — the `.p12` export password
+- `APPLE_NOTARY_ISSUER` — Issuer ID from App Store Connect
+- `APPLE_NOTARY_KEY_ID` — Key ID of the App Store Connect API key
+- `APPLE_NOTARY_KEY` — base64 of `AuthKey_<KEYID>.p8`
+
+Regenerate the base64 values with `base64 -i <file> | pbcopy` (macOS `base64` does not wrap, so no `-w0`).
+
+The certificate expires after five years and the App Store Connect API key can be revoked at any time. Neither is checked before release time, so an expired certificate or a revoked key shows up as a failed release rather than an early warning.
+
 
 ## Conventions
 
