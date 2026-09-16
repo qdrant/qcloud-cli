@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.27.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.27.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.26.1...v0.27.0)
+
+### Features
+
+- introduce macOS notarization for the darwin binary (#194) ([6ca23d8](https://github.com/qdrant/qcloud-cli/commit/6ca23d826889c05be94dfb6a6d75d3de137eb047))
+
 ## [v0.26.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.26.1)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.26.0...v0.26.1)
