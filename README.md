@@ -29,8 +29,6 @@ Download the latest release from [GitHub Releases](https://github.com/qdrant/qcl
 
 Select the archive that matches your OS and CPU architecture, extract it, and place the `qcloud` binary somewhere in your `PATH` (e.g. `~/.local/bin` or `/usr/local/bin`).
 
-> **macOS:** The binary is not signed. If macOS blocks it, run `xattr -d com.apple.quarantine qcloud` after extracting. In the future we will sign the binary so that this step is not needed.
-
 > If `~/.local/bin` is not in your `PATH`, you can use `/usr/local/bin` instead (requires `sudo`).
 
 ### From source
