@@ -21,6 +21,11 @@ Each package includes a baseline disk size. Requesting more disk than the baseli
 new package has a larger baseline disk than the current total, the disk size increases to
 match.
 
+Reducing RAM is always allowed, but a cluster whose memory usage does not fit the smaller
+package can run out of memory and become unavailable. A warning is printed before the
+scale when that is the case, or when the usage could not be determined; --force skips the
+confirmation but not the warning.
+
 ```
 qcloud cluster scale <cluster-id> [flags]
 ```

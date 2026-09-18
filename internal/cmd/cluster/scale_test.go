@@ -500,3 +500,153 @@ func TestScale_DeprecatedCurrentPackageSucceedsWithNoResourceFlags(t *testing.T)
 	require.True(t, ok)
 	assert.Equal(t, pkgID1, req.GetCluster().GetConfiguration().GetPackageId())
 }
+
+func downscaleRisk(status clusterv1.ClusterDownscaleRiskStatus, reason *string) *clusterv1.GetClusterDownscaleRiskResponse {
+	return &clusterv1.GetClusterDownscaleRiskResponse{
+		DownscaleRisks: []*clusterv1.ClusterDownscaleRiskInfo{
+			{
+				Resource: clusterv1.ClusterDownscaleRiskResource_CLUSTER_DOWNSCALE_RISK_RESOURCE_MEMORY,
+				Status:   status,
+				Reason:   reason,
+			},
+		},
+	}
+}
+
+// ramDownscaleEnv sets up a scale from 8GiB to 4GiB of RAM.
+func ramDownscaleEnv(env *testutil.TestEnv) {
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: newPkg(pkgID3, "1000m", "8GiB", "50GiB"),
+		newPkg:     newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+	})
+}
+
+// The warning is printed even with --force: it is advisory, and whatever ran the command
+// keeps it in its log.
+func TestScale_DownscaleRiskWarnsWhenUsageExceedsTarget(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	ramDownscaleEnv(env)
+	reason := "Your cluster is currently using more RAM than the selected configuration provides."
+	env.Server.GetClusterDownscaleRiskCalls.Returns(
+		downscaleRisk(clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_EXCEEDS_TARGET, &reason),
+		nil,
+	)
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "4GiB", "--force")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "Warning: "+reason)
+	req, ok := env.Server.GetClusterDownscaleRiskCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "cluster-123", req.GetClusterId())
+	assert.Equal(t, pkgID1, req.GetPackageId())
+	assert.Equal(t, 1, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestScale_DownscaleRiskFallsBackToBuiltInCopy(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	ramDownscaleEnv(env)
+	env.Server.GetClusterDownscaleRiskCalls.Returns(
+		downscaleRisk(clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_EXCEEDS_TARGET, nil),
+		nil,
+	)
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "4GiB", "--force")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "Warning: Your cluster is currently using more RAM than the selected configuration provides.")
+}
+
+func TestScale_DownscaleRiskNoRiskIsNotWarnedAbout(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	ramDownscaleEnv(env)
+	env.Server.GetClusterDownscaleRiskCalls.Returns(
+		downscaleRisk(clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_NO_RISK, nil),
+		nil,
+	)
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "4GiB", "--force", "--debug")
+	require.NoError(t, err)
+
+	assert.NotContains(t, stderr, "Warning:")
+	// Silence is the correct output here, so --debug is what tells a "no risk" verdict
+	// apart from a check that never ran.
+	assert.Contains(t, stderr, "CLUSTER_DOWNSCALE_RISK_STATUS_NO_RISK")
+	assert.Equal(t, 1, env.Server.UpdateClusterCalls.Count())
+}
+
+// A verdict that cannot be read leaves the usage unknown; it never fails the scale, which
+// the platform allows either way.
+func TestScale_DownscaleRiskErrorWarnsAndProceeds(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	ramDownscaleEnv(env)
+	env.Server.GetClusterDownscaleRiskCalls.Returns(nil, status.Error(codes.Unavailable, "metrics unavailable"))
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "4GiB", "--force", "--debug")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "Warning: Your cluster's current RAM usage could not be determined.")
+	// The warning cannot name the cause, so --debug has to.
+	assert.Contains(t, stderr, "metrics unavailable")
+	assert.Equal(t, 1, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestScale_DownscaleRiskUnknownStatusWarns(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	ramDownscaleEnv(env)
+	env.Server.GetClusterDownscaleRiskCalls.Returns(
+		&clusterv1.GetClusterDownscaleRiskResponse{DownscaleRisks: []*clusterv1.ClusterDownscaleRiskInfo{}},
+		nil,
+	)
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "4GiB", "--force")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "Warning: Your cluster's current RAM usage could not be determined.")
+}
+
+// Anything that is not a RAM reduction is answered "no risk" by the platform, and only
+// after a cluster and a package lookup, so it is not worth the round trip.
+func TestScale_DownscaleRiskNotQueriedWithoutRAMReduction(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{name: "nodes only", args: []string{"--nodes", "3"}},
+		{name: "ram increase", args: []string{"--ram", "8GiB"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := testutil.NewTestEnv(t)
+			setupScale(env, scaleEnv{
+				cluster:    baseCluster(),
+				currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+				newPkg:     newPkg(pkgID3, "1000m", "8GiB", "50GiB"),
+			})
+
+			args := append([]string{"cluster", "scale", "cluster-123"}, tc.args...)
+			_, stderr, err := testutil.Exec(t, env, append(args, "--force")...)
+			require.NoError(t, err)
+
+			assert.Equal(t, 0, env.Server.GetClusterDownscaleRiskCalls.Count())
+			assert.NotContains(t, stderr, "Warning:")
+		})
+	}
+}
+
+// Declining the prompt still aborts, warning or no warning.
+func TestScale_DownscaleRiskWarningIsShownBeforeAbort(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	ramDownscaleEnv(env)
+	env.Server.GetClusterDownscaleRiskCalls.Returns(
+		downscaleRisk(clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_EXCEEDS_TARGET, nil),
+		nil,
+	)
+
+	stdout, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "4GiB")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "Warning:")
+	assert.Contains(t, stdout, "Aborted.")
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
