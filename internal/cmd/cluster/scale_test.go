@@ -592,7 +592,7 @@ func TestScale_DownscaleRiskErrorWarnsAndProceeds(t *testing.T) {
 	assert.Equal(t, 1, env.Server.UpdateClusterCalls.Count())
 }
 
-func TestScale_DownscaleRiskUnknownStatusWarns(t *testing.T) {
+func TestScale_DownscaleRiskNoMemoryEntryWarns(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	ramDownscaleEnv(env)
 	env.Server.GetClusterDownscaleRiskCalls.Returns(
@@ -604,6 +604,55 @@ func TestScale_DownscaleRiskUnknownStatusWarns(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, stderr, "Warning: Your cluster's current RAM usage could not be determined.")
+}
+
+// USAGE_UNKNOWN and any status this client does not know take the same path: the platform's
+// own reason when it sent one, this client's copy when it did not.
+func TestScale_DownscaleRiskUnknownUsageWarns(t *testing.T) {
+	platformReason := "RAM usage metrics are temporarily unavailable."
+	builtIn := "Your cluster's current RAM usage could not be determined."
+
+	for _, tc := range []struct {
+		name   string
+		status clusterv1.ClusterDownscaleRiskStatus
+		reason *string
+		want   string
+	}{
+		{
+			name:   "usage unknown with a reason",
+			status: clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_UNKNOWN,
+			reason: &platformReason,
+			want:   platformReason,
+		},
+		{
+			name:   "usage unknown without a reason",
+			status: clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_UNKNOWN,
+			want:   builtIn,
+		},
+		{
+			name:   "status this client does not know",
+			status: clusterv1.ClusterDownscaleRiskStatus(99),
+			want:   builtIn,
+		},
+		{
+			name:   "status this client does not know, with a reason",
+			status: clusterv1.ClusterDownscaleRiskStatus(99),
+			reason: &platformReason,
+			want:   platformReason,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := testutil.NewTestEnv(t)
+			ramDownscaleEnv(env)
+			env.Server.GetClusterDownscaleRiskCalls.Returns(downscaleRisk(tc.status, tc.reason), nil)
+
+			_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "4GiB", "--force")
+			require.NoError(t, err)
+
+			assert.Contains(t, stderr, "Warning: "+tc.want)
+			assert.Equal(t, 1, env.Server.UpdateClusterCalls.Count())
+		})
+	}
 }
 
 // Anything that is not a RAM reduction is answered "no risk" by the platform, and only
