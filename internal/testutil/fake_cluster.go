@@ -13,6 +13,7 @@ type FakeClusterService struct {
 
 	ListClustersCalls            MethodSpy[*clusterv1.ListClustersRequest, *clusterv1.ListClustersResponse]
 	GetClusterCalls              MethodSpy[*clusterv1.GetClusterRequest, *clusterv1.GetClusterResponse]
+	GetClusterDownscaleRiskCalls MethodSpy[*clusterv1.GetClusterDownscaleRiskRequest, *clusterv1.GetClusterDownscaleRiskResponse]
 	CreateClusterCalls           MethodSpy[*clusterv1.CreateClusterRequest, *clusterv1.CreateClusterResponse]
 	UpdateClusterCalls           MethodSpy[*clusterv1.UpdateClusterRequest, *clusterv1.UpdateClusterResponse]
 	DeleteClusterCalls           MethodSpy[*clusterv1.DeleteClusterRequest, *clusterv1.DeleteClusterResponse]
@@ -88,4 +89,10 @@ func (f *FakeClusterService) ListQdrantReleases(ctx context.Context, req *cluste
 func (f *FakeClusterService) CreateClusterFromBackup(ctx context.Context, req *clusterv1.CreateClusterFromBackupRequest) (*clusterv1.CreateClusterFromBackupResponse, error) {
 	f.CreateClusterFromBackupCalls.record(req)
 	return f.CreateClusterFromBackupCalls.dispatch(ctx, req, f.UnimplementedClusterServiceServer.CreateClusterFromBackup)
+}
+
+// GetClusterDownscaleRisk records the call and dispatches via GetClusterDownscaleRiskCalls.
+func (f *FakeClusterService) GetClusterDownscaleRisk(ctx context.Context, req *clusterv1.GetClusterDownscaleRiskRequest) (*clusterv1.GetClusterDownscaleRiskResponse, error) {
+	f.GetClusterDownscaleRiskCalls.record(req)
+	return f.GetClusterDownscaleRiskCalls.dispatch(ctx, req, f.UnimplementedClusterServiceServer.GetClusterDownscaleRisk)
 }

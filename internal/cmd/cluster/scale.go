@@ -1,9 +1,11 @@
 package cluster
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -49,7 +51,12 @@ packages can be listed with 'package list' using the --cloud-provider and
 Each package includes a baseline disk size. Requesting more disk than the baseline with
 --disk provisions the difference as additional storage. Disk cannot be downscaled. If a
 new package has a larger baseline disk than the current total, the disk size increases to
-match.`,
+match.
+
+Reducing RAM is always allowed, but a cluster whose memory usage does not fit the smaller
+package can run out of memory and become unavailable. A warning is printed before the
+scale when that is the case, or when the usage could not be determined; --force skips the
+confirmation but not the warning.`,
 				Args: util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().Uint32("nodes", 0, "Number of nodes")
@@ -248,6 +255,12 @@ match.`,
 
 			newStorageTier := storageTierString(cluster.Configuration.GetClusterStorageConfiguration().GetStorageTierType())
 
+			// Printed before the prompt and independently of it, so that --force keeps the
+			// warning in the log of whatever ran the command.
+			if warning := memoryDownscaleWarning(ctx, s.Logger, client.Cluster(), accountID, cluster.GetId(), currentPkg.GetPackage(), newPkg); warning != "" {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s\n", warning)
+			}
+
 			force, _ := cmd.Flags().GetBool("force")
 			prompt := scaleConfirmPrompt(
 				cluster,
@@ -350,4 +363,113 @@ func scaleConfirmPrompt(
 
 	prompt += "\nProceed?"
 	return prompt
+}
+
+// downscaleRiskTimeout bounds the risk read. The verdict costs the platform a metrics
+// query, and a slow metrics source must not hold up a scale the platform accepts either
+// way.
+const downscaleRiskTimeout = 5 * time.Second
+
+// The copy to fall back on when the platform reports a status without a reason of its
+// own. Its own `reason` is preferred, so that it can be reworded without a CLI release.
+const (
+	usageExceedsTargetWarning = "Your cluster is currently using more RAM than the selected configuration provides. " +
+		"Scaling down may cause your cluster to run out of memory and become unavailable."
+	// Also stands in for a verdict that could not be read at all: either way the usage is
+	// unknown, so the copy states the consequence without naming a cause.
+	usageUnknownWarning = "Your cluster's current RAM usage could not be determined. If you scale down, your cluster " +
+		"could run out of memory and become unavailable if its usage exceeds the new configuration."
+)
+
+// memoryDownscaleWarning returns the warning to show before moving a cluster from oldPkg
+// to newPkg, or "" when there is nothing to warn about.
+//
+// The verdict is advisory: the platform allows a downscale whatever it says, so a verdict
+// that cannot be read is reported as an unknown usage rather than failing the scale.
+func memoryDownscaleWarning(
+	ctx context.Context,
+	log *slog.Logger,
+	svc clusterv1.ClusterServiceClient,
+	accountID, clusterID string,
+	oldPkg, newPkg *bookingv1.Package,
+) string {
+	// Only a reduction is worth a round trip: the platform answers anything else with
+	// "no risk", and only after it has resolved the cluster and the candidate package.
+	if !isRAMReduction(oldPkg, newPkg) {
+		log.Debug("downscale risk not assessed, not a RAM reduction",
+			"current", oldPkg.GetResourceConfiguration().GetRam(),
+			"candidate", newPkg.GetResourceConfiguration().GetRam())
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, downscaleRiskTimeout)
+	defer cancel()
+
+	resp, err := svc.GetClusterDownscaleRisk(ctx, &clusterv1.GetClusterDownscaleRiskRequest{
+		AccountId: accountID,
+		ClusterId: clusterID,
+		PackageId: newPkg.GetId(),
+	})
+	if err != nil {
+		// The warning cannot name the cause, so --debug is the only place the difference
+		// between an unreachable metrics source and a rejected call is visible.
+		log.Debug("downscale risk could not be read", "error", err)
+		return usageUnknownWarning
+	}
+
+	var memoryRisk *clusterv1.ClusterDownscaleRiskInfo
+	for _, risk := range resp.GetDownscaleRisks() {
+		if risk.GetResource() == clusterv1.ClusterDownscaleRiskResource_CLUSTER_DOWNSCALE_RISK_RESOURCE_MEMORY {
+			memoryRisk = risk
+			break
+		}
+	}
+
+	// A verdict that came back without a memory entry leaves the usage as unknown as an
+	// explicit CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_UNKNOWN does.
+	if memoryRisk == nil {
+		log.Debug("downscale risk verdict carries no memory entry")
+		return usageUnknownWarning
+	}
+
+	// Without this, a "no risk" verdict and a check that never ran look the same from
+	// outside: both print nothing.
+	log.Debug("downscale risk assessed", "status", memoryRisk.GetStatus().String())
+
+	reason := memoryRisk.GetReason()
+	switch memoryRisk.GetStatus() {
+	case clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_NO_RISK:
+		return ""
+	case clusterv1.ClusterDownscaleRiskStatus_CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_EXCEEDS_TARGET:
+		if reason == "" {
+			return usageExceedsTargetWarning
+		}
+
+	// An unspecified status, and one this client does not know, are both as unknown as
+	// CLUSTER_DOWNSCALE_RISK_STATUS_USAGE_UNKNOWN itself.
+	default:
+		if reason == "" {
+			return usageUnknownWarning
+		}
+	}
+
+	return reason
+}
+
+// isRAMReduction reports whether newPkg books less RAM per node than oldPkg. RAM that
+// cannot be read on either side is not reported as a reduction: the platform assesses
+// against the cluster's provisioned total, which this comparison only approximates, and
+// the warning is not worth a false positive.
+func isRAMReduction(oldPkg, newPkg *bookingv1.Package) bool {
+	oldRAM, err := resource.ParseByteQuantity(oldPkg.GetResourceConfiguration().GetRam())
+	if err != nil {
+		return false
+	}
+
+	newRAM, err := resource.ParseByteQuantity(newPkg.GetResourceConfiguration().GetRam())
+	if err != nil {
+		return false
+	}
+
+	return newRAM < oldRAM
 }
