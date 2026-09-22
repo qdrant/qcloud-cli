@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.28.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.28.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.27.1...v0.28.0)
+
+### Features
+
+- Warn before scaling a cluster below its memory usage (#199) ([7ace2b9](https://github.com/qdrant/qcloud-cli/commit/7ace2b9f07349f9baafb8353e5e3ac0f616dc31c))
+
 ## [v0.27.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.27.1)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.27.0...v0.27.1)
