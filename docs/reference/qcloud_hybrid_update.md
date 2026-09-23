@@ -23,6 +23,7 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug
 ### Options
 
 ```
+      --cluster-domain string           Kubernetes cluster domain for in-cluster services (defaults to cluster.local if omitted)
       --database-storage-class string   Default database storage class (uses cluster default if omitted)
   -h, --help                            help for update
       --log-level string                Log level for deployed components ("debug", "info", "warn", "error")

@@ -48,6 +48,7 @@ func TestHybridUpdate_Configuration(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env, "hybrid", "update", "env-abc",
 		"--namespace", "new-ns",
+		"--cluster-domain", "custom.internal",
 		"--log-level", "debug",
 	)
 	require.NoError(t, err)
@@ -57,6 +58,7 @@ func TestHybridUpdate_Configuration(t *testing.T) {
 	cfg := req.GetHybridCloudEnvironment().GetConfiguration()
 	require.NotNil(t, cfg)
 	assert.Equal(t, "new-ns", cfg.GetNamespace())
+	assert.Equal(t, "custom.internal", cfg.GetClusterDomain())
 	assert.Equal(t, hybridv1.HybridCloudEnvironmentConfigurationLogLevel_HYBRID_CLOUD_ENVIRONMENT_CONFIGURATION_LOG_LEVEL_DEBUG, cfg.GetLogLevel())
 }
 

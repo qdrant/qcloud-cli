@@ -58,6 +58,7 @@ func TestHybridCreate_WithOptionalFlags(t *testing.T) {
 		"--namespace", "qdrant-ns",
 		"--database-storage-class", "fast-ssd",
 		"--snapshot-storage-class", "standard",
+		"--cluster-domain", "custom.internal",
 		"--log-level", "info",
 	)
 	require.NoError(t, err)
@@ -69,6 +70,7 @@ func TestHybridCreate_WithOptionalFlags(t *testing.T) {
 	assert.Equal(t, "qdrant-ns", cfg.GetNamespace())
 	assert.Equal(t, "fast-ssd", cfg.GetDatabaseStorageClass())
 	assert.Equal(t, "standard", cfg.GetSnapshotStorageClass())
+	assert.Equal(t, "custom.internal", cfg.GetClusterDomain())
 	assert.Equal(t, hybridv1.HybridCloudEnvironmentConfigurationLogLevel_HYBRID_CLOUD_ENVIRONMENT_CONFIGURATION_LOG_LEVEL_INFO, cfg.GetLogLevel())
 }
 

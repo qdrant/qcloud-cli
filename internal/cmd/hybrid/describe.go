@@ -67,6 +67,10 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 					fmt.Fprintf(w, "  Snapshot Storage Class: %s\n", cfg.GetSnapshotStorageClass())
 				}
 
+				if cfg.ClusterDomain != nil {
+					fmt.Fprintf(w, "  Cluster Domain:         %s\n", cfg.GetClusterDomain())
+				}
+
 				if cfg.LogLevel != nil {
 					fmt.Fprintf(w, "  Log Level:              %s\n", logLevelString(cfg.GetLogLevel()))
 				}
