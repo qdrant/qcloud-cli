@@ -32,6 +32,7 @@ qcloud hybrid create --name my-hybrid-env \
 ### Options
 
 ```
+      --cluster-domain string           Kubernetes cluster domain for in-cluster services (defaults to cluster.local if omitted)
       --database-storage-class string   Default database storage class (uses cluster default if omitted)
   -h, --help                            help for create
       --log-level string                Log level for deployed components ("debug", "info", "warn", "error")

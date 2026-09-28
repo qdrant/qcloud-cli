@@ -17,6 +17,7 @@ func TestHybridDescribe_FullOutput(t *testing.T) {
 
 	ns := "qdrant-ns"
 	dbClass := "fast-ssd"
+	clusterDomain := "custom.internal"
 	env.HybridServer.GetHybridCloudEnvironmentCalls.Returns(&hybridv1.GetHybridCloudEnvironmentResponse{
 		HybridCloudEnvironment: &hybridv1.HybridCloudEnvironment{
 			Id:   "env-abc",
@@ -28,6 +29,7 @@ func TestHybridDescribe_FullOutput(t *testing.T) {
 			Configuration: &hybridv1.HybridCloudEnvironmentConfiguration{
 				Namespace:            ns,
 				DatabaseStorageClass: &dbClass,
+				ClusterDomain:        &clusterDomain,
 			},
 		},
 	}, nil)
@@ -40,6 +42,7 @@ func TestHybridDescribe_FullOutput(t *testing.T) {
 	assert.Contains(t, stdout, "READY")
 	assert.Contains(t, stdout, "qdrant-ns")
 	assert.Contains(t, stdout, "fast-ssd")
+	assert.Contains(t, stdout, "custom.internal")
 	assert.Contains(t, stdout, "5")
 }
 

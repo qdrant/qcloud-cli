@@ -36,6 +36,7 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 			cmd.Flags().String("namespace", "", "Kubernetes namespace where Qdrant components are deployed (read-only after bootstrapping)")
 			cmd.Flags().String("database-storage-class", "", "Default database storage class (uses cluster default if omitted)")
 			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class (uses cluster default if omitted)")
+			cmd.Flags().String("cluster-domain", "", "Kubernetes cluster domain for in-cluster services (defaults to cluster.local if omitted)")
 			cmd.Flags().String("log-level", "", `Log level for deployed components ("debug", "info", "warn", "error")`)
 			_ = cmd.RegisterFlagCompletionFunc("log-level", logLevelCompletion())
 			return cmd
@@ -77,7 +78,8 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 			}
 
 			if cmd.Flags().Changed("namespace") || cmd.Flags().Changed("database-storage-class") ||
-				cmd.Flags().Changed("snapshot-storage-class") || cmd.Flags().Changed("log-level") {
+				cmd.Flags().Changed("snapshot-storage-class") || cmd.Flags().Changed("cluster-domain") ||
+				cmd.Flags().Changed("log-level") {
 				if updated.Configuration == nil {
 					updated.Configuration = &hybridv1.HybridCloudEnvironmentConfiguration{}
 				}
@@ -97,6 +99,11 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug`,
 				if cmd.Flags().Changed("snapshot-storage-class") {
 					v, _ := cmd.Flags().GetString("snapshot-storage-class")
 					cfg.SnapshotStorageClass = &v
+				}
+
+				if cmd.Flags().Changed("cluster-domain") {
+					v, _ := cmd.Flags().GetString("cluster-domain")
+					cfg.ClusterDomain = &v
 				}
 
 				if cmd.Flags().Changed("log-level") {

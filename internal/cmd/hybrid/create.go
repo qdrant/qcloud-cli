@@ -41,6 +41,7 @@ If your account does not have access, you will be prompted to contact us.`,
 			cmd.Flags().String("namespace", "", "Kubernetes namespace where Qdrant components are deployed (read-only after bootstrapping)")
 			cmd.Flags().String("database-storage-class", "", "Default database storage class (uses cluster default if omitted)")
 			cmd.Flags().String("snapshot-storage-class", "", "Default snapshot storage class (uses cluster default if omitted)")
+			cmd.Flags().String("cluster-domain", "", "Kubernetes cluster domain for in-cluster services (defaults to cluster.local if omitted)")
 			cmd.Flags().String("log-level", "", `Log level for deployed components ("debug", "info", "warn", "error")`)
 			_ = cmd.MarkFlagRequired("name")
 			return cmd
@@ -65,7 +66,8 @@ If your account does not have access, you will be prompted to contact us.`,
 			}
 
 			if cmd.Flags().Changed("namespace") || cmd.Flags().Changed("database-storage-class") ||
-				cmd.Flags().Changed("snapshot-storage-class") || cmd.Flags().Changed("log-level") {
+				cmd.Flags().Changed("snapshot-storage-class") || cmd.Flags().Changed("cluster-domain") ||
+				cmd.Flags().Changed("log-level") {
 				env.Configuration = &hybridv1.HybridCloudEnvironmentConfiguration{}
 
 				if cmd.Flags().Changed("namespace") {
@@ -81,6 +83,11 @@ If your account does not have access, you will be prompted to contact us.`,
 				if cmd.Flags().Changed("snapshot-storage-class") {
 					v, _ := cmd.Flags().GetString("snapshot-storage-class")
 					env.Configuration.SnapshotStorageClass = &v
+				}
+
+				if cmd.Flags().Changed("cluster-domain") {
+					v, _ := cmd.Flags().GetString("cluster-domain")
+					env.Configuration.ClusterDomain = &v
 				}
 
 				if cmd.Flags().Changed("log-level") {
