@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.28.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.28.1)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.28.0...v0.28.1)
+
+### Bug Fixes
+
+- **hybrid**: add custom cluster-domain flag ([db13701](https://github.com/qdrant/qcloud-cli/commit/db1370110dcba722209d8e3d6f1faa78c3e73d5c))
+
 ## [v0.28.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.28.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.27.1...v0.28.0)
