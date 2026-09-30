@@ -14,7 +14,7 @@ import (
 func TestListPackages_TableOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+	env.BookingServer.ListGlobalPackagesCalls.Returns(&bookingv1.ListGlobalPackagesResponse{
 		Items: []*bookingv1.Package{
 			{
 				Id:   "pkg-123",
@@ -55,7 +55,7 @@ func TestListPackages_TableOutput(t *testing.T) {
 func TestListPackages_FreePackage(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+	env.BookingServer.ListGlobalPackagesCalls.Returns(&bookingv1.ListGlobalPackagesResponse{
 		Items: []*bookingv1.Package{
 			{
 				Id:                  "pkg-free",
@@ -77,7 +77,7 @@ func TestListPackages_FreePackage(t *testing.T) {
 func TestListPackages_HybridNoRegion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+	env.BookingServer.ListGlobalPackagesCalls.Returns(&bookingv1.ListGlobalPackagesResponse{
 		Items: []*bookingv1.Package{
 			{
 				Id:   "pkg-hybrid",

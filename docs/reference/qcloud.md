@@ -36,6 +36,7 @@ Documentation: https://github.com/qdrant/qcloud-cli
 * [qcloud context](qcloud_context.md)	 - Manage named configuration contexts
 * [qcloud hybrid](qcloud_hybrid.md)	 - Manage hybrid cloud environments
 * [qcloud iam](qcloud_iam.md)	 - Manage IAM resources in Qdrant Cloud
+* [qcloud inference](qcloud_inference.md)	 - Manage inference resources
 * [qcloud package](qcloud_package.md)	 - Manage packages
 * [qcloud self-upgrade](qcloud_self-upgrade.md)	 - Upgrade qcloud to the latest version
 * [qcloud version](qcloud_version.md)	 - Print the qcloud CLI version

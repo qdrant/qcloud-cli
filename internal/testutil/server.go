@@ -167,6 +167,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 
 	s := state.New(cfg.version)
 	s.SetClient(client)
+	s.SetUnAuthenticatedClient(client)
 
 	var once sync.Once
 	cleanup := func() {
