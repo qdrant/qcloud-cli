@@ -32,14 +32,3 @@ func VectorType(t bookingv1.VectorType) string {
 func ModelModality(m bookingv1.ModelModality) string {
 	return strings.TrimPrefix(m.String(), "MODEL_MODALITY_")
 }
-
-// InferenceModelPrice formats an inference model price per 1M tokens.
-// Inference model prices are given in millicents without a currency field;
-// Qdrant Cloud prices inference in USD. Returns "free" for zero.
-func InferenceModelPrice(mc uint32) string {
-	if mc == 0 {
-		return "free"
-	}
-
-	return fmt.Sprintf("%.4f USD", float64(mc)/100_000.0)
-}
