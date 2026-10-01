@@ -103,7 +103,7 @@ func TestListInferenceModels_SortedByName(t *testing.T) {
 	require.NoError(t, err)
 
 	names := make([]string, 0, 3)
-	for _, line := range strings.Split(strings.TrimSpace(stdout), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(stdout), "\n") {
 		names = append(names, strings.Fields(line)[0])
 	}
 
