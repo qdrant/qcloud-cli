@@ -13,6 +13,7 @@ import (
 	contextcmd "github.com/qdrant/qcloud-cli/internal/cmd/context"
 	"github.com/qdrant/qcloud-cli/internal/cmd/hybrid"
 	"github.com/qdrant/qcloud-cli/internal/cmd/iam"
+	"github.com/qdrant/qcloud-cli/internal/cmd/inference"
 	packagecmd "github.com/qdrant/qcloud-cli/internal/cmd/package"
 	"github.com/qdrant/qcloud-cli/internal/cmd/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/cmd/version"
@@ -80,6 +81,7 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 	cmd.AddCommand(backup.NewCommand(s))
 	cmd.AddCommand(hybrid.NewCommand(s))
 	cmd.AddCommand(packagecmd.NewCommand(s))
+	cmd.AddCommand(inference.NewCommand(s))
 	cmd.AddCommand(selfupgrade.NewCommand(s))
 
 	return cmd

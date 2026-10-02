@@ -6,7 +6,6 @@ linters:
     - containedctx
     - contextcheck
     - errorlint
-    - goconst
     - godot
     - importas
     - modernize

@@ -27,7 +27,7 @@ func NewCommand(s *state.State) *cobra.Command {
 }
 
 func newListCommand(s *state.State) *cobra.Command {
-	cmd := base.ListCmd[*bookingv1.ListPackagesResponse]{
+	cmd := base.ListCmd[*bookingv1.ListGlobalPackagesResponse]{
 		Use:   "list",
 		Short: "List available packages for cluster creation",
 		Example: `# List packages for a cloud provider and region
@@ -35,14 +35,9 @@ qcloud package list --cloud-provider aws --cloud-region eu-central-1
 
 # List packages for a hybrid cloud provider (no region required)
 qcloud package list --cloud-provider hybrid`,
-		Fetch: func(s *state.State, cmd *cobra.Command) (*bookingv1.ListPackagesResponse, error) {
+		Fetch: func(s *state.State, cmd *cobra.Command) (*bookingv1.ListGlobalPackagesResponse, error) {
 			ctx := cmd.Context()
-			client, err := s.Client(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			accountID, err := s.AccountID()
+			client, err := s.UnAuthenticatedClient(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -61,11 +56,9 @@ qcloud package list --cloud-provider hybrid`,
 				cloudRegionPtr = &cloudRegion
 			}
 
-			resp, err := client.Booking().ListPackages(ctx, &bookingv1.ListPackagesRequest{
-				AccountId:             accountID,
+			resp, err := client.Booking().ListGlobalPackages(ctx, &bookingv1.ListGlobalPackagesRequest{
 				CloudProviderId:       cloudProvider,
 				CloudProviderRegionId: cloudRegionPtr,
-				Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to list packages: %w", err)
@@ -73,7 +66,7 @@ qcloud package list --cloud-provider hybrid`,
 
 			return resp, nil
 		},
-		OutputTable: func(_ *cobra.Command, w io.Writer, resp *bookingv1.ListPackagesResponse) (output.TableRenderer, error) {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *bookingv1.ListGlobalPackagesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*bookingv1.Package](w)
 			t.AddField("NAME", func(p *bookingv1.Package) string {
 				return p.GetName()

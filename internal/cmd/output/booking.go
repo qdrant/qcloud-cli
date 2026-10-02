@@ -22,3 +22,13 @@ func FormatMillicents(mc int32, currency string) string {
 
 	return fmt.Sprintf("%.4f %s", float64(mc)/100_000.0, currency)
 }
+
+// VectorType returns a concise label for a VectorType.
+func VectorType(t bookingv1.VectorType) string {
+	return strings.TrimPrefix(t.String(), "VECTOR_TYPE_")
+}
+
+// ModelModality returns a concise label for a ModelModality.
+func ModelModality(m bookingv1.ModelModality) string {
+	return strings.TrimPrefix(m.String(), "MODEL_MODALITY_")
+}

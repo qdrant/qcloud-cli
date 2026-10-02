@@ -29,12 +29,13 @@ type BrowserOpener func(url string) error
 
 // State holds shared dependencies for all commands.
 type State struct {
-	Version     string
-	Config      *config.Config
-	Logger      *slog.Logger
-	client      *qcloudapi.Client
-	updater     Updater
-	openBrowser BrowserOpener
+	Version               string
+	Config                *config.Config
+	Logger                *slog.Logger
+	client                *qcloudapi.Client
+	unAuthenticatedClient *qcloudapi.Client
+	updater               Updater
+	openBrowser           BrowserOpener
 }
 
 // New creates a new State with the given version string.
@@ -66,9 +67,29 @@ func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 	return s.client, nil
 }
 
+// UnAuthenticatedClient returns the gRPC client without authentication, creating it lazily on first call.
+func (s *State) UnAuthenticatedClient(ctx context.Context) (*qcloudapi.Client, error) {
+	if s.unAuthenticatedClient != nil {
+		return s.unAuthenticatedClient, nil
+	}
+
+	c, err := qcloudapi.New(ctx, s.Config.Endpoint(), "", s.Version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant Cloud API: %w", err)
+	}
+
+	s.unAuthenticatedClient = c
+	return s.unAuthenticatedClient, nil
+}
+
 // SetClient injects a pre-built client, bypassing lazy creation.
 func (s *State) SetClient(c *qcloudapi.Client) {
 	s.client = c
+}
+
+// SetUnAuthenticatedClient injects a pre-built unauthenticated client, bypassing lazy creation.
+func (s *State) SetUnAuthenticatedClient(c *qcloudapi.Client) {
+	s.unAuthenticatedClient = c
 }
 
 // OpenBrowser opens the given URL in the user's default browser.
