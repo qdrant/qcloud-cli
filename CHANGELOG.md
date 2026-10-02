@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.29.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.29.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.28.1...v0.29.0)
+
+### Features
+
+- **inference**: add inference root command with model list ([40ffffb](https://github.com/qdrant/qcloud-cli/commit/40ffffb57d0587b9db4bce1811b130c626c648bc))
+
+### Bug Fixes
+
+- change list packages from using authenticated calls to the global alternative ([40ffffb](https://github.com/qdrant/qcloud-cli/commit/40ffffb57d0587b9db4bce1811b130c626c648bc))
+
 ## [v0.28.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.28.1)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.28.0...v0.28.1)
