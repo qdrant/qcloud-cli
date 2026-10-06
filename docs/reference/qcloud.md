@@ -39,5 +39,6 @@ Documentation: https://github.com/qdrant/qcloud-cli
 * [qcloud inference](qcloud_inference.md)	 - Manage inference resources
 * [qcloud package](qcloud_package.md)	 - Manage packages
 * [qcloud self-upgrade](qcloud_self-upgrade.md)	 - Upgrade qcloud to the latest version
+* [qcloud serverless](qcloud_serverless.md)	 - Manage Qdrant Cloud Serverless resources
 * [qcloud version](qcloud_version.md)	 - Print the qcloud CLI version
 
