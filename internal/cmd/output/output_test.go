@@ -3,6 +3,7 @@ package output_test
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -63,4 +64,20 @@ func TestTable_Write_BackwardCompat(t *testing.T) {
 	assert.Contains(t, out, "NAME")
 	assert.Contains(t, out, "1")
 	assert.Contains(t, out, "alpha")
+}
+
+func TestDuration(t *testing.T) {
+	tests := []struct {
+		in   time.Duration
+		want string
+	}{
+		{24 * time.Hour, "1 day"},
+		{30 * 24 * time.Hour, "30 days"},
+		{36 * time.Hour, "1 day 12 hours"},
+		{400 * 24 * time.Hour, "400 days"},
+		{90 * time.Minute, "1 hour 30 minutes"},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, output.Duration(tt.in))
+	}
 }

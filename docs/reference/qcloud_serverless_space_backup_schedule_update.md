@@ -8,7 +8,9 @@ Update a backup schedule of a serverless space.
 
 Only the fields whose flags are given are changed. --pause stops the schedule from
 creating new backups immediately and --resume starts it again; the schedule and
-its existing backups are kept while paused. The --space-id flag is required
+its existing backups are kept while paused. Pausing an already paused schedule
+keeps its original pause time, while a pause scheduled for the future is brought
+forward to now. The --space-id flag is required
 because the API looks up schedules within a space.
 
 ```

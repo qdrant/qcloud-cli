@@ -64,8 +64,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			}
 
 			if sched.GetRetentionPeriod() != nil {
-				days := int64(sched.GetRetentionPeriod().AsDuration().Hours()) / 24
-				fmt.Fprintf(w, "Retention: %d days\n", days)
+				fmt.Fprintf(w, "Retention: %s\n", output.Duration(sched.GetRetentionPeriod().AsDuration()))
 			}
 
 			return nil

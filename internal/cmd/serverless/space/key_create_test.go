@@ -15,7 +15,7 @@ import (
 )
 
 func time2027() time.Time {
-	return time.Date(2027, 6, 15, 0, 0, 0, 0, time.UTC)
+	return time.Date(2027, 6, 15, 23, 59, 59, 0, time.UTC)
 }
 
 func createdKeyResponse(id string) *spaceauthv1.CreateSpaceApiKeyResponse {
@@ -230,10 +230,32 @@ func TestSpaceKeyCreate_WaitTimeout(t *testing.T) {
 	env.ServerlessSpaceApiKeyServer.ListSpaceApiKeysCalls.Returns(
 		listedKey(spaceauthv1.SpaceApiKeyStatePhase_SPACE_API_KEY_STATE_PHASE_PROCESSING), nil)
 
-	_, _, err := testutil.Exec(t, env, "serverless", "space", "key", "create", "space-abc",
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "key", "create", "space-abc",
 		"--name", "my-key", "--wait", "--wait-timeout", "50ms", "--wait-poll-interval", "10ms")
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "API key key-new was created but did not become ready")
 	assert.Contains(t, err.Error(), "timed out waiting for API key to become ready")
+	// The secret must not be lost when waiting fails.
+	assert.Contains(t, stdout, "secret-key-value")
+}
+
+func TestSpaceKeyCreate_WaitFailurePrintsSecretAsJSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.ServerlessSpaceApiKeyServer.CreateSpaceApiKeyCalls.Returns(createdKeyResponse("key-new"), nil)
+	env.ServerlessSpaceApiKeyServer.ListSpaceApiKeysCalls.Returns(nil, assert.AnError)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "key", "create", "space-abc",
+		"--name", "my-key", "--wait", "--wait-poll-interval", "10ms", "--json")
+	require.Error(t, err)
+
+	var result struct {
+		ID  string `json:"id"`
+		Key string `json:"key"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	assert.Equal(t, "key-new", result.ID)
+	assert.Equal(t, "secret-key-value", result.Key)
 }
 
 func TestSpaceKeyCreate_WaitListError(t *testing.T) {
@@ -242,8 +264,9 @@ func TestSpaceKeyCreate_WaitListError(t *testing.T) {
 	env.ServerlessSpaceApiKeyServer.CreateSpaceApiKeyCalls.Returns(createdKeyResponse("key-new"), nil)
 	env.ServerlessSpaceApiKeyServer.ListSpaceApiKeysCalls.Returns(nil, assert.AnError)
 
-	_, _, err := testutil.Exec(t, env, "serverless", "space", "key", "create", "space-abc",
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "key", "create", "space-abc",
 		"--name", "my-key", "--wait", "--wait-poll-interval", "10ms")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get API key status")
+	assert.Contains(t, stdout, "secret-key-value")
 }

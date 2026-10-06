@@ -6,6 +6,7 @@ require (
 	github.com/creativeprojects/go-selfupdate v1.6.0
 	github.com/dustin/go-humanize v1.1.0
 	github.com/google/uuid v1.6.0
+	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/qdrant/qdrant-cloud-public-api v0.201.0

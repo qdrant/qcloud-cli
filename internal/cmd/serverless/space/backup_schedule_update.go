@@ -3,6 +3,7 @@ package space
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -15,13 +16,19 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
+// pauseClockSkew is how far "--pause" back-dates the pause timestamp to
+// tolerate a client clock that is behind the server's.
+const pauseClockSkew = time.Minute
+
 func newBackupScheduleUpdateCommand(s *state.State) *cobra.Command {
 	cmd := base.UpdateCmd[*spacebackupv1.BackupSchedule]{
 		Long: `Update a backup schedule of a serverless space.
 
 Only the fields whose flags are given are changed. --pause stops the schedule from
 creating new backups immediately and --resume starts it again; the schedule and
-its existing backups are kept while paused. The --space-id flag is required
+its existing backups are kept while paused. Pausing an already paused schedule
+keeps its original pause time, while a pause scheduled for the future is brought
+forward to now. The --space-id flag is required
 because the API looks up schedules within a space.`,
 		Example: `# Change the schedule to run every 6 hours
 qcloud serverless space backup schedule update 3f1c2b4a-8d7e-4f6a-9b0c-1d2e3f4a5b6c \
@@ -76,7 +83,15 @@ qcloud serverless space backup schedule update 3f1c2b4a-8d7e-4f6a-9b0c-1d2e3f4a5
 			}
 
 			if pause, _ := cmd.Flags().GetBool("pause"); pause {
-				sched.PausedAt = timestamppb.Now()
+				now := time.Now()
+				// Keep an existing pause that is already in effect so the
+				// original pause time is preserved. A pause scheduled for the
+				// future is brought forward to now.
+				if sched.PausedAt == nil || sched.GetPausedAt().AsTime().After(now) {
+					// Back-date slightly so the pause is already in effect on
+					// the server even if the local clock runs behind it.
+					sched.PausedAt = timestamppb.New(now.Add(-pauseClockSkew))
+				}
 			}
 
 			if resume, _ := cmd.Flags().GetBool("resume"); resume {
@@ -91,6 +106,7 @@ qcloud serverless space backup schedule update 3f1c2b4a-8d7e-4f6a-9b0c-1d2e3f4a5
 
 			resp, err := client.ServerlessBackup().UpdateBackupSchedule(ctx, &spacebackupv1.UpdateBackupScheduleRequest{
 				BackupSchedule: sched,
+				UpdateMask:     updateMask(cmd, backupScheduleUpdatePaths),
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to update backup schedule: %w", err)

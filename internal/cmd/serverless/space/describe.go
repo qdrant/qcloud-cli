@@ -137,7 +137,12 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 	}
 
 	fmt.Fprintf(w, "  Max Collection Size:             %s\n", maxSize)
-	fmt.Fprintf(w, "  Max Collection Size (platform):  %s\n", unlimitedIfZero(resource.ByteQuantity(col.GetPlatformMaxSize()).String(), col.GetPlatformMaxSize()))
+	platformMaxSize := notSet
+	if col != nil {
+		platformMaxSize = unlimitedIfZero(resource.ByteQuantity(col.GetPlatformMaxSize()).String(), col.GetPlatformMaxSize())
+	}
+
+	fmt.Fprintf(w, "  Max Collection Size (platform):  %s\n", platformMaxSize)
 
 	searcher := cfg.GetSearcherSettings()
 	idleTimeout := notSet
@@ -152,5 +157,10 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 
 	fmt.Fprintf(w, "  Searcher Idle Timeout:           %s\n", idleTimeout)
 	fmt.Fprintf(w, "  Searcher Max Workers:            %s\n", maxWorkers)
-	fmt.Fprintf(w, "  Searcher Max Workers (platform): %s\n", unlimitedIfZero(fmt.Sprintf("%d", searcher.GetPlatformMaxWorkers()), searcher.GetPlatformMaxWorkers()))
+	platformMaxWorkers := notSet
+	if searcher != nil {
+		platformMaxWorkers = unlimitedIfZero(fmt.Sprintf("%d", searcher.GetPlatformMaxWorkers()), searcher.GetPlatformMaxWorkers())
+	}
+
+	fmt.Fprintf(w, "  Searcher Max Workers (platform): %s\n", platformMaxWorkers)
 }

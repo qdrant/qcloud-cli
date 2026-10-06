@@ -11,8 +11,12 @@ individual collections (--collection, repeatable). The two kinds of rules cannot
 combined in one key. When neither flag is given, the server assigns global manage
 access.
 
+An expiration date given with --expires is inclusive: the key stays valid until
+the end of that day (23:59:59 UTC).
+
 The secret key value is printed only once. Store it securely; it cannot be
-retrieved later.
+retrieved later. If --wait fails after the key was created, the secret is still
+printed before the error is returned.
 
 ```
 qcloud serverless space key create <space-id> [flags]
@@ -41,7 +45,7 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 ```
       --access-type string       Global access type: manage, read-only or metrics-read-only (default: server assigns manage)
       --collection stringArray   Collection access rule as 'name=read-only|read-write'; can be specified multiple times
-      --expires string           Expiration date in YYYY-MM-DD format
+      --expires string           Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)
   -h, --help                     help for create
       --name string              Name of the API key (required)
       --wait                     Wait for the API key to become ready

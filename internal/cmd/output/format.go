@@ -7,7 +7,14 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/hako/durafmt"
 )
+
+// Duration formats d as a human-readable duration with days as the largest
+// unit and at most two units (e.g. "1 day", "30 days", "1 day 12 hours").
+func Duration(d time.Duration) string {
+	return durafmt.Parse(d).LimitToUnit("days").LimitFirstN(2).String()
+}
 
 // HumanTime returns a relative human-readable time (e.g., "3 hours ago").
 // Returns empty string for zero time.

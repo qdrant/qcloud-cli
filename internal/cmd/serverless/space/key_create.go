@@ -13,6 +13,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -26,8 +27,12 @@ individual collections (--collection, repeatable). The two kinds of rules cannot
 combined in one key. When neither flag is given, the server assigns global manage
 access.
 
+An expiration date given with --expires is inclusive: the key stays valid until
+the end of that day (23:59:59 UTC).
+
 The secret key value is printed only once. Store it securely; it cannot be
-retrieved later.`,
+retrieved later. If --wait fails after the key was created, the secret is still
+printed before the error is returned.`,
 		Example: `# Create an API key with manage access
 qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name my-key
 
@@ -50,7 +55,7 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 			cmd.Flags().String("name", "", "Name of the API key (required)")
 			cmd.Flags().String("access-type", "", "Global access type: manage, read-only or metrics-read-only (default: server assigns manage)")
 			cmd.Flags().StringArray("collection", nil, "Collection access rule as 'name=read-only|read-write'; can be specified multiple times")
-			cmd.Flags().String("expires", "", "Expiration date in YYYY-MM-DD format")
+			cmd.Flags().String("expires", "", "Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)")
 			cmd.Flags().Bool("wait", false, "Wait for the API key to become ready")
 			cmd.Flags().Duration("wait-timeout", time.Minute, "Maximum time to wait for the API key to become ready")
 			cmd.Flags().Duration("wait-poll-interval", time.Second, "How often to poll the API key status")
@@ -79,7 +84,8 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 					return nil, fmt.Errorf("invalid --expires %q: must be in YYYY-MM-DD format", expiresStr)
 				}
 
-				expiresAt = timestamppb.New(t)
+				// Expire at the end of the given day so the date is inclusive.
+				expiresAt = timestamppb.New(t.AddDate(0, 0, 1).Add(-time.Second))
 			}
 
 			ctx := cmd.Context()
@@ -120,7 +126,15 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 			ready, err := waitForSpaceApiKeyReady(ctx, client.ServerlessSpaceApiKey(), cmd.ErrOrStderr(),
 				accountID, spaceID, created.GetId(), waitTimeout, pollInterval)
 			if err != nil {
-				return nil, err
+				// The secret is only returned by the create call, so print it
+				// before failing; otherwise it would be lost.
+				if s.Config.JSONOutput() {
+					_ = output.PrintJSON(cmd.OutOrStdout(), created)
+				} else {
+					printCreatedKey(cmd.OutOrStdout(), created)
+				}
+
+				return nil, fmt.Errorf("API key %s was created but did not become ready: %w", created.GetId(), err)
 			}
 
 			// The secret is only returned by the create call, never by list.
@@ -128,15 +142,20 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 			return ready, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, key *spaceauthv1.SpaceApiKey) {
-			fmt.Fprintf(out, "API key %s (%s) created.\n", key.GetId(), key.GetName())
-			if k := key.GetKey(); k != "" {
-				fmt.Fprintln(out, "")
-				fmt.Fprintln(out, "Save this key now — it will not be shown again:")
-				fmt.Fprintf(out, "  %s\n", k)
-			}
+			printCreatedKey(out, key)
 		},
 		ValidArgsFunction: completion.SpaceIDCompletion(s),
 	}.CobraCommand(s)
+}
+
+// printCreatedKey prints the creation message and the one-time secret of a key.
+func printCreatedKey(out io.Writer, key *spaceauthv1.SpaceApiKey) {
+	fmt.Fprintf(out, "API key %s (%s) created.\n", key.GetId(), key.GetName())
+	if k := key.GetKey(); k != "" {
+		fmt.Fprintln(out, "")
+		fmt.Fprintln(out, "Save this key now — it will not be shown again:")
+		fmt.Fprintf(out, "  %s\n", k)
+	}
 }
 
 // parseKeyAccessRules builds the access rules from the --access-type and

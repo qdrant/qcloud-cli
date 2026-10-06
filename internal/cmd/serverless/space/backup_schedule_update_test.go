@@ -53,6 +53,7 @@ func TestSpaceBackupScheduleUpdate_ChangedFieldsOnly(t *testing.T) {
 
 	req, ok := env.ServerlessBackupServer.UpdateBackupScheduleCalls.Last()
 	require.True(t, ok)
+	assert.Equal(t, []string{"schedule"}, req.GetUpdateMask().GetPaths())
 	sched := req.GetBackupSchedule()
 	assert.Equal(t, "0 4 * * *", sched.GetSchedule())
 	assert.Equal(t, "nightly", sched.GetName())
@@ -70,6 +71,7 @@ func TestSpaceBackupScheduleUpdate_NameAndRetention(t *testing.T) {
 
 	req, ok := env.ServerlessBackupServer.UpdateBackupScheduleCalls.Last()
 	require.True(t, ok)
+	assert.Equal(t, []string{"name", "retention_period"}, req.GetUpdateMask().GetPaths())
 	assert.Equal(t, "renamed", req.GetBackupSchedule().GetName())
 	assert.Equal(t, 90*24*time.Hour, req.GetBackupSchedule().GetRetentionPeriod().AsDuration())
 }
@@ -85,8 +87,41 @@ func TestSpaceBackupScheduleUpdate_Pause(t *testing.T) {
 
 	req, ok := env.ServerlessBackupServer.UpdateBackupScheduleCalls.Last()
 	require.True(t, ok)
+	assert.Equal(t, []string{"paused_at"}, req.GetUpdateMask().GetPaths())
 	require.NotNil(t, req.GetBackupSchedule().PausedAt)
-	assert.WithinRange(t, req.GetBackupSchedule().GetPausedAt().AsTime(), before.Add(-time.Second), time.Now().Add(time.Second))
+	// The pause is back-dated by up to a minute to tolerate clock skew.
+	assert.WithinRange(t, req.GetBackupSchedule().GetPausedAt().AsTime(), before.Add(-2*time.Minute), time.Now())
+}
+
+func TestSpaceBackupScheduleUpdate_PauseKeepsExistingPause(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	pausedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	paused := existingSchedule()
+	paused.PausedAt = timestamppb.New(pausedAt)
+	setupScheduleUpdate(env, paused)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "backup", "schedule", "update", "sched-1",
+		"--space-id", "space-abc", "--pause")
+	require.NoError(t, err)
+
+	req, ok := env.ServerlessBackupServer.UpdateBackupScheduleCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, pausedAt, req.GetBackupSchedule().GetPausedAt().AsTime())
+}
+
+func TestSpaceBackupScheduleUpdate_PauseBringsFuturePauseForward(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	paused := existingSchedule()
+	paused.PausedAt = timestamppb.New(time.Now().Add(24 * time.Hour))
+	setupScheduleUpdate(env, paused)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "backup", "schedule", "update", "sched-1",
+		"--space-id", "space-abc", "--pause")
+	require.NoError(t, err)
+
+	req, ok := env.ServerlessBackupServer.UpdateBackupScheduleCalls.Last()
+	require.True(t, ok)
+	assert.False(t, req.GetBackupSchedule().GetPausedAt().AsTime().After(time.Now()))
 }
 
 func TestSpaceBackupScheduleUpdate_Resume(t *testing.T) {
@@ -101,6 +136,7 @@ func TestSpaceBackupScheduleUpdate_Resume(t *testing.T) {
 
 	req, ok := env.ServerlessBackupServer.UpdateBackupScheduleCalls.Last()
 	require.True(t, ok)
+	assert.Equal(t, []string{"paused_at"}, req.GetUpdateMask().GetPaths())
 	assert.Nil(t, req.GetBackupSchedule().PausedAt)
 }
 

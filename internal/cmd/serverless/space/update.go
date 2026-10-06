@@ -71,7 +71,8 @@ qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
 			}
 
 			resp, err := client.ServerlessSpace().UpdateSpace(ctx, &spacev1.UpdateSpaceRequest{
-				Space: updated,
+				Space:      updated,
+				UpdateMask: updateMask(cmd, spaceUpdatePaths),
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to update space: %w", err)

@@ -6,6 +6,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 )
 
@@ -31,7 +32,7 @@ func formatRetention(d *durationpb.Duration) string {
 		return "indefinite"
 	}
 
-	return fmt.Sprintf("%d days", int64(d.AsDuration().Hours())/24)
+	return output.Duration(d.AsDuration())
 }
 
 // formatCollection renders an optional collection name; unset means the whole

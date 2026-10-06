@@ -67,7 +67,7 @@ func TestSpaceUpdate_OnlyChangedFields(t *testing.T) {
 
 	req, ok := env.ServerlessSpaceServer.UpdateSpaceCalls.Last()
 	require.True(t, ok)
-	assert.Nil(t, req.GetUpdateMask())
+	assert.Equal(t, []string{"configuration.searcher_settings.max_workers"}, req.GetUpdateMask().GetPaths())
 
 	sp := req.GetSpace()
 	want := existingSpace()
@@ -101,6 +101,15 @@ func TestSpaceUpdate_MergeAndRemove(t *testing.T) {
 
 	req, ok := env.ServerlessSpaceServer.UpdateSpaceCalls.Last()
 	require.True(t, ok)
+	assert.Equal(t, []string{
+		"name",
+		"labels",
+		"configuration.allowed_ip_source_ranges",
+		"configuration.allowed_origins",
+		"configuration.collection_settings.max_size",
+		"configuration.searcher_settings.idle_timeout",
+	}, req.GetUpdateMask().GetPaths())
+
 	sp := req.GetSpace()
 	assert.Equal(t, "renamed-space", sp.GetName())
 	require.Len(t, sp.GetLabels(), 1)
