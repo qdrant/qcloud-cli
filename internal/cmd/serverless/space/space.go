@@ -37,6 +37,7 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60`,
 		newDeleteCommand(s),
 		newWaitCommand(s),
 		newSuggestNameCommand(s),
+		newKeyCommand(s),
 	)
 	return cmd
 }
