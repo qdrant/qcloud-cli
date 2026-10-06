@@ -208,6 +208,7 @@ All TrimPrefix-based enum formatters live in `internal/cmd/output/`, grouped by 
 | `output/booking.go` | `PackageTier` |
 | `output/hybrid.go` | `HybridEnvironmentPhase`, `ClusterCreationStatus`, `HybridComponentPhase` |
 | `output/backup.go` | `BackupStatus`, `BackupScheduleStatus`, `BackupRestoreStatus` |
+| `output/serverless.go` | `SpacePhase`, `SpaceApiKeyPhase`, `SpaceGlobalAccessType`, `SpaceCollectionAccessType`, `SpaceBackupStatus`, `SpaceBackupScheduleStatus`, `SpaceBackupRestoreStatus` |
 
 Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "PREFIX_")`. Functions are named after the type they format, without a redundant `String` suffix, since the package qualifier already provides context (`output.ClusterPhase(...)`).
 

@@ -21,6 +21,9 @@ import (
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
+	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
+	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
+	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -56,19 +59,22 @@ func (rc *RequestCapture) intercept(
 
 // TestEnv bundles everything a test needs.
 type TestEnv struct {
-	State                *state.State
-	Server               *FakeClusterService
-	BookingServer        *FakeBookingService
-	PlatformServer       *FakePlatformService
-	DatabaseApiKeyServer *FakeDatabaseApiKeyService
-	BackupServer         *FakeBackupService
-	HybridServer         *FakeHybridService
-	MonitoringServer     *FakeMonitoringService
-	AuthServer           *FakeAuthService
-	IAMServer            *FakeIAMService
-	AccountServer        *FakeAccountService
-	Capture              *RequestCapture
-	Cleanup              func()
+	State                       *state.State
+	Server                      *FakeClusterService
+	BookingServer               *FakeBookingService
+	PlatformServer              *FakePlatformService
+	DatabaseApiKeyServer        *FakeDatabaseApiKeyService
+	BackupServer                *FakeBackupService
+	HybridServer                *FakeHybridService
+	MonitoringServer            *FakeMonitoringService
+	AuthServer                  *FakeAuthService
+	IAMServer                   *FakeIAMService
+	AccountServer               *FakeAccountService
+	ServerlessSpaceServer       *FakeServerlessSpaceService
+	ServerlessSpaceApiKeyServer *FakeServerlessSpaceApiKeyService
+	ServerlessBackupServer      *FakeServerlessBackupService
+	Capture                     *RequestCapture
+	Cleanup                     func()
 }
 
 // Option configures a TestEnv.
@@ -120,6 +126,9 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fakeAuth := &FakeAuthService{}
 	fakeIAM := &FakeIAMService{}
 	fakeAccount := &FakeAccountService{}
+	fakeServerlessSpace := &FakeServerlessSpaceService{}
+	fakeServerlessSpaceApiKey := &FakeServerlessSpaceApiKeyService{}
+	fakeServerlessBackup := &FakeServerlessBackupService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -135,6 +144,9 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	authv1.RegisterAuthServiceServer(srv, fakeAuth)
 	iamv1.RegisterIAMServiceServer(srv, fakeIAM)
 	accountv1.RegisterAccountServiceServer(srv, fakeAccount)
+	spacev1.RegisterSpaceServiceServer(srv, fakeServerlessSpace)
+	spaceauthv1.RegisterSpaceApiKeyServiceServer(srv, fakeServerlessSpaceApiKey)
+	spacebackupv1.RegisterBackupServiceServer(srv, fakeServerlessBackup)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -179,19 +191,22 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	t.Cleanup(cleanup)
 
 	return &TestEnv{
-		State:                s,
-		Server:               fake,
-		BookingServer:        fakeBooking,
-		PlatformServer:       fakePlatform,
-		DatabaseApiKeyServer: fakeDatabaseApiKey,
-		BackupServer:         fakeBackup,
-		HybridServer:         fakeHybrid,
-		MonitoringServer:     fakeMonitoring,
-		AuthServer:           fakeAuth,
-		IAMServer:            fakeIAM,
-		AccountServer:        fakeAccount,
-		Capture:              capture,
-		Cleanup:              cleanup,
+		State:                       s,
+		Server:                      fake,
+		BookingServer:               fakeBooking,
+		PlatformServer:              fakePlatform,
+		DatabaseApiKeyServer:        fakeDatabaseApiKey,
+		BackupServer:                fakeBackup,
+		HybridServer:                fakeHybrid,
+		MonitoringServer:            fakeMonitoring,
+		AuthServer:                  fakeAuth,
+		IAMServer:                   fakeIAM,
+		AccountServer:               fakeAccount,
+		ServerlessSpaceServer:       fakeServerlessSpace,
+		ServerlessSpaceApiKeyServer: fakeServerlessSpaceApiKey,
+		ServerlessBackupServer:      fakeServerlessBackup,
+		Capture:                     capture,
+		Cleanup:                     cleanup,
 	}
 }
 
