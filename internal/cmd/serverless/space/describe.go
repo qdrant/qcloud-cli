@@ -78,37 +78,9 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 				return nil
 			}
 
-			notSet := "(not set)"
-
 			fmt.Fprintln(w)
 			fmt.Fprintln(w, "Configuration:")
-			fmt.Fprintf(w, "  Allowed IPs:                     %s\n", output.JoinOrDefault(cfg.GetAllowedIpSourceRanges(), "(any)"))
-			fmt.Fprintf(w, "  Allowed Origins:                 %s\n", output.JoinOrDefault(cfg.GetAllowedOrigins(), notSet))
-			fmt.Fprintf(w, "  Max Collections (platform):      %s\n", unlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxCollectionsPerSpace()), cfg.GetMaxCollectionsPerSpace()))
-
-			col := cfg.GetCollectionSettings()
-			maxSize := notSet
-			if col != nil && col.MaxSize != nil {
-				maxSize = resource.ByteQuantity(col.GetMaxSize()).String()
-			}
-
-			fmt.Fprintf(w, "  Max Collection Size:             %s\n", maxSize)
-			fmt.Fprintf(w, "  Max Collection Size (platform):  %s\n", unlimitedIfZero(resource.ByteQuantity(col.GetPlatformMaxSize()).String(), col.GetPlatformMaxSize()))
-
-			searcher := cfg.GetSearcherSettings()
-			idleTimeout := notSet
-			if searcher != nil && searcher.IdleTimeout != nil {
-				idleTimeout = searcher.GetIdleTimeout().AsDuration().String()
-			}
-
-			maxWorkers := notSet
-			if searcher != nil && searcher.MaxWorkers != nil {
-				maxWorkers = fmt.Sprintf("%d", searcher.GetMaxWorkers())
-			}
-
-			fmt.Fprintf(w, "  Searcher Idle Timeout:           %s\n", idleTimeout)
-			fmt.Fprintf(w, "  Searcher Max Workers:            %s\n", maxWorkers)
-			fmt.Fprintf(w, "  Searcher Max Workers (platform): %s\n", unlimitedIfZero(fmt.Sprintf("%d", searcher.GetPlatformMaxWorkers()), searcher.GetPlatformMaxWorkers()))
+			printSpaceConfiguration(w, cfg)
 
 			return nil
 		},
@@ -147,4 +119,38 @@ func unlimitedIfZero(formatted string, v uint64) string {
 	}
 
 	return formatted
+}
+
+// printSpaceConfiguration prints the configuration of a space as indented
+// "key: value" lines.
+func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
+	notSet := "(not set)"
+
+	fmt.Fprintf(w, "  Allowed IPs:                     %s\n", output.JoinOrDefault(cfg.GetAllowedIpSourceRanges(), "(any)"))
+	fmt.Fprintf(w, "  Allowed Origins:                 %s\n", output.JoinOrDefault(cfg.GetAllowedOrigins(), notSet))
+	fmt.Fprintf(w, "  Max Collections (platform):      %s\n", unlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxCollectionsPerSpace()), cfg.GetMaxCollectionsPerSpace()))
+
+	col := cfg.GetCollectionSettings()
+	maxSize := notSet
+	if col != nil && col.MaxSize != nil {
+		maxSize = resource.ByteQuantity(col.GetMaxSize()).String()
+	}
+
+	fmt.Fprintf(w, "  Max Collection Size:             %s\n", maxSize)
+	fmt.Fprintf(w, "  Max Collection Size (platform):  %s\n", unlimitedIfZero(resource.ByteQuantity(col.GetPlatformMaxSize()).String(), col.GetPlatformMaxSize()))
+
+	searcher := cfg.GetSearcherSettings()
+	idleTimeout := notSet
+	if searcher != nil && searcher.IdleTimeout != nil {
+		idleTimeout = searcher.GetIdleTimeout().AsDuration().String()
+	}
+
+	maxWorkers := notSet
+	if searcher != nil && searcher.MaxWorkers != nil {
+		maxWorkers = fmt.Sprintf("%d", searcher.GetMaxWorkers())
+	}
+
+	fmt.Fprintf(w, "  Searcher Idle Timeout:           %s\n", idleTimeout)
+	fmt.Fprintf(w, "  Searcher Max Workers:            %s\n", maxWorkers)
+	fmt.Fprintf(w, "  Searcher Max Workers (platform): %s\n", unlimitedIfZero(fmt.Sprintf("%d", searcher.GetPlatformMaxWorkers()), searcher.GetPlatformMaxWorkers()))
 }

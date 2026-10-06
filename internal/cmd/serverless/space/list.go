@@ -47,61 +47,29 @@ qcloud serverless space list --page-size 10`,
 				return nil, err
 			}
 
-			newRequest := func() *spacev1.ListSpacesRequest {
-				req := &spacev1.ListSpacesRequest{AccountId: accountID}
+			items, next, err := fetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacev1.Space, string, error) {
+				req := &spacev1.ListSpacesRequest{
+					AccountId: accountID,
+					PageSize:  pageSize,
+					PageToken: pageToken,
+				}
 				if cmd.Flags().Changed("cloud-region") {
 					region, _ := cmd.Flags().GetString("cloud-region")
 					req.CloudRegionId = &region
 				}
 
-				return req
-			}
-
-			pageSizeChanged := cmd.Flags().Changed("page-size")
-			pageTokenChanged := cmd.Flags().Changed("page-token")
-
-			if !pageSizeChanged && !pageTokenChanged {
-				// Auto-paginate: fetch all pages and return combined results.
-				var allItems []*spacev1.Space
-				var nextToken *string
-				for {
-					req := newRequest()
-					req.PageToken = nextToken
-
-					resp, err := client.ServerlessSpace().ListSpaces(ctx, req)
-					if err != nil {
-						return nil, fmt.Errorf("failed to list spaces: %w", err)
-					}
-
-					allItems = append(allItems, resp.GetItems()...)
-					if resp.GetNextPageToken() == "" {
-						break
-					}
-
-					nextToken = resp.NextPageToken
+				resp, err := client.ServerlessSpace().ListSpaces(ctx, req)
+				if err != nil {
+					return nil, "", fmt.Errorf("failed to list spaces: %w", err)
 				}
 
-				return &spacev1.ListSpacesResponse{Items: allItems}, nil
-			}
-
-			// Manual mode: single request with provided flags.
-			req := newRequest()
-			if pageSizeChanged {
-				ps, _ := cmd.Flags().GetInt32("page-size")
-				req.PageSize = &ps
-			}
-
-			if pageTokenChanged {
-				pt, _ := cmd.Flags().GetString("page-token")
-				req.PageToken = &pt
-			}
-
-			resp, err := client.ServerlessSpace().ListSpaces(ctx, req)
+				return resp.GetItems(), resp.GetNextPageToken(), nil
+			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to list spaces: %w", err)
+				return nil, err
 			}
 
-			return resp, nil
+			return &spacev1.ListSpacesResponse{Items: items, NextPageToken: next}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *spacev1.ListSpacesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*spacev1.Space](w)
@@ -136,8 +104,7 @@ qcloud serverless space list --page-size 10`,
 		},
 	}.CobraCommand(s)
 
-	cmd.Flags().Int32("page-size", 0, "Maximum number of spaces to return per page (manual pagination mode)")
-	cmd.Flags().String("page-token", "", "Page token from a previous response to resume from (manual pagination mode)")
+	addPaginationFlags(cmd, "spaces")
 	cmd.Flags().String("cloud-region", "", "Filter by cloud region ID")
 
 	return cmd
