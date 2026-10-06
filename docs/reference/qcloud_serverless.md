@@ -19,7 +19,7 @@ backups.
 qcloud serverless space list
 
 # Create a space in a region and wait until it is ready
-qcloud serverless space create --cloud-region aws-eu-central-1 --wait
+qcloud serverless space create --cloud-region eu-central-1 --wait
 ```
 
 ### Options

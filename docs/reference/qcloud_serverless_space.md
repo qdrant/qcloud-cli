@@ -19,7 +19,7 @@ and search-worker settings.
 qcloud serverless space list
 
 # Create a space with a generated name
-qcloud serverless space create --cloud-region aws-eu-central-1
+qcloud serverless space create --cloud-region eu-central-1
 
 # Show the details of a space
 qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60

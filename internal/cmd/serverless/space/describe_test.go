@@ -24,7 +24,7 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 		Space: &spacev1.Space{
 			Id:                  "space-abc",
 			Name:                "my-space",
-			CloudRegionId:       "aws-eu-central-1",
+			CloudRegionId:       "eu-central-1",
 			CreatedAt:           timestamppb.Now(),
 			CostAllocationLabel: new("team-search"),
 			Labels:              []*commonv1.KeyValue{{Key: "env", Value: "prod"}},
@@ -58,7 +58,7 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "space-abc")
 	assert.Contains(t, stdout, "my-space")
 	assert.Contains(t, stdout, "READY")
-	assert.Contains(t, stdout, "aws-eu-central-1")
+	assert.Contains(t, stdout, "eu-central-1")
 	assert.Contains(t, stdout, "https://space-abc.serverless.qdrant.io")
 	assert.Contains(t, stdout, "6334")
 	assert.Contains(t, stdout, "team-search")
@@ -103,7 +103,7 @@ func TestSpaceDescribe_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	env.ServerlessSpaceServer.GetSpaceCalls.Returns(&spacev1.GetSpaceResponse{
-		Space: &spacev1.Space{Id: "space-json", Name: "json-space", CloudRegionId: "aws-eu-central-1"},
+		Space: &spacev1.Space{Id: "space-json", Name: "json-space", CloudRegionId: "eu-central-1"},
 	}, nil)
 
 	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "describe", "space-json", "--json")
@@ -117,7 +117,7 @@ func TestSpaceDescribe_JSONOutput(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
 	assert.Equal(t, "space-json", result.ID)
 	assert.Equal(t, "json-space", result.Name)
-	assert.Equal(t, "aws-eu-central-1", result.CloudRegionID)
+	assert.Equal(t, "eu-central-1", result.CloudRegionID)
 }
 
 func TestSpaceDescribe_APIError(t *testing.T) {

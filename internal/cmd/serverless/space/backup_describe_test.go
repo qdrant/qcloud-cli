@@ -37,7 +37,7 @@ func TestSpaceBackupDescribe_TextOutput(t *testing.T) {
 		},
 		SpaceInfo: &spacebackupv1.SpaceInfo{
 			Name:          "my-space",
-			CloudRegionId: "aws-eu-central-1",
+			CloudRegionId: "eu-central-1",
 			Configuration: &spacev1.SpaceConfiguration{
 				AllowedIpSourceRanges: []string{"10.0.0.0/8"},
 			},
@@ -60,7 +60,7 @@ func TestSpaceBackupDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "(100%)")
 	assert.Contains(t, stdout, "Space Snapshot:")
 	assert.Contains(t, stdout, "my-space")
-	assert.Contains(t, stdout, "aws-eu-central-1")
+	assert.Contains(t, stdout, "eu-central-1")
 	assert.Contains(t, stdout, "10.0.0.0/8")
 
 	req, ok := env.ServerlessBackupServer.GetBackupCalls.Last()

@@ -25,17 +25,17 @@ later with "qcloud serverless space update".
 The space is provisioned asynchronously. Use --wait to block until it is ready
 and its endpoint is available.`,
 		Example: `# Create a space with a generated name
-qcloud serverless space create --cloud-region aws-eu-central-1
+qcloud serverless space create --cloud-region eu-central-1
 
 # Create a named space and wait until it is ready
-qcloud serverless space create --cloud-region aws-eu-central-1 --name my-space --wait
+qcloud serverless space create --cloud-region eu-central-1 --name my-space --wait
 
 # Create a space restricted to an office network and a web app origin
-qcloud serverless space create --cloud-region aws-eu-central-1 --name my-space \
+qcloud serverless space create --cloud-region eu-central-1 --name my-space \
   --allowed-ip 203.0.113.0/24 --allowed-origin https://app.example.com
 
 # Create a space with labels and per-collection limits
-qcloud serverless space create --cloud-region aws-eu-central-1 --name my-space \
+qcloud serverless space create --cloud-region eu-central-1 --name my-space \
   --label env=staging --max-collection-size 10GiB --searcher-max-workers 2`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{

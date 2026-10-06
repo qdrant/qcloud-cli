@@ -22,7 +22,7 @@ func TestSpaceList_TableOutput(t *testing.T) {
 			{
 				Id:            "space-1",
 				Name:          "my-space",
-				CloudRegionId: "aws-eu-central-1",
+				CloudRegionId: "eu-central-1",
 				CreatedAt:     timestamppb.Now(),
 				State: &spacev1.SpaceState{
 					Phase:    spacev1.SpaceStatePhase_SPACE_STATE_PHASE_READY,
@@ -41,7 +41,7 @@ func TestSpaceList_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "space-1")
 	assert.Contains(t, stdout, "my-space")
 	assert.Contains(t, stdout, "READY")
-	assert.Contains(t, stdout, "aws-eu-central-1")
+	assert.Contains(t, stdout, "eu-central-1")
 	assert.Contains(t, stdout, "https://space-1.serverless.qdrant.io")
 
 	req, ok := env.ServerlessSpaceServer.ListSpacesCalls.Last()
@@ -78,12 +78,12 @@ func TestSpaceList_CloudRegionFilter(t *testing.T) {
 
 	env.ServerlessSpaceServer.ListSpacesCalls.Returns(&spacev1.ListSpacesResponse{}, nil)
 
-	_, _, err := testutil.Exec(t, env, "serverless", "space", "list", "--cloud-region", "gcp-us-east4")
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "list", "--cloud-region", "us-east4")
 	require.NoError(t, err)
 
 	req, ok := env.ServerlessSpaceServer.ListSpacesCalls.Last()
 	require.True(t, ok)
-	assert.Equal(t, "gcp-us-east4", req.GetCloudRegionId())
+	assert.Equal(t, "us-east4", req.GetCloudRegionId())
 }
 
 func TestSpaceList_AutoPaginates(t *testing.T) {

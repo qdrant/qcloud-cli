@@ -28,7 +28,7 @@ func TestSpaceCreate_WithName(t *testing.T) {
 	echoCreateSpace(env)
 
 	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "create",
-		"--cloud-region", "aws-eu-central-1",
+		"--cloud-region", "eu-central-1",
 		"--name", "my-space",
 	)
 	require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestSpaceCreate_WithName(t *testing.T) {
 	sp := req.GetSpace()
 	assert.Equal(t, "test-account-id", sp.GetAccountId())
 	assert.Equal(t, "my-space", sp.GetName())
-	assert.Equal(t, "aws-eu-central-1", sp.GetCloudRegionId())
+	assert.Equal(t, "eu-central-1", sp.GetCloudRegionId())
 	assert.Empty(t, sp.GetLabels())
 	assert.Nil(t, sp.CostAllocationLabel)
 	assert.Nil(t, sp.GetConfiguration().GetCollectionSettings())
@@ -55,7 +55,7 @@ func TestSpaceCreate_SuggestsNameWhenOmitted(t *testing.T) {
 
 	env.ServerlessSpaceServer.SuggestSpaceNameCalls.Returns(&spacev1.SuggestSpaceNameResponse{Name: "brave-falcon"}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "create", "--cloud-region", "aws-eu-central-1")
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "create", "--cloud-region", "eu-central-1")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "brave-falcon")
 
@@ -73,7 +73,7 @@ func TestSpaceCreate_SuggestNameError(t *testing.T) {
 
 	env.ServerlessSpaceServer.SuggestSpaceNameCalls.Returns(nil, assert.AnError)
 
-	_, _, err := testutil.Exec(t, env, "serverless", "space", "create", "--cloud-region", "aws-eu-central-1")
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "create", "--cloud-region", "eu-central-1")
 	require.Error(t, err)
 	assert.Equal(t, 0, env.ServerlessSpaceServer.CreateSpaceCalls.Count())
 }
@@ -83,7 +83,7 @@ func TestSpaceCreate_AllFlags(t *testing.T) {
 	echoCreateSpace(env)
 
 	_, _, err := testutil.Exec(t, env, "serverless", "space", "create",
-		"--cloud-region", "aws-eu-central-1",
+		"--cloud-region", "eu-central-1",
 		"--name", "my-space",
 		"--label", "env=prod",
 		"--label", "team=search",
@@ -119,7 +119,7 @@ func TestSpaceCreate_JSONOutput(t *testing.T) {
 	echoCreateSpace(env)
 
 	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "create",
-		"--cloud-region", "aws-eu-central-1", "--name", "my-space", "--json",
+		"--cloud-region", "eu-central-1", "--name", "my-space", "--json",
 	)
 	require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func TestSpaceCreate_Wait(t *testing.T) {
 		})
 
 	stdout, stderr, err := testutil.Exec(t, env, "serverless", "space", "create",
-		"--cloud-region", "aws-eu-central-1", "--name", "my-space",
+		"--cloud-region", "eu-central-1", "--name", "my-space",
 		"--wait", "--wait-timeout", "30s", "--wait-poll-interval", "10ms",
 	)
 	require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestSpaceCreate_APIError(t *testing.T) {
 	env.ServerlessSpaceServer.CreateSpaceCalls.Returns(nil, assert.AnError)
 
 	_, _, err := testutil.Exec(t, env, "serverless", "space", "create",
-		"--cloud-region", "aws-eu-central-1", "--name", "my-space",
+		"--cloud-region", "eu-central-1", "--name", "my-space",
 	)
 	require.Error(t, err)
 }

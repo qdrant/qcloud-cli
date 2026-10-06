@@ -28,7 +28,7 @@ Use --cloud-region to only list the spaces hosted in a specific region.`,
 qcloud serverless space list
 
 # List spaces in a specific region
-qcloud serverless space list --cloud-region aws-eu-central-1
+qcloud serverless space list --cloud-region eu-central-1
 
 # List spaces in JSON format
 qcloud serverless space list --json

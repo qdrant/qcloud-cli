@@ -21,7 +21,7 @@ func existingSpace() *spacev1.Space {
 		Id:                  "space-abc",
 		AccountId:           "test-account-id",
 		Name:                "my-space",
-		CloudRegionId:       "aws-eu-central-1",
+		CloudRegionId:       "eu-central-1",
 		CostAllocationLabel: new("cc-1"),
 		Labels: []*commonv1.KeyValue{
 			{Key: "env", Value: "staging"},

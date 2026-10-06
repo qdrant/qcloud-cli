@@ -21,7 +21,7 @@ qcloud serverless space suggest-name [flags]
 qcloud serverless space suggest-name
 
 # Use the suggestion in a script
-qcloud serverless space create --cloud-region aws-eu-central-1 --name "$(qcloud serverless space suggest-name)"
+qcloud serverless space create --cloud-region eu-central-1 --name "$(qcloud serverless space suggest-name)"
 ```
 
 ### Options

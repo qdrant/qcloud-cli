@@ -22,7 +22,7 @@ the same suggestion automatically when --name is omitted.`,
 qcloud serverless space suggest-name
 
 # Use the suggestion in a script
-qcloud serverless space create --cloud-region aws-eu-central-1 --name "$(qcloud serverless space suggest-name)"`,
+qcloud serverless space create --cloud-region eu-central-1 --name "$(qcloud serverless space suggest-name)"`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "suggest-name",
