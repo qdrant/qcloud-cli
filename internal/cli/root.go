@@ -16,6 +16,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/inference"
 	packagecmd "github.com/qdrant/qcloud-cli/internal/cmd/package"
 	"github.com/qdrant/qcloud-cli/internal/cmd/selfupgrade"
+	"github.com/qdrant/qcloud-cli/internal/cmd/serverless"
 	"github.com/qdrant/qcloud-cli/internal/cmd/version"
 	"github.com/qdrant/qcloud-cli/internal/state"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
@@ -82,6 +83,7 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 	cmd.AddCommand(hybrid.NewCommand(s))
 	cmd.AddCommand(packagecmd.NewCommand(s))
 	cmd.AddCommand(inference.NewCommand(s))
+	cmd.AddCommand(serverless.NewCommand(s))
 	cmd.AddCommand(selfupgrade.NewCommand(s))
 
 	return cmd

@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -76,4 +77,13 @@ func OptionalValue(v any, fallback string) string {
 	}
 
 	return fmt.Sprintf("%v", elem)
+}
+
+// JoinOrDefault joins items with ", ", or returns fallback when items is empty.
+func JoinOrDefault(items []string, fallback string) string {
+	if len(items) == 0 {
+		return fallback
+	}
+
+	return strings.Join(items, ", ")
 }

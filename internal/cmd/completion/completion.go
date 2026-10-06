@@ -8,6 +8,8 @@ import (
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
+	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
+	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -298,6 +300,87 @@ func AccountMemberIDCompletion(s *state.State) func(*cobra.Command, []string, st
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, m := range resp.GetItems() {
 			completions = append(completions, m.GetAccountMember().GetId()+"\t"+m.GetAccountMember().GetEmail())
+		}
+
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// SpaceIDCompletion returns a ValidArgsFunction that completes serverless space IDs.
+func SpaceIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		return SpaceIDFlagCompletion(s)(cmd, args, "")
+	}
+}
+
+// SpaceIDFlagCompletion returns a completion function for --space-id flags.
+func SpaceIDFlagCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.ServerlessSpace().ListSpaces(ctx, &spacev1.ListSpacesRequest{
+			AccountId: accountID,
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, sp := range resp.GetItems() {
+			completions = append(completions, sp.GetId()+"\t"+sp.GetName())
+		}
+
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// SpaceBackupIDCompletion returns a ValidArgsFunction that completes serverless
+// backup IDs. When the command has a --space-id flag set, only backups of that
+// space are offered.
+func SpaceBackupIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		req := &spacebackupv1.ListBackupsRequest{AccountId: accountID}
+		if f := cmd.Flags().Lookup("space-id"); f != nil && f.Changed {
+			spaceID := f.Value.String()
+			req.SpaceId = &spaceID
+		}
+
+		resp, err := client.ServerlessBackup().ListBackups(ctx, req)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, b := range resp.GetItems() {
+			completions = append(completions, b.GetId()+"\t"+b.GetName())
 		}
 
 		return completions, cobra.ShellCompDirectiveNoFileComp
