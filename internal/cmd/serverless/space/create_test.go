@@ -168,6 +168,51 @@ func TestSpaceCreate_Wait(t *testing.T) {
 	assert.Equal(t, "space-new", req.GetSpaceId())
 }
 
+func TestSpaceCreate_WaitFailurePrintsSpace(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	echoCreateSpace(env)
+
+	env.ServerlessSpaceServer.GetSpaceCalls.Always(func(_ context.Context, req *spacev1.GetSpaceRequest) (*spacev1.GetSpaceResponse, error) {
+		return &spacev1.GetSpaceResponse{Space: &spacev1.Space{
+			Id:    req.GetSpaceId(),
+			State: &spacev1.SpaceState{Phase: spacev1.SpaceStatePhase_SPACE_STATE_PHASE_DISABLED},
+		}}, nil
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "create",
+		"--cloud-region", "eu-central-1", "--name", "my-space",
+		"--wait", "--wait-poll-interval", "10ms",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "space space-new was created but did not become ready")
+	assert.Contains(t, err.Error(), "phase=DISABLED")
+	assert.Contains(t, stdout, "Space space-new (my-space) created.")
+}
+
+func TestSpaceCreate_WaitFailurePrintsSpaceJSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	echoCreateSpace(env)
+
+	env.ServerlessSpaceServer.GetSpaceCalls.Always(func(_ context.Context, req *spacev1.GetSpaceRequest) (*spacev1.GetSpaceResponse, error) {
+		return &spacev1.GetSpaceResponse{Space: &spacev1.Space{
+			Id:    req.GetSpaceId(),
+			State: &spacev1.SpaceState{Phase: spacev1.SpaceStatePhase_SPACE_STATE_PHASE_DISABLED},
+		}}, nil
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "create",
+		"--cloud-region", "eu-central-1", "--name", "my-space",
+		"--wait", "--wait-poll-interval", "10ms", "--json",
+	)
+	require.Error(t, err)
+
+	var result struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	assert.Equal(t, "space-new", result.ID)
+}
+
 func TestSpaceCreate_MissingCloudRegion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 

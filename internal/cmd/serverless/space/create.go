@@ -10,6 +10,7 @@ import (
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -100,7 +101,18 @@ qcloud serverless space create --cloud-region eu-central-1 --name my-space \
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Space %s created, waiting for it to become ready...\n", created.GetId())
-			return waitForSpaceReady(ctx, client.ServerlessSpace(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			ready, err := waitForSpaceReady(ctx, client.ServerlessSpace(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			if err != nil {
+				if s.Config.JSONOutput() {
+					_ = output.PrintJSON(cmd.OutOrStdout(), created)
+				} else {
+					fmt.Fprint(cmd.OutOrStdout(), spaceResultMessage(created, "created"))
+				}
+
+				return nil, fmt.Errorf("space %s was created but did not become ready: %w", created.GetId(), err)
+			}
+
+			return ready, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, created *spacev1.Space) {
 			fmt.Fprint(out, spaceResultMessage(created, "created"))
