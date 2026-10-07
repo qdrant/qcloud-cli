@@ -21,8 +21,8 @@ qcloud cluster restart 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force --wait
 ```
   -f, --force                   Skip confirmation prompt
   -h, --help                    help for restart
-      --wait                    Wait for the cluster to restart to a healthy status
-      --wait-timeout duration   Maximum time to wait for cluster the cluster to restart to healthy status (default 10m0s)
+      --wait                    Wait for the cluster to restart and become healthy
+      --wait-timeout duration   Maximum time to wait for the cluster to restart and become healthy (default 10m0s)
 ```
 
 ### Options inherited from parent commands

@@ -55,7 +55,7 @@ qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 500Gi --wait
       --nodes uint32              Number of nodes
       --ram bytes                 RAM per node (e.g. "8", "8G", "8Gi", or "8GiB")
       --wait                      Wait for the cluster to become healthy
-      --wait-timeout duration     Maximum time to wait for cluster health (default 10m0s)
+      --wait-timeout duration     Maximum time to wait for the cluster to become healthy (default 10m0s)
 ```
 
 ### Options inherited from parent commands

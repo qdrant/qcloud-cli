@@ -41,10 +41,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().String("name", "", "Name of the API key (required)")
 			cmd.Flags().String("access-type", "", "Access type: manage or read-only (default: server assigns manage)")
 			cmd.Flags().String("expires", "", "Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)")
-			cmd.Flags().Bool("wait", false, "Wait for the API key to become active on the cluster")
-			cmd.Flags().Duration("wait-timeout", time.Minute, "Maximum time to wait for the API key to become active")
-			cmd.Flags().Duration("wait-poll-interval", time.Second, "How often to probe the cluster endpoint")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the API key to become active on the cluster", time.Minute, time.Second)
 			_ = cmd.MarkFlagRequired("name")
 			return cmd
 		},

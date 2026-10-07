@@ -11,6 +11,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -35,10 +36,7 @@ qcloud serverless space create-from-backup --backup-id 9d8c7b6a-5e4f-4a3b-8c2d-1
 			}
 			cmd.Flags().String("backup-id", "", "ID of the backup to restore from (required)")
 			cmd.Flags().String("name", "", "Name for the new space (required)")
-			cmd.Flags().Bool("wait", false, "Wait for the space to become ready")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for the space to become ready")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll the space status")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the space to become ready", 10*time.Minute, 5*time.Second)
 			_ = cmd.MarkFlagRequired("backup-id")
 			_ = cmd.MarkFlagRequired("name")
 			_ = cmd.RegisterFlagCompletionFunc("backup-id", completion.SpaceBackupIDCompletion(s))

@@ -56,10 +56,7 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 			cmd.Flags().String("access-type", "", "Global access type: manage, read-only or metrics-read-only (default: server assigns manage)")
 			cmd.Flags().StringArray("collection", nil, "Collection access rule as 'name=read-only|read-write'; can be specified multiple times")
 			cmd.Flags().String("expires", "", "Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)")
-			cmd.Flags().Bool("wait", false, "Wait for the API key to become ready")
-			cmd.Flags().Duration("wait-timeout", time.Minute, "Maximum time to wait for the API key to become ready")
-			cmd.Flags().Duration("wait-poll-interval", time.Second, "How often to poll the API key status")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the API key to become ready", time.Minute, time.Second)
 			_ = cmd.MarkFlagRequired("name")
 			cmd.MarkFlagsMutuallyExclusive("access-type", "collection")
 			return cmd

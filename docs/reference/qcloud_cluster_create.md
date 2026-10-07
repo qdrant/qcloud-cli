@@ -84,7 +84,7 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
       --volume-attributes-class string           (cloud-provider: hybrid) Kubernetes volume attributes class
       --volume-snapshot-class string             (cloud-provider: hybrid) Kubernetes volume snapshot class
       --wait                                     Wait for the cluster to become healthy
-      --wait-timeout duration                    Maximum time to wait for cluster health (default 10m0s)
+      --wait-timeout duration                    Maximum time to wait for the cluster to become healthy (default 10m0s)
       --write-consistency-factor int32           Default write consistency factor for new collections
 ```
 

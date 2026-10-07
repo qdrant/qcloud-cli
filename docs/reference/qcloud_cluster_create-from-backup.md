@@ -33,7 +33,7 @@ qcloud cluster create-from-backup --backup-id <backup-id> --name my-restored-clu
   -h, --help                    help for create-from-backup
       --name string             Name for the new cluster (required)
       --wait                    Wait for the cluster to become healthy
-      --wait-timeout duration   Maximum time to wait for cluster health (default 10m0s)
+      --wait-timeout duration   Maximum time to wait for the cluster to become healthy (default 10m0s)
 ```
 
 ### Options inherited from parent commands

@@ -29,7 +29,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
   -h, --help                    help for create
       --name string             Name of the API key (required)
       --wait                    Wait for the API key to become active on the cluster
-      --wait-timeout duration   Maximum time to wait for the API key to become active (default 1m0s)
+      --wait-timeout duration   Maximum time to wait for the API key to become active on the cluster (default 1m0s)
 ```
 
 ### Options inherited from parent commands

@@ -12,6 +12,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/clusterutil"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -37,10 +38,7 @@ at the time the backup was taken. The backup must belong to the current account.
 			}
 			cmd.Flags().String("backup-id", "", "ID of the backup to restore from (required)")
 			cmd.Flags().String("name", "", "Name for the new cluster (required)")
-			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the cluster to become healthy", 10*time.Minute, 5*time.Second)
 			_ = cmd.MarkFlagRequired("backup-id")
 			_ = cmd.MarkFlagRequired("name")
 			_ = cmd.RegisterFlagCompletionFunc("backup-id", completion.BackupIDCompletion(s))
