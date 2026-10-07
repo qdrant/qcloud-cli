@@ -2,6 +2,15 @@
 
 Retrieve logs for a cluster
 
+### Synopsis
+
+Retrieve logs for a cluster.
+
+By default, logs from the last 3 days up to now are returned. --since and --until
+accept an RFC3339 timestamp or a YYYY-MM-DD date in UTC. A date passed to
+--since starts at the beginning of that day, and a date passed to --until
+includes the whole day.
+
 ```
 qcloud cluster logs <cluster-id> [flags]
 ```

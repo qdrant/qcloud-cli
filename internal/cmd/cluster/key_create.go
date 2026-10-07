@@ -41,10 +41,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			cmd.Flags().String("name", "", "Name of the API key (required)")
 			cmd.Flags().String("access-type", "", "Access type: manage or read-only (default: server assigns manage)")
 			cmd.Flags().String("expires", "", "Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)")
-			cmd.Flags().Bool("wait", false, "Wait for the API key to become active on the cluster")
-			cmd.Flags().Duration("wait-timeout", time.Minute, "Maximum time to wait for the API key to become active")
-			cmd.Flags().Duration("wait-poll-interval", time.Second, "How often to probe the cluster endpoint")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the API key to become active on the cluster", time.Minute, time.Second)
 			_ = cmd.MarkFlagRequired("name")
 			return cmd
 		},
@@ -95,13 +92,12 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			}
 
 			if expiresStr != "" {
-				t, err := time.Parse("2006-01-02", expiresStr)
+				t, err := util.ParseDateEndOfDay(expiresStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --expires %q: must be in YYYY-MM-DD format", expiresStr)
 				}
 
-				// Keep the key valid for the whole given day.
-				key.ExpiresAt = timestamppb.New(t.AddDate(0, 0, 1).Add(-time.Second))
+				key.ExpiresAt = timestamppb.New(t)
 			}
 
 			resp, err := client.DatabaseApiKey().CreateDatabaseApiKey(ctx, &clusterauthv2.CreateDatabaseApiKeyRequest{
@@ -128,7 +124,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 				if s.Config.JSONOutput() {
 					_ = output.PrintJSON(cmd.OutOrStdout(), created)
 				} else {
-					printCreatedKey(cmd.OutOrStdout(), created)
+					output.CreatedAPIKey(cmd.OutOrStdout(), created)
 				}
 
 				return nil, fmt.Errorf("API key %s was created but is not active on the cluster: %w", created.GetId(), err)
@@ -137,20 +133,10 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			return created, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, key *clusterauthv2.DatabaseApiKey) {
-			printCreatedKey(out, key)
+			output.CreatedAPIKey(out, key)
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
-}
-
-// printCreatedKey prints the creation message and the one-time secret of a key.
-func printCreatedKey(out io.Writer, key *clusterauthv2.DatabaseApiKey) {
-	fmt.Fprintf(out, "API key %s (%s) created.\n", key.GetId(), key.GetName())
-	if k := key.GetKey(); k != "" {
-		fmt.Fprintln(out, "")
-		fmt.Fprintln(out, "Save this key now — it will not be shown again:")
-		fmt.Fprintf(out, "  %s\n", k)
-	}
 }
 
 const defaultQdrantRESTPort = 6333

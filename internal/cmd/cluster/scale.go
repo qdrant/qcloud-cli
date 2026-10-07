@@ -65,10 +65,7 @@ confirmation but not the warning.`,
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM per node (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size per node (e.g. \"200GiB\"); if larger than the node's included disk, the difference is provisioned as additional storage")
 			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs per node (e.g. \"1\", \"2\", or \"1000m\")")
-			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the cluster to become healthy", 10*time.Minute, 5*time.Second)
 			cmd.Flags().String("disk-performance", "", `Disk performance tier ("balanced", "cost-optimised", "performance")`)
 			return cmd
 		},

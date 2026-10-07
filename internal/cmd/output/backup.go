@@ -3,6 +3,8 @@ package output
 import (
 	"strings"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 )
 
@@ -19,4 +21,14 @@ func BackupScheduleStatus(s backupv1.BackupScheduleStatus) string {
 // BackupRestoreStatus returns a concise label for a BackupRestoreStatus.
 func BackupRestoreStatus(s backupv1.BackupRestoreStatus) string {
 	return strings.TrimPrefix(s.String(), "BACKUP_RESTORE_STATUS_")
+}
+
+// RetentionPeriod formats a backup retention period; an unset period means
+// the backups are kept indefinitely.
+func RetentionPeriod(d *durationpb.Duration) string {
+	if d == nil {
+		return "indefinite"
+	}
+
+	return Duration(d.AsDuration())
 }

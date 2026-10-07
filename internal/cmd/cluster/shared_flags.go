@@ -405,3 +405,13 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 
 	return nil
 }
+
+// clusterResultMessage renders the result line of a create command: the endpoint
+// if the cluster is already reachable, otherwise the given action.
+func clusterResultMessage(cluster *clusterv1.Cluster, action string) string {
+	if ep := cluster.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
+		return fmt.Sprintf("Cluster %s (%s) is ready. Endpoint: %s\n", cluster.GetId(), cluster.GetName(), ep.GetUrl())
+	}
+
+	return fmt.Sprintf("Cluster %s (%s) %s.\n", cluster.GetId(), cluster.GetName(), action)
+}

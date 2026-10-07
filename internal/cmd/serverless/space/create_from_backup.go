@@ -11,6 +11,8 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -35,10 +37,7 @@ qcloud serverless space create-from-backup --backup-id 9d8c7b6a-5e4f-4a3b-8c2d-1
 			}
 			cmd.Flags().String("backup-id", "", "ID of the backup to restore from (required)")
 			cmd.Flags().String("name", "", "Name for the new space (required)")
-			cmd.Flags().Bool("wait", false, "Wait for the space to become ready")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for the space to become ready")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll the space status")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the space to become ready", 10*time.Minute, 5*time.Second)
 			_ = cmd.MarkFlagRequired("backup-id")
 			_ = cmd.MarkFlagRequired("name")
 			_ = cmd.RegisterFlagCompletionFunc("backup-id", completion.SpaceBackupIDCompletion(s))
@@ -78,7 +77,18 @@ qcloud serverless space create-from-backup --backup-id 9d8c7b6a-5e4f-4a3b-8c2d-1
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Space %s created, waiting for it to become ready...\n", created.GetId())
-			return waitForSpaceReady(ctx, client.ServerlessSpace(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			ready, err := waitForSpaceReady(ctx, client.ServerlessSpace(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			if err != nil {
+				if s.Config.JSONOutput() {
+					_ = output.PrintJSON(cmd.OutOrStdout(), created)
+				} else {
+					fmt.Fprint(cmd.OutOrStdout(), spaceResultMessage(created, "created from backup"))
+				}
+
+				return nil, fmt.Errorf("space %s was created but did not become ready: %w", created.GetId(), err)
+			}
+
+			return ready, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, created *spacev1.Space) {
 			fmt.Fprint(out, spaceResultMessage(created, "created from backup"))

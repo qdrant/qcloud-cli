@@ -9,6 +9,7 @@ import (
 	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -56,11 +57,7 @@ qcloud iam key create --json | jq -r '.key'`,
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, key *authv1.ManagementKey) {
 			fmt.Fprintf(out, "Management key %s created.\n", key.GetId())
-			if k := key.GetKey(); k != "" {
-				fmt.Fprintln(out, "")
-				fmt.Fprintln(out, "Save this key now — it will not be shown again:")
-				fmt.Fprintf(out, "  %s\n", k)
-			}
+			output.KeySecret(out, key.GetKey())
 		},
 	}.CobraCommand(s)
 }

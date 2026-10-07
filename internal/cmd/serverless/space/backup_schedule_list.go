@@ -11,6 +11,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -40,7 +41,7 @@ qcloud serverless space backup schedule list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-
 				return nil, err
 			}
 
-			items, next, err := fetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacebackupv1.BackupSchedule, string, error) {
+			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacebackupv1.BackupSchedule, string, error) {
 				req := &spacebackupv1.ListBackupSchedulesRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -86,7 +87,7 @@ qcloud serverless space backup schedule list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-
 			})
 			t.AddField("PAUSED", schedulePauseState)
 			t.AddField("RETENTION", func(v *spacebackupv1.BackupSchedule) string {
-				return formatRetention(v.GetRetentionPeriod())
+				return output.RetentionPeriod(v.GetRetentionPeriod())
 			})
 			t.AddField("LAST RUN", func(v *spacebackupv1.BackupSchedule) string {
 				if v.GetLastFiredAt() != nil {
@@ -100,7 +101,7 @@ qcloud serverless space backup schedule list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-
 		},
 	}.CobraCommand(s)
 
-	addPaginationFlags(cmd, "schedules")
+	util.AddPaginationFlags(cmd, "schedules")
 	cmd.Flags().String("space-id", "", "Filter by space ID")
 	_ = cmd.RegisterFlagCompletionFunc("space-id", completion.SpaceIDFlagCompletion(s))
 	return cmd

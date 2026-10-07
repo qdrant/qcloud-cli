@@ -19,6 +19,22 @@ func newScheduleListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*backupv1.ListBackupSchedulesResponse]{
 		Use:   "list",
 		Short: "List backup schedules",
+		Long: `List backup schedules in the current account.
+
+Schedules can be filtered by cluster. The NEXT RUN column is computed locally
+from the cron expression.
+
+By default, all schedules are fetched automatically across multiple pages. Use
+--page-size and --page-token for manual pagination; the next page token is
+included in the JSON output when more pages exist.`,
+		Example: `# List all backup schedules in the account
+qcloud backup schedule list
+
+# List schedules of a cluster
+qcloud backup schedule list --cluster-id 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Manual pagination
+qcloud backup schedule list --page-size 10 --json`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*backupv1.ListBackupSchedulesResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
@@ -31,18 +47,29 @@ func newScheduleListCommand(s *state.State) *cobra.Command {
 				return nil, err
 			}
 
-			req := &backupv1.ListBackupSchedulesRequest{AccountId: accountID}
-			if cmd.Flags().Changed("cluster-id") {
-				clusterID, _ := cmd.Flags().GetString("cluster-id")
-				req.ClusterId = &clusterID
-			}
+			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*backupv1.BackupSchedule, string, error) {
+				req := &backupv1.ListBackupSchedulesRequest{
+					AccountId: accountID,
+					PageSize:  pageSize,
+					PageToken: pageToken,
+				}
+				if cmd.Flags().Changed("cluster-id") {
+					clusterID, _ := cmd.Flags().GetString("cluster-id")
+					req.ClusterId = &clusterID
+				}
 
-			resp, err := client.Backup().ListBackupSchedules(ctx, req)
+				resp, err := client.Backup().ListBackupSchedules(ctx, req)
+				if err != nil {
+					return nil, "", fmt.Errorf("failed to list backup schedules: %w", err)
+				}
+
+				return resp.GetItems(), resp.GetNextPageToken(), nil
+			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to list backup schedules: %w", err)
+				return nil, err
 			}
 
-			return resp, nil
+			return &backupv1.ListBackupSchedulesResponse{Items: items, NextPageToken: next}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupSchedulesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*backupv1.BackupSchedule](w)
@@ -77,6 +104,7 @@ func newScheduleListCommand(s *state.State) *cobra.Command {
 		},
 	}.CobraCommand(s)
 
+	util.AddPaginationFlags(cmd, "schedules")
 	cmd.Flags().String("cluster-id", "", "Filter by cluster ID")
 	_ = cmd.RegisterFlagCompletionFunc("cluster-id", completion.ClusterIDCompletion(s))
 	return cmd

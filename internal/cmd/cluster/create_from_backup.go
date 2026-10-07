@@ -12,6 +12,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/clusterutil"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -37,10 +39,7 @@ at the time the backup was taken. The backup must belong to the current account.
 			}
 			cmd.Flags().String("backup-id", "", "ID of the backup to restore from (required)")
 			cmd.Flags().String("name", "", "Name for the new cluster (required)")
-			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the cluster to become healthy", 10*time.Minute, 5*time.Second)
 			_ = cmd.MarkFlagRequired("backup-id")
 			_ = cmd.MarkFlagRequired("name")
 			_ = cmd.RegisterFlagCompletionFunc("backup-id", completion.BackupIDCompletion(s))
@@ -80,14 +79,21 @@ at the time the backup was taken. The backup must belong to the current account.
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Cluster %s created, waiting for it to become healthy...\n", created.GetId())
-			return clusterutil.WaitForClusterHealthy(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			healthy, err := clusterutil.WaitForClusterHealthy(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			if err != nil {
+				if s.Config.JSONOutput() {
+					_ = output.PrintJSON(cmd.OutOrStdout(), created)
+				} else {
+					fmt.Fprint(cmd.OutOrStdout(), clusterResultMessage(created, "created from backup"))
+				}
+
+				return nil, fmt.Errorf("cluster %s was created but did not become healthy: %w", created.GetId(), err)
+			}
+
+			return healthy, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, created *clusterv1.Cluster) {
-			if ep := created.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
-				fmt.Fprintf(out, "Cluster %s (%s) is ready. Endpoint: %s\n", created.GetId(), created.GetName(), ep.GetUrl())
-			} else {
-				fmt.Fprintf(out, "Cluster %s (%s) created from backup.\n", created.GetId(), created.GetName())
-			}
+			fmt.Fprint(out, clusterResultMessage(created, "created from backup"))
 		},
 	}.CobraCommand(s)
 }

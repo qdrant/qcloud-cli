@@ -56,10 +56,7 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 			cmd.Flags().String("access-type", "", "Global access type: manage, read-only or metrics-read-only (default: server assigns manage)")
 			cmd.Flags().StringArray("collection", nil, "Collection access rule as 'name=read-only|read-write'; can be specified multiple times")
 			cmd.Flags().String("expires", "", "Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)")
-			cmd.Flags().Bool("wait", false, "Wait for the API key to become ready")
-			cmd.Flags().Duration("wait-timeout", time.Minute, "Maximum time to wait for the API key to become ready")
-			cmd.Flags().Duration("wait-poll-interval", time.Second, "How often to poll the API key status")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the API key to become ready", time.Minute, time.Second)
 			_ = cmd.MarkFlagRequired("name")
 			cmd.MarkFlagsMutuallyExclusive("access-type", "collection")
 			return cmd
@@ -79,13 +76,12 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 
 			var expiresAt *timestamppb.Timestamp
 			if expiresStr != "" {
-				t, err := time.Parse("2006-01-02", expiresStr)
+				t, err := util.ParseDateEndOfDay(expiresStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --expires %q: must be in YYYY-MM-DD format", expiresStr)
 				}
 
-				// Expire at the end of the given day so the date is inclusive.
-				expiresAt = timestamppb.New(t.AddDate(0, 0, 1).Add(-time.Second))
+				expiresAt = timestamppb.New(t)
 			}
 
 			ctx := cmd.Context()
@@ -131,7 +127,7 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 				if s.Config.JSONOutput() {
 					_ = output.PrintJSON(cmd.OutOrStdout(), created)
 				} else {
-					printCreatedKey(cmd.OutOrStdout(), created)
+					output.CreatedAPIKey(cmd.OutOrStdout(), created)
 				}
 
 				return nil, fmt.Errorf("API key %s was created but did not become ready: %w", created.GetId(), err)
@@ -142,20 +138,10 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 			return ready, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, key *spaceauthv1.SpaceApiKey) {
-			printCreatedKey(out, key)
+			output.CreatedAPIKey(out, key)
 		},
 		ValidArgsFunction: completion.SpaceIDCompletion(s),
 	}.CobraCommand(s)
-}
-
-// printCreatedKey prints the creation message and the one-time secret of a key.
-func printCreatedKey(out io.Writer, key *spaceauthv1.SpaceApiKey) {
-	fmt.Fprintf(out, "API key %s (%s) created.\n", key.GetId(), key.GetName())
-	if k := key.GetKey(); k != "" {
-		fmt.Fprintln(out, "")
-		fmt.Fprintln(out, "Save this key now — it will not be shown again:")
-		fmt.Fprintf(out, "  %s\n", k)
-	}
 }
 
 // parseKeyAccessRules builds the access rules from the --access-type and

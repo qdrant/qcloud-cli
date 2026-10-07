@@ -184,6 +184,19 @@ func TestClusterLogs_UntilFlag(t *testing.T) {
 	assert.Equal(t, time.Date(2024, 2, 1, 12, 0, 0, 0, time.UTC), req.GetUntil().AsTime())
 }
 
+func TestClusterLogs_UntilDateIsInclusive(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.MonitoringServer.GetClusterLogsCalls.Returns(&monitoringv1.GetClusterLogsResponse{}, nil)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--until", "2024-02-01")
+	require.NoError(t, err)
+
+	req, ok := env.MonitoringServer.GetClusterLogsCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, time.Date(2024, 2, 1, 23, 59, 59, 0, time.UTC), req.GetUntil().AsTime())
+}
+
 func TestClusterLogs_NoSinceByDefault(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 

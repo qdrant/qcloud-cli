@@ -10,6 +10,7 @@ import (
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -47,7 +48,7 @@ qcloud serverless space list --page-size 10`,
 				return nil, err
 			}
 
-			items, next, err := fetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacev1.Space, string, error) {
+			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacev1.Space, string, error) {
 				req := &spacev1.ListSpacesRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -104,7 +105,7 @@ qcloud serverless space list --page-size 10`,
 		},
 	}.CobraCommand(s)
 
-	addPaginationFlags(cmd, "spaces")
+	util.AddPaginationFlags(cmd, "spaces")
 	cmd.Flags().String("cloud-region", "", "Filter by cloud region ID")
 
 	return cmd

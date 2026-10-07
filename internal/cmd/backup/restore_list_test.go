@@ -1,6 +1,7 @@
 package backup_test
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -100,4 +101,58 @@ func TestRestoreList_ClusterIDFilter(t *testing.T) {
 	require.NoError(t, err)
 	req, _ := env.BackupServer.ListBackupRestoresCalls.Last()
 	assert.Equal(t, "my-cluster", req.GetClusterId())
+}
+
+func TestRestoreList_AutoPaginates(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BackupServer.ListBackupRestoresCalls.
+		OnCall(0, func(_ context.Context, _ *backupv1.ListBackupRestoresRequest) (*backupv1.ListBackupRestoresResponse, error) {
+			return &backupv1.ListBackupRestoresResponse{
+				Items:         []*backupv1.BackupRestore{{Id: "restore-page-1"}},
+				NextPageToken: new("token-2"),
+			}, nil
+		}).
+		OnCall(1, func(_ context.Context, req *backupv1.ListBackupRestoresRequest) (*backupv1.ListBackupRestoresResponse, error) {
+			assert.Equal(t, "token-2", req.GetPageToken())
+			return &backupv1.ListBackupRestoresResponse{
+				Items: []*backupv1.BackupRestore{{Id: "restore-page-2"}},
+			}, nil
+		})
+
+	stdout, _, err := testutil.Exec(t, env, "backup", "restore", "list")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "restore-page-1")
+	assert.Contains(t, stdout, "restore-page-2")
+	assert.Equal(t, 2, env.BackupServer.ListBackupRestoresCalls.Count())
+}
+
+func TestRestoreList_ManualPagination(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BackupServer.ListBackupRestoresCalls.Returns(&backupv1.ListBackupRestoresResponse{
+		Items:         []*backupv1.BackupRestore{{Id: "restore-1"}},
+		NextPageToken: new("next-token"),
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "backup", "restore", "list",
+		"--page-size", "1", "--page-token", "start", "--json")
+	require.NoError(t, err)
+	assert.Equal(t, 1, env.BackupServer.ListBackupRestoresCalls.Count())
+
+	req, ok := env.BackupServer.ListBackupRestoresCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, int32(1), req.GetPageSize())
+	assert.Equal(t, "start", req.GetPageToken())
+
+	var result struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+		NextPageToken string `json:"nextPageToken"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "restore-1", result.Items[0].ID)
+	assert.Equal(t, "next-token", result.NextPageToken)
 }

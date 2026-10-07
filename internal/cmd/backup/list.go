@@ -11,6 +11,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -18,6 +19,21 @@ func newListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*backupv1.ListBackupsResponse]{
 		Use:   "list",
 		Short: "List backups",
+		Long: `List backups in the current account.
+
+Backups can be filtered by cluster.
+
+By default, all backups are fetched automatically across multiple pages. Use
+--page-size and --page-token for manual pagination; the next page token is
+included in the JSON output when more pages exist.`,
+		Example: `# List all backups in the account
+qcloud backup list
+
+# List backups of a cluster
+qcloud backup list --cluster-id 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Manual pagination
+qcloud backup list --page-size 10 --json`,
 		Fetch: func(s *state.State, cmd *cobra.Command) (*backupv1.ListBackupsResponse, error) {
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
@@ -30,18 +46,29 @@ func newListCommand(s *state.State) *cobra.Command {
 				return nil, err
 			}
 
-			req := &backupv1.ListBackupsRequest{AccountId: accountID}
-			if cmd.Flags().Changed("cluster-id") {
-				clusterID, _ := cmd.Flags().GetString("cluster-id")
-				req.ClusterId = &clusterID
-			}
+			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*backupv1.Backup, string, error) {
+				req := &backupv1.ListBackupsRequest{
+					AccountId: accountID,
+					PageSize:  pageSize,
+					PageToken: pageToken,
+				}
+				if cmd.Flags().Changed("cluster-id") {
+					clusterID, _ := cmd.Flags().GetString("cluster-id")
+					req.ClusterId = &clusterID
+				}
 
-			resp, err := client.Backup().ListBackups(ctx, req)
+				resp, err := client.Backup().ListBackups(ctx, req)
+				if err != nil {
+					return nil, "", fmt.Errorf("failed to list backups: %w", err)
+				}
+
+				return resp.GetItems(), resp.GetNextPageToken(), nil
+			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to list backups: %w", err)
+				return nil, err
 			}
 
-			return resp, nil
+			return &backupv1.ListBackupsResponse{Items: items, NextPageToken: next}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupsResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*backupv1.Backup](w)
@@ -69,6 +96,7 @@ func newListCommand(s *state.State) *cobra.Command {
 		},
 	}.CobraCommand(s)
 
+	util.AddPaginationFlags(cmd, "backups")
 	cmd.Flags().String("cluster-id", "", "Filter by cluster ID")
 	_ = cmd.RegisterFlagCompletionFunc("cluster-id", completion.ClusterIDCompletion(s))
 	return cmd

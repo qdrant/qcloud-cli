@@ -90,3 +90,25 @@ func TestSpaceCreateFromBackup_APIError(t *testing.T) {
 	)
 	require.Error(t, err)
 }
+
+func TestSpaceCreateFromBackup_WaitFailurePrintsSpace(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.ServerlessSpaceServer.CreateSpaceFromBackupCalls.Returns(&spacev1.CreateSpaceFromBackupResponse{
+		Space: &spacev1.Space{Id: "space-restored", Name: "my-restored-space"},
+	}, nil)
+	env.ServerlessSpaceServer.GetSpaceCalls.Always(func(_ context.Context, req *spacev1.GetSpaceRequest) (*spacev1.GetSpaceResponse, error) {
+		return &spacev1.GetSpaceResponse{Space: &spacev1.Space{
+			Id:    req.GetSpaceId(),
+			State: &spacev1.SpaceState{Phase: spacev1.SpaceStatePhase_SPACE_STATE_PHASE_DISABLED},
+		}}, nil
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "create-from-backup",
+		"--backup-id", "backup-abc", "--name", "my-restored-space",
+		"--wait", "--wait-poll-interval", "10ms",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "space space-restored was created but did not become ready")
+	assert.Contains(t, stdout, "Space space-restored (my-restored-space) created from backup.")
+}

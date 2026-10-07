@@ -59,7 +59,7 @@ qcloud serverless space backup schedule describe 3f1c2b4a-8d7e-4f6a-9b0c-1d2e3f4
 				fmt.Fprintf(w, "Last Run:    %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
 
-			fmt.Fprintf(w, "Retention:   %s\n", formatRetention(sched.GetRetentionPeriod()))
+			fmt.Fprintf(w, "Retention:   %s\n", output.RetentionPeriod(sched.GetRetentionPeriod()))
 
 			if sched.GetCreatedAt() != nil {
 				t := sched.GetCreatedAt().AsTime()

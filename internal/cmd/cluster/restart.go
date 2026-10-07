@@ -29,10 +29,7 @@ qcloud cluster restart 7b2ea926-724b-4de2-b73a-8675c42a6ebe --force --wait`,
 				Args:  util.ExactArgs(1, "a cluster ID"),
 			}
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
-			cmd.Flags().Bool("wait", false, "Wait for the cluster to restart to a healthy status")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster the cluster to restart to healthy status")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for the cluster to restart to healthy status")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the cluster to restart and become healthy", 10*time.Minute, 5*time.Second)
 			return cmd
 		},
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {

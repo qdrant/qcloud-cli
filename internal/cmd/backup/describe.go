@@ -57,9 +57,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 				fmt.Fprintf(w, "Schedule:  %s\n", b.GetBackupScheduleId())
 			}
 
-			if b.GetRetentionPeriod() != nil {
-				fmt.Fprintf(w, "Retention: %s\n", output.Duration(b.GetRetentionPeriod().AsDuration()))
-			}
+			fmt.Fprintf(w, "Retention: %s\n", output.RetentionPeriod(b.GetRetentionPeriod()))
 
 			if b.GetClusterInfo() != nil {
 				ci := b.GetClusterInfo()

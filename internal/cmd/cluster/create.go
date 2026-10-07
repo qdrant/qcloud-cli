@@ -13,6 +13,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/clusterutil"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -60,10 +61,7 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size (e.g. \"200GiB\"); if larger than the package's included disk, the difference is provisioned as additional storage")
 			cmd.Flags().Var(new(resource.Millicores), "gpu", "Number of GPUs to select a package (e.g. \"1\", \"2\", or \"1000m\")")
 			cmd.Flags().Bool("multi-az", false, "Require a multi-AZ package")
-			cmd.Flags().Bool("wait", false, "Wait for the cluster to become healthy")
-			cmd.Flags().Duration("wait-timeout", 10*time.Minute, "Maximum time to wait for cluster health")
-			cmd.Flags().Duration("wait-poll-interval", 5*time.Second, "How often to poll for cluster health")
-			_ = cmd.Flags().MarkHidden("wait-poll-interval")
+			util.AddWaitFlags(cmd, "the cluster to become healthy", 10*time.Minute, 5*time.Second)
 			_ = cmd.MarkFlagRequired("cloud-provider")
 			_ = cmd.MarkFlagRequired("cloud-region")
 			addSharedClusterFlags(cmd)
@@ -219,14 +217,21 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 			waitTimeout, _ := cmd.Flags().GetDuration("wait-timeout")
 			pollInterval, _ := cmd.Flags().GetDuration("wait-poll-interval")
 			fmt.Fprintf(cmd.ErrOrStderr(), "Cluster %s created, waiting for it to become healthy...\n", created.GetId())
-			return clusterutil.WaitForClusterHealthy(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			healthy, err := clusterutil.WaitForClusterHealthy(ctx, client.Cluster(), cmd.ErrOrStderr(), accountID, created.GetId(), waitTimeout, pollInterval)
+			if err != nil {
+				if s.Config.JSONOutput() {
+					_ = output.PrintJSON(cmd.OutOrStdout(), created)
+				} else {
+					fmt.Fprint(cmd.OutOrStdout(), clusterResultMessage(created, "created successfully"))
+				}
+
+				return nil, fmt.Errorf("cluster %s was created but did not become healthy: %w", created.GetId(), err)
+			}
+
+			return healthy, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, created *clusterv1.Cluster) {
-			if ep := created.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
-				fmt.Fprintf(out, "Cluster %s (%s) is ready. Endpoint: %s\n", created.GetId(), created.GetName(), ep.GetUrl())
-			} else {
-				fmt.Fprintf(out, "Cluster %s (%s) created successfully.\n", created.GetId(), created.GetName())
-			}
+			fmt.Fprint(out, clusterResultMessage(created, "created successfully"))
 		},
 	}.CobraCommand(s)
 	_ = cmd.RegisterFlagCompletionFunc("cloud-provider", completion.CloudProviderCompletion(s))

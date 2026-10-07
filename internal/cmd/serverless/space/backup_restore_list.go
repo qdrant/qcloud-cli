@@ -11,6 +11,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -40,7 +41,7 @@ qcloud serverless space backup restore list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-1
 				return nil, err
 			}
 
-			items, next, err := fetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacebackupv1.BackupRestore, string, error) {
+			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacebackupv1.BackupRestore, string, error) {
 				req := &spacebackupv1.ListBackupRestoresRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -96,7 +97,7 @@ qcloud serverless space backup restore list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-1
 		},
 	}.CobraCommand(s)
 
-	addPaginationFlags(cmd, "restores")
+	util.AddPaginationFlags(cmd, "restores")
 	cmd.Flags().String("space-id", "", "Filter by space ID")
 	_ = cmd.RegisterFlagCompletionFunc("space-id", completion.SpaceIDFlagCompletion(s))
 	return cmd
