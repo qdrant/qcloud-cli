@@ -1,34 +1,32 @@
-## qcloud serverless
+## qcloud serverless cloud-region list
 
-Manage Qdrant Cloud Serverless resources
+List cloud regions for serverless spaces
 
 ### Synopsis
 
-Manage Qdrant Cloud Serverless resources.
+List the cloud regions in which serverless spaces can be created.
 
-Qdrant Cloud Serverless runs collections in spaces instead of dedicated clusters.
-A space is hosted in a single cloud region and scales its search workers
-automatically, so there are no nodes, packages or disks to size. Use the
-commands in this group to manage spaces together with their API keys and
-backups, and to explore the regions spaces can be created in.
+The AVAILABLE column shows whether a region currently accepts new spaces.
+
+```
+qcloud serverless cloud-region list [flags]
+```
 
 ### Examples
 
 ```
-# List the regions in which spaces can be created
+# List all serverless regions
 qcloud serverless cloud-region list
 
-# List all serverless spaces
-qcloud serverless space list
-
-# Create a space in a region and wait until it is ready
-qcloud serverless space create --cloud-region eu-central-1 --wait
+# List the IDs of the available regions
+qcloud serverless cloud-region list --json | jq -r '.items[] | select(.available) | .id'
 ```
 
 ### Options
 
 ```
-  -h, --help   help for serverless
+  -h, --help         help for list
+      --no-headers   Do not print column headers
 ```
 
 ### Options inherited from parent commands
@@ -46,7 +44,5 @@ qcloud serverless space create --cloud-region eu-central-1 --wait
 
 ### SEE ALSO
 
-* [qcloud](qcloud.md)	 - Qdrant Cloud CLI
 * [qcloud serverless cloud-region](qcloud_serverless_cloud-region.md)	 - Explore cloud regions for serverless spaces
-* [qcloud serverless space](qcloud_serverless_space.md)	 - Manage serverless spaces
 
