@@ -58,12 +58,13 @@ Format: `<type>(<optional scope>): <lowercase imperative summary>`
 |----------------------------------------------------|--------------------------------------------------------|----------------|
 | `feat`                                             | New command, flag, or user-visible behaviour           | minor          |
 | `fix`                                              | Bug fix in user-visible behaviour                      | patch          |
-| `feat!` / `fix!`, or a `BREAKING CHANGE:` footer   | Removed/renamed command or flag, changed output format | major          |
+| `feat!` / `fix!`, or a `BREAKING CHANGE:` footer   | Maintainers only (see below)                           | major          |
 | `docs`, `refactor`, `test`, `chore`, `ci`, `build` | Everything else                                        | none           |
 
 - Scope is the command group or area: `cluster`, `hybrid`, `backup`, `serverless`, `inference`, `cd`, `deps`.
 - Type is lowercase: `feat:`, not `Feat:`. Summary is lowercase and has no trailing period.
 - Pick the type by user impact, not by effort: a new flag is `feat`, not `fix`; an internal refactor is `refactor`, even if large.
+- **Never mark a change as breaking yourself.** Do not use `!` or a `BREAKING CHANGE:` footer in commits, PR titles, or `rp-commits` blocks; a major release is a human decision. If a change looks breaking, use `feat`/`fix` and tell the user so they can decide.
 - When a PR mixes changes that need separate changelog entries, add an `rp-commits` block to the PR description, one conventional message per line:
 
   ````markdown
@@ -76,7 +77,6 @@ Format: `<type>(<optional scope>): <lowercase imperative summary>`
 Examples:
 - `feat(cluster): add dashboard command`
 - `fix(hybrid): resolve named packages with multi-az flag`
-- `feat(cluster)!: rename --node-count to --nodes`
 - `chore(deps): bump google.golang.org/grpc to 1.83.1`
 
 ## Conventions
