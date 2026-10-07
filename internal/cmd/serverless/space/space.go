@@ -25,7 +25,10 @@ qcloud serverless space list
 qcloud serverless space create --cloud-region eu-central-1
 
 # Show the details of a space
-qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60`,
+qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
+
+# Show a metrics overview of the collections in a space
+qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60`,
 		Args: cobra.NoArgs,
 	}
 	cmd.AddCommand(
@@ -39,6 +42,7 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60`,
 		newSuggestNameCommand(s),
 		newKeyCommand(s),
 		newBackupCommand(s),
+		newMetricsCommand(s),
 	)
 	return cmd
 }

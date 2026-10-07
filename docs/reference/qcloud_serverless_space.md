@@ -23,6 +23,9 @@ qcloud serverless space create --cloud-region eu-central-1
 
 # Show the details of a space
 qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
+
+# Show a metrics overview of the collections in a space
+qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
 ```
 
 ### Options
@@ -54,6 +57,7 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
 * [qcloud serverless space describe](qcloud_serverless_space_describe.md)	 - Describe a space
 * [qcloud serverless space key](qcloud_serverless_space_key.md)	 - Manage API keys for a space
 * [qcloud serverless space list](qcloud_serverless_space_list.md)	 - List all spaces
+* [qcloud serverless space metrics](qcloud_serverless_space_metrics.md)	 - Show metrics of a space's collections
 * [qcloud serverless space suggest-name](qcloud_serverless_space_suggest-name.md)	 - Suggest a name for a new space
 * [qcloud serverless space update](qcloud_serverless_space_update.md)	 - Update an existing space
 * [qcloud serverless space wait](qcloud_serverless_space_wait.md)	 - Wait for a space to become ready

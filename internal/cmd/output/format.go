@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +15,38 @@ import (
 // unit and at most two units (e.g. "1 day", "30 days", "1 day 12 hours").
 func Duration(d time.Duration) string {
 	return durafmt.Parse(d).LimitToUnit("days").LimitFirstN(2).String()
+}
+
+// CompactDuration formats d using Go duration notation without trailing zero
+// units (e.g. "2m", "1h", "24h", "1h30m").
+func CompactDuration(d time.Duration) string {
+	s := d.String()
+	s = strings.TrimSuffix(s, "m0s")
+	if len(s) != len(d.String()) {
+		s += "m"
+	}
+
+	if trimmed, ok := strings.CutSuffix(s, "h0m"); ok {
+		s = trimmed + "h"
+	}
+
+	return s
+}
+
+// Bytes formats a measured byte size using IEC units (e.g. "0 B", "1.5 GiB").
+// Use resource.ByteQuantity for configured sizes, which must round-trip.
+func Bytes(v uint64) string {
+	return humanize.IBytes(v)
+}
+
+// Rate formats a per-second rate with two decimals (e.g. "1.25/s").
+func Rate(v float64) string {
+	return strconv.FormatFloat(v, 'f', 2, 64) + "/s"
+}
+
+// Milliseconds formats a value in milliseconds with one decimal (e.g. "12.3ms").
+func Milliseconds(v float64) string {
+	return strconv.FormatFloat(v, 'f', 1, 64) + "ms"
 }
 
 // UnlimitedIfZero returns "unlimited" when v is 0 and formatted otherwise. It is
