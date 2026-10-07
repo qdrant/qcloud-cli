@@ -7,11 +7,15 @@ import (
 	"strings"
 )
 
-// IPChanges holds the parsed result of --allowed-ip flags.
-type IPChanges struct {
+// ListChanges holds the parsed result of a string-list flag that supports
+// additions and removals (e.g. --allowed-ip, --allowed-origin).
+type ListChanges struct {
 	Add    []string
 	Remove map[string]bool
 }
+
+// IPChanges holds the parsed result of --allowed-ip flags.
+type IPChanges = ListChanges
 
 // ParseIPs parses a slice of raw --allowed-ip flag values into additions and removals.
 //
@@ -21,24 +25,41 @@ type IPChanges struct {
 //
 // When the same IP appears multiple times, the last occurrence wins.
 func ParseIPs(raw []string) (*IPChanges, error) {
-	changes := &IPChanges{
+	return ParseListChanges("--allowed-ip", "IP", raw)
+}
+
+// ApplyIPs applies IPChanges to an existing IP list and returns a new sorted
+// slice. The input slice is not modified. Removing an IP that does not exist
+// is a silent no-op.
+func ApplyIPs(existing []string, changes *IPChanges) []string {
+	return ApplyListChanges(existing, changes)
+}
+
+// ParseListChanges parses a slice of raw flag values into additions and
+// removals. A value with a trailing '-' marks the entry for removal; any other
+// value is added. flag and item are only used in error messages (e.g.
+// "--allowed-origin", "origin").
+//
+// When the same entry appears multiple times, the last occurrence wins.
+func ParseListChanges(flag, item string, raw []string) (*ListChanges, error) {
+	changes := &ListChanges{
 		Remove: make(map[string]bool),
 	}
 
 	for _, entry := range raw {
 		if entry == "" {
-			return nil, fmt.Errorf("empty --allowed-ip value")
+			return nil, fmt.Errorf("empty %s value", flag)
 		}
 
 		if strings.HasSuffix(entry, "-") {
-			ip := entry[:len(entry)-1]
-			if ip == "" {
-				return nil, fmt.Errorf("empty IP in --allowed-ip %q", entry)
+			v := entry[:len(entry)-1]
+			if v == "" {
+				return nil, fmt.Errorf("empty %s in %s %q", item, flag, entry)
 			}
 
 			// Last operation wins: remove from Add if previously added.
-			changes.Add = slices.DeleteFunc(changes.Add, func(s string) bool { return s == ip })
-			changes.Remove[ip] = true
+			changes.Add = slices.DeleteFunc(changes.Add, func(s string) bool { return s == v })
+			changes.Remove[v] = true
 			continue
 		}
 
@@ -53,29 +74,29 @@ func ParseIPs(raw []string) (*IPChanges, error) {
 	return changes, nil
 }
 
-// ApplyIPs applies IPChanges to an existing IP list and returns a new sorted
-// slice. The input slice is not modified. Removing an IP that does not exist
-// is a silent no-op.
-func ApplyIPs(existing []string, changes *IPChanges) []string {
+// ApplyListChanges applies ListChanges to an existing list and returns a new
+// sorted slice. The input slice is not modified. Removing an entry that does
+// not exist is a silent no-op.
+func ApplyListChanges(existing []string, changes *ListChanges) []string {
 	// Start with existing, filtering out removals.
 	seen := make(map[string]bool, len(existing))
 	var result []string
-	for _, ip := range existing {
-		if changes.Remove[ip] {
+	for _, v := range existing {
+		if changes.Remove[v] {
 			continue
 		}
 
-		if !seen[ip] {
-			seen[ip] = true
-			result = append(result, ip)
+		if !seen[v] {
+			seen[v] = true
+			result = append(result, v)
 		}
 	}
 
-	// Add new IPs, deduplicating against existing.
-	for _, ip := range changes.Add {
-		if !seen[ip] {
-			seen[ip] = true
-			result = append(result, ip)
+	// Add new entries, deduplicating against existing.
+	for _, v := range changes.Add {
+		if !seen[v] {
+			seen[v] = true
+			result = append(result, v)
 		}
 	}
 

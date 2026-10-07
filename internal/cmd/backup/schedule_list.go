@@ -11,6 +11,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -58,7 +59,7 @@ func newScheduleListCommand(s *state.State) *cobra.Command {
 				return output.BackupScheduleStatus(v.GetStatus())
 			})
 			t.AddField("NEXT RUN", func(v *backupv1.BackupSchedule) string {
-				if next, ok := nextScheduleRun(v.GetSchedule()); ok {
+				if next, ok := util.NextCronRun(v.GetSchedule()); ok {
 					return output.HumanTime(next)
 				}
 

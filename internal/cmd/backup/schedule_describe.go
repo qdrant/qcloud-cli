@@ -3,9 +3,7 @@ package backup
 import (
 	"fmt"
 	"io"
-	"time"
 
-	"github.com/robfig/cron/v3"
 	"github.com/spf13/cobra"
 
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
@@ -16,15 +14,6 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
-
-func nextScheduleRun(cronExpr string) (time.Time, bool) {
-	s, err := cron.ParseStandard(cronExpr)
-	if err != nil {
-		return time.Time{}, false
-	}
-
-	return s.Next(time.Now().UTC()), true
-}
 
 func newScheduleDescribeCommand(s *state.State) *cobra.Command {
 	cmd := base.DescribeCmd[*backupv1.BackupSchedule]{
@@ -64,7 +53,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			fmt.Fprintf(w, "ID:        %s\n", sched.GetId())
 			fmt.Fprintf(w, "Cluster:   %s\n", sched.GetClusterId())
 			fmt.Fprintf(w, "Schedule:  %s\n", sched.GetSchedule())
-			if next, ok := nextScheduleRun(sched.GetSchedule()); ok {
+			if next, ok := util.NextCronRun(sched.GetSchedule()); ok {
 				fmt.Fprintf(w, "Next Run:  %s  (%s)\n", output.HumanTime(next), output.FullDateTime(next))
 			}
 
@@ -75,8 +64,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 			}
 
 			if sched.GetRetentionPeriod() != nil {
-				days := int64(sched.GetRetentionPeriod().AsDuration().Hours()) / 24
-				fmt.Fprintf(w, "Retention: %d days\n", days)
+				fmt.Fprintf(w, "Retention: %s\n", output.Duration(sched.GetRetentionPeriod().AsDuration()))
 			}
 
 			return nil

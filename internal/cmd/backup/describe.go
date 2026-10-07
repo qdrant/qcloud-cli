@@ -58,8 +58,7 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 			}
 
 			if b.GetRetentionPeriod() != nil {
-				days := int64(b.GetRetentionPeriod().AsDuration().Hours()) / 24
-				fmt.Fprintf(w, "Retention: %d days\n", days)
+				fmt.Fprintf(w, "Retention: %s\n", output.Duration(b.GetRetentionPeriod().AsDuration()))
 			}
 
 			if b.GetClusterInfo() != nil {

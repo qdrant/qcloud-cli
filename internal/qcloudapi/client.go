@@ -19,21 +19,27 @@ import (
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
+	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
+	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
+	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 )
 
 // Client wraps a gRPC connection to the Qdrant Cloud API.
 type Client struct {
-	conn           *grpc.ClientConn
-	cluster        *ClusterClient
-	booking        bookingv1.BookingServiceClient
-	platform       platformv1.PlatformServiceClient
-	databaseApiKey clusterauthv2.DatabaseApiKeyServiceClient
-	backup         backupv1.BackupServiceClient
-	hybrid         hybridv1.HybridCloudServiceClient
-	monitoring     monitoringv1.MonitoringServiceClient
-	auth           authv1.AuthServiceClient
-	iam            iamv1.IAMServiceClient
-	account        accountv1.AccountServiceClient
+	conn                  *grpc.ClientConn
+	cluster               *ClusterClient
+	booking               bookingv1.BookingServiceClient
+	platform              platformv1.PlatformServiceClient
+	databaseApiKey        clusterauthv2.DatabaseApiKeyServiceClient
+	backup                backupv1.BackupServiceClient
+	hybrid                hybridv1.HybridCloudServiceClient
+	monitoring            monitoringv1.MonitoringServiceClient
+	auth                  authv1.AuthServiceClient
+	iam                   iamv1.IAMServiceClient
+	account               accountv1.AccountServiceClient
+	serverlessSpace       spacev1.SpaceServiceClient
+	serverlessSpaceApiKey spaceauthv1.SpaceApiKeyServiceClient
+	serverlessBackup      spacebackupv1.BackupServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -58,17 +64,20 @@ func NewWithDialOptions(endpoint, apiKey string, opts ...grpc.DialOption) (*Clie
 
 func newFromConn(conn *grpc.ClientConn) *Client {
 	return &Client{
-		conn:           conn,
-		cluster:        &ClusterClient{ClusterServiceClient: clusterv1.NewClusterServiceClient(conn)},
-		booking:        bookingv1.NewBookingServiceClient(conn),
-		platform:       platformv1.NewPlatformServiceClient(conn),
-		databaseApiKey: clusterauthv2.NewDatabaseApiKeyServiceClient(conn),
-		backup:         backupv1.NewBackupServiceClient(conn),
-		hybrid:         hybridv1.NewHybridCloudServiceClient(conn),
-		monitoring:     monitoringv1.NewMonitoringServiceClient(conn),
-		auth:           authv1.NewAuthServiceClient(conn),
-		iam:            iamv1.NewIAMServiceClient(conn),
-		account:        accountv1.NewAccountServiceClient(conn),
+		conn:                  conn,
+		cluster:               &ClusterClient{ClusterServiceClient: clusterv1.NewClusterServiceClient(conn)},
+		booking:               bookingv1.NewBookingServiceClient(conn),
+		platform:              platformv1.NewPlatformServiceClient(conn),
+		databaseApiKey:        clusterauthv2.NewDatabaseApiKeyServiceClient(conn),
+		backup:                backupv1.NewBackupServiceClient(conn),
+		hybrid:                hybridv1.NewHybridCloudServiceClient(conn),
+		monitoring:            monitoringv1.NewMonitoringServiceClient(conn),
+		auth:                  authv1.NewAuthServiceClient(conn),
+		iam:                   iamv1.NewIAMServiceClient(conn),
+		account:               accountv1.NewAccountServiceClient(conn),
+		serverlessSpace:       spacev1.NewSpaceServiceClient(conn),
+		serverlessSpaceApiKey: spaceauthv1.NewSpaceApiKeyServiceClient(conn),
+		serverlessBackup:      spacebackupv1.NewBackupServiceClient(conn),
 	}
 }
 
@@ -120,6 +129,21 @@ func (c *Client) IAM() iamv1.IAMServiceClient {
 // Account returns the AccountService gRPC client.
 func (c *Client) Account() accountv1.AccountServiceClient {
 	return c.account
+}
+
+// ServerlessSpace returns the serverless SpaceService gRPC client.
+func (c *Client) ServerlessSpace() spacev1.SpaceServiceClient {
+	return c.serverlessSpace
+}
+
+// ServerlessSpaceApiKey returns the serverless SpaceApiKeyService gRPC client.
+func (c *Client) ServerlessSpaceApiKey() spaceauthv1.SpaceApiKeyServiceClient {
+	return c.serverlessSpaceApiKey
+}
+
+// ServerlessBackup returns the serverless BackupService gRPC client.
+func (c *Client) ServerlessBackup() spacebackupv1.BackupServiceClient {
+	return c.serverlessBackup
 }
 
 // Close closes the underlying gRPC connection.

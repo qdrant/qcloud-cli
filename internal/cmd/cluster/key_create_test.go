@@ -2,6 +2,7 @@ package cluster_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,7 +106,7 @@ func TestKeyCreate_WithExpires(t *testing.T) {
 	require.True(t, ok)
 	capturedKey := req.GetDatabaseApiKey()
 	require.NotNil(t, capturedKey.GetExpiresAt())
-	assert.Equal(t, "2027-06-15", capturedKey.GetExpiresAt().AsTime().UTC().Format("2006-01-02"))
+	assert.Equal(t, time.Date(2027, 6, 15, 23, 59, 59, 0, time.UTC), capturedKey.GetExpiresAt().AsTime())
 }
 
 func TestKeyCreate_InvalidExpires(t *testing.T) {
@@ -231,7 +233,7 @@ func TestKeyCreate_WaitTimeout(t *testing.T) {
 		},
 	}, nil)
 
-	_, _, err := testutil.Exec(t, env,
+	stdout, _, err := testutil.Exec(t, env,
 		"cluster", "key", "create", "cluster-123",
 		"--name", "timeout-key",
 		"--wait",
@@ -239,7 +241,40 @@ func TestKeyCreate_WaitTimeout(t *testing.T) {
 		"--wait-poll-interval", "10ms",
 	)
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "API key key-timeout was created but is not active on the cluster")
 	assert.Contains(t, err.Error(), "timed out")
+	assert.Contains(t, stdout, "Save this key now")
+	assert.Contains(t, stdout, "secret")
+}
+
+func TestKeyCreate_WaitFailurePrintsSecretAsJSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.DatabaseApiKeyServer.CreateDatabaseApiKeyCalls.Returns(&clusterauthv2.CreateDatabaseApiKeyResponse{
+		DatabaseApiKey: &clusterauthv2.DatabaseApiKey{
+			Id:  "key-json",
+			Key: "secret-json",
+		},
+	}, nil)
+	env.Server.GetClusterCalls.Returns(nil, fmt.Errorf("cluster unavailable"))
+
+	stdout, _, err := testutil.Exec(t, env,
+		"cluster", "key", "create", "cluster-123",
+		"--name", "json-key",
+		"--wait",
+		"--wait-timeout", "200ms",
+		"--wait-poll-interval", "10ms",
+		"--json",
+	)
+	require.Error(t, err)
+
+	var got struct {
+		ID  string `json:"id"`
+		Key string `json:"key"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, "key-json", got.ID)
+	assert.Equal(t, "secret-json", got.Key)
 }
 
 func TestKeyCreate_WaitNoEndpoint_TimesOut(t *testing.T) {

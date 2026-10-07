@@ -25,7 +25,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 
 ```
       --access-type string      Access type: manage or read-only (default: server assigns manage)
-      --expires string          Expiration date in YYYY-MM-DD format
+      --expires string          Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)
   -h, --help                    help for create
       --name string             Name of the API key (required)
       --wait                    Wait for the API key to become active on the cluster
