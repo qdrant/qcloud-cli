@@ -34,7 +34,7 @@ make build
 
 The project uses [releaser-pleaser](https://apricote.github.io/releaser-pleaser/introduction.html) to automate releases.
 
-Releases are driven by [conventional commits](https://www.conventionalcommits.org/). Each commit merged to `main` is classified by its prefix:
+Releases are driven by [conventional commits](https://www.conventionalcommits.org/). PRs are squash-merged, so the commit that lands on `main` takes the commit subject (single-commit PRs) or the PR title (multi-commit PRs). Both must be conventional. To produce several changelog entries from one PR, list them in an `rp-commits` code block in the PR description. Each commit is classified by its prefix:
 
 - `fix:` patches (e.g. `fix: correct cluster list pagination`)
 - `feat:` minor releases (e.g. `feat: add backup commands`)
