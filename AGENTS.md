@@ -20,10 +20,10 @@ internal/
     version/             # version subcommand
     clusterutil/         # shared cluster helpers (e.g. wait-for-healthy)
     output/              # shared output formatting helpers
-    util/                # shared command utilities
+    util/                # shared command helpers (wait, pagination, dates, args, …)
   qcloudapi/             # gRPC client wrapper for the Qdrant Cloud API
   state/                 # State struct (shared deps: config, lazy gRPC client)
-    config/              # Viper-based config (file, env vars, flags
+    config/              # Viper-based config (file, env vars, flags)
 ```
 
 ## Build & verification
@@ -225,21 +225,57 @@ base.Cmd{
 ```
 
 **Key rules:**
-- JSON output is handled automatically by all base types — never call `output.PrintJSON` yourself.
+- JSON output is handled automatically by all base types — never call `output.PrintJSON` yourself (except on the create-with-wait failure path, see below).
 - Always read flags via `cmd.Flags().GetString()` etc. in `Run`/`Update`; do not use cobra bound variables.
 - Use `util.ExactArgs(n, "description")` instead of `cobra.ExactArgs` for better error messages.
 
+### Shared helpers (`internal/cmd/util`, `internal/cmd/output`)
+
+Before writing a polling loop, a flag-registration block, a parser or a display formatter, read `internal/cmd/util` and `internal/cmd/output` (e.g. `output.BoolYesNo`, `output.HumanTime`, `output.Duration`): it most likely exists already. If you write a helper that a second cmd package could use, put it there, not in your cmd package.
+
+The concerns below come up in most new commands. Each has a reference implementation; copy its shape.
+
+**Waiting (`--wait`).** Never hand-roll a ticker loop or the wait flags.
+```go
+util.AddWaitFlags(cmd, "the space to become ready", 10*time.Minute, 5*time.Second)
+// ...
+return util.PollUntilDone(ctx, timeout, pollInterval, "space to become ready",
+    func(ctx context.Context) (*spacev1.Space, bool, error) { /* get, report phase, return done */ })
+```
+Reference: `internal/cmd/serverless/space/wait_helpers.go`, `internal/cmd/clusterutil/wait.go`.
+
+**Create with `--wait` that fails.** The resource exists even though the wait failed. Print it (JSON or text) before returning an error that says it was created and gives its ID. For API keys this is the only time the secret is ever shown.
+```go
+if err := waitForKeyReady(ctx, cmd.ErrOrStderr(), probe, waitTimeout, pollInterval); err != nil {
+    if s.Config.JSONOutput() {
+        _ = output.PrintJSON(cmd.OutOrStdout(), created)
+    } else {
+        output.CreatedAPIKey(cmd.OutOrStdout(), created)
+    }
+    return nil, fmt.Errorf("API key %s was created but is not active on the cluster: %w", created.GetId(), err)
+}
+```
+Reference: `internal/cmd/cluster/key_create.go`, `internal/cmd/cluster/create.go`.
+
+**Pagination.** A list RPC with page tokens must paginate. By default the command fetches every page; `--page-size` / `--page-token` switch to manual paging, and the next token is returned in the JSON output.
+```go
+items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*clusterv1.Cluster, string, error) {
+    resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{AccountId: accountID, PageSize: pageSize, PageToken: pageToken})
+    // ...
+    return resp.GetItems(), resp.GetNextPageToken(), nil
+})
+// ...
+return &clusterv1.ListClustersResponse{Items: items, NextPageToken: next}, nil
+```
+Register the flags with `util.AddPaginationFlags(cmd, "clusters")`. Reference: `internal/cmd/cluster/list.go`.
+
+**Date-only upper bounds.** `--expires 2026-12-31` or `--until 2026-12-31` includes that whole day: parse with `util.ParseDateEndOfDay` (23:59:59 UTC), not `time.Parse(time.DateOnly, ...)`. Reference: `internal/cmd/cluster/key_create.go`, `internal/cmd/cluster/logs.go`.
+
+**Unset values.** An unset optional proto message or field renders as `not set` or as what it means, never as a misleading zero value. A nil retention period is `indefinite`, not `0s` (`output.RetentionPeriod`); a nil optional field goes through `output.OptionalValue(v, "not set")`, not `fmt.Sprint(v.GetX())`. Reference: `internal/cmd/output/backup.go`, `internal/cmd/output/format.go`.
+
 ### Proto enum pretty printing (`internal/cmd/output/`)
 
-All TrimPrefix-based enum formatters live in `internal/cmd/output/`, grouped by proto package:
-
-| File | Functions |
-|------|-----------|
-| `output/cluster.go` | `ClusterPhase`, `ClusterNodeState`, `TolerationOperator`, `TolerationEffect` |
-| `output/booking.go` | `PackageTier` |
-| `output/hybrid.go` | `HybridEnvironmentPhase`, `ClusterCreationStatus`, `HybridComponentPhase` |
-| `output/backup.go` | `BackupStatus`, `BackupScheduleStatus`, `BackupRestoreStatus` |
-| `output/serverless.go` | `SpacePhase`, `SpaceApiKeyPhase`, `SpaceGlobalAccessType`, `SpaceCollectionAccessType`, `SpaceBackupStatus`, `SpaceBackupScheduleStatus`, `SpaceBackupRestoreStatus` |
+All TrimPrefix-based enum formatters live in `internal/cmd/output/<proto package>.go` (e.g. `output/cluster.go`, `output/serverless.go`). Check there before adding one.
 
 Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "PREFIX_")`. Functions are named after the type they format, without a redundant `String` suffix, since the package qualifier already provides context (`output.ClusterPhase(...)`).
 
@@ -247,16 +283,6 @@ Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "
 - Never inline `strings.TrimPrefix(x.String(), "PREFIX_")` in a cmd package. Add a function to the appropriate `output/*.go` file instead.
 - Never define a private `phaseString` / `statusString` / etc. helper in a cmd package for TrimPrefix formatting. These belong in `output`.
 - Switch-based format/parse pairs (`storageTierString`, `restartPolicyString`, etc.) encode semantic mappings paired with parse functions and belong with their cmd package, not in `output`.
-
-### Output helpers (`internal/cmd/output/`)
-
-General-purpose output formatting helpers belong in the `output` package, not in individual cmd packages.
-
-Examples: `BoolYesNo` (formats a bool as `"yes"` / `"no"`), `BoolMark`, `HumanTime`, `OptionalValue`, etc.
-
-**Rules:**
-- If a helper formats a value for display and could be reused across more than one cmd package, add it to `output/`.
-- Never define a private display-formatting helper in a cmd package when it belongs in `output`.
 
 ### Inline pointer literals
 
