@@ -16,4 +16,5 @@ func TestServerless_Help(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "space")
 	assert.Contains(t, stdout, "cloud-region")
+	assert.Contains(t, stdout, "quota")
 }
