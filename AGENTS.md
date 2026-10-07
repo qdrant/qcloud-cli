@@ -20,10 +20,10 @@ internal/
     version/             # version subcommand
     clusterutil/         # shared cluster helpers (e.g. wait-for-healthy)
     output/              # shared output formatting helpers
-    util/                # shared command utilities
+    util/                # shared command helpers (wait, pagination, dates, args, …)
   qcloudapi/             # gRPC client wrapper for the Qdrant Cloud API
   state/                 # State struct (shared deps: config, lazy gRPC client)
-    config/              # Viper-based config (file, env vars, flags
+    config/              # Viper-based config (file, env vars, flags)
 ```
 
 ## Build & verification
@@ -225,9 +225,53 @@ base.Cmd{
 ```
 
 **Key rules:**
-- JSON output is handled automatically by all base types — never call `output.PrintJSON` yourself.
+- JSON output is handled automatically by all base types — never call `output.PrintJSON` yourself (except on the create-with-wait failure path, see below).
 - Always read flags via `cmd.Flags().GetString()` etc. in `Run`/`Update`; do not use cobra bound variables.
 - Use `util.ExactArgs(n, "description")` instead of `cobra.ExactArgs` for better error messages.
+
+### Shared helpers (`internal/cmd/util`, `internal/cmd/output`)
+
+Before writing a polling loop, a flag-registration block, a parser or a display formatter, read `internal/cmd/util` and `internal/cmd/output`: it most likely exists already. If you write a helper that a second cmd package could use, put it there, not in your cmd package.
+
+The concerns below come up in most new commands. Each has a reference implementation; copy its shape.
+
+**Waiting (`--wait`).** Never hand-roll a ticker loop or the wait flags.
+```go
+util.AddWaitFlags(cmd, "the space to become ready", 10*time.Minute, 5*time.Second)
+// ...
+return util.PollUntilDone(ctx, timeout, pollInterval, "space to become ready",
+    func(ctx context.Context) (*spacev1.Space, bool, error) { /* get, report phase, return done */ })
+```
+Reference: `internal/cmd/serverless/space/wait_helpers.go`, `internal/cmd/clusterutil/wait.go`.
+
+**Create with `--wait` that fails.** The resource exists even though the wait failed. Print it (JSON or text) before returning an error that says it was created and gives its ID. For API keys this is the only time the secret is ever shown.
+```go
+if err := waitForKeyReady(ctx, cmd.ErrOrStderr(), probe, waitTimeout, pollInterval); err != nil {
+    if s.Config.JSONOutput() {
+        _ = output.PrintJSON(cmd.OutOrStdout(), created)
+    } else {
+        output.CreatedAPIKey(cmd.OutOrStdout(), created)
+    }
+    return nil, fmt.Errorf("API key %s was created but is not active on the cluster: %w", created.GetId(), err)
+}
+```
+Reference: `internal/cmd/cluster/key_create.go`, `internal/cmd/cluster/create.go`.
+
+**Pagination.** A list RPC with page tokens must paginate. By default the command fetches every page; `--page-size` / `--page-token` switch to manual paging, and the next token is returned in the JSON output.
+```go
+items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*clusterv1.Cluster, string, error) {
+    resp, err := client.Cluster().ListClusters(ctx, &clusterv1.ListClustersRequest{AccountId: accountID, PageSize: pageSize, PageToken: pageToken})
+    // ...
+    return resp.GetItems(), resp.GetNextPageToken(), nil
+})
+// ...
+return &clusterv1.ListClustersResponse{Items: items, NextPageToken: next}, nil
+```
+Register the flags with `util.AddPaginationFlags(cmd, "clusters")`. Reference: `internal/cmd/cluster/list.go`.
+
+**Date-only upper bounds.** `--expires 2026-12-31` or `--until 2026-12-31` includes that whole day: parse with `util.ParseDateEndOfDay` (23:59:59 UTC), not `time.Parse(time.DateOnly, ...)`. Reference: `internal/cmd/cluster/key_create.go`, `internal/cmd/cluster/logs.go`.
+
+**Unset values.** An unset optional proto message or field renders as `not set` or as what it means, never as a misleading zero value. A nil retention period is `indefinite`, not `0s` (`output.RetentionPeriod`); a nil optional field goes through `output.OptionalValue(v, "not set")`, not `fmt.Sprint(v.GetX())`. Reference: `internal/cmd/output/backup.go`, `internal/cmd/output/format.go`.
 
 ### Proto enum pretty printing (`internal/cmd/output/`)
 
