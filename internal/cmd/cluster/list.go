@@ -11,6 +11,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
+	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -18,6 +19,18 @@ func newListCommand(s *state.State) *cobra.Command {
 	cmd := base.ListCmd[*clusterv1.ListClustersResponse]{
 		Use:   "list",
 		Short: "List all clusters",
+		Long: `List all clusters in the current account.
+
+By default, all clusters are fetched automatically across multiple pages.
+
+Use --page-size and --page-token for manual pagination:
+  --page-size limits how many clusters are returned per call.
+  --page-token resumes from a specific page (token is printed when more pages exist).
+  If --page-token is omitted, listing starts from the beginning.
+
+Use --cloud-provider and --cloud-region to filter results server-side:
+  --cloud-provider filters clusters by cloud provider ID (e.g. aws, gcp).
+  --cloud-region filters clusters by cloud provider region ID (e.g. us-east-1).`,
 		Example: `# List all clusters
 qcloud cluster list
 
@@ -41,80 +54,34 @@ qcloud cluster list --page-size 10`,
 				return nil, err
 			}
 
-			pageSizeChanged := cmd.Flags().Changed("page-size")
-			pageTokenChanged := cmd.Flags().Changed("page-token")
-			cloudProviderChanged := cmd.Flags().Changed("cloud-provider")
-			cloudRegionChanged := cmd.Flags().Changed("cloud-region")
-
-			var cloudProvider, cloudRegion string
-			if cloudProviderChanged {
-				cloudProvider, _ = cmd.Flags().GetString("cloud-provider")
-			}
-
-			if cloudRegionChanged {
-				cloudRegion, _ = cmd.Flags().GetString("cloud-region")
-			}
-
-			if !pageSizeChanged && !pageTokenChanged {
-				// Auto-paginate: fetch all pages and return combined results.
-				var allItems []*clusterv1.Cluster
-				var nextToken *string
-				for {
-					req := &clusterv1.ListClustersRequest{AccountId: accountID}
-					if nextToken != nil {
-						req.PageToken = nextToken
-					}
-
-					if cloudProviderChanged {
-						req.CloudProviderId = &cloudProvider
-					}
-
-					if cloudRegionChanged {
-						req.CloudProviderRegionId = &cloudRegion
-					}
-
-					resp, err := client.Cluster().ListClusters(ctx, req)
-					if err != nil {
-						return nil, fmt.Errorf("failed to list clusters: %w", err)
-					}
-
-					allItems = append(allItems, resp.Items...)
-					if resp.NextPageToken == nil || *resp.NextPageToken == "" {
-						break
-					}
-
-					nextToken = resp.NextPageToken
+			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*clusterv1.Cluster, string, error) {
+				req := &clusterv1.ListClustersRequest{
+					AccountId: accountID,
+					PageSize:  pageSize,
+					PageToken: pageToken,
+				}
+				if cmd.Flags().Changed("cloud-provider") {
+					v, _ := cmd.Flags().GetString("cloud-provider")
+					req.CloudProviderId = &v
 				}
 
-				return &clusterv1.ListClustersResponse{Items: allItems}, nil
-			}
+				if cmd.Flags().Changed("cloud-region") {
+					v, _ := cmd.Flags().GetString("cloud-region")
+					req.CloudProviderRegionId = &v
+				}
 
-			// Manual mode: single request with provided flags.
-			req := &clusterv1.ListClustersRequest{AccountId: accountID}
-			if pageSizeChanged {
-				ps, _ := cmd.Flags().GetInt32("page-size")
-				req.PageSize = &ps
-			}
+				resp, err := client.Cluster().ListClusters(ctx, req)
+				if err != nil {
+					return nil, "", fmt.Errorf("failed to list clusters: %w", err)
+				}
 
-			if pageTokenChanged {
-				pt, _ := cmd.Flags().GetString("page-token")
-				req.PageToken = &pt
-			}
-
-			if cloudProviderChanged {
-				req.CloudProviderId = &cloudProvider
-			}
-
-			if cloudRegionChanged {
-				req.CloudProviderRegionId = &cloudRegion
-			}
-
-			resp, err := client.Cluster().ListClusters(ctx, req)
+				return resp.GetItems(), resp.GetNextPageToken(), nil
+			})
 			if err != nil {
-				return nil, fmt.Errorf("failed to list clusters: %w", err)
+				return nil, err
 			}
 
-			return resp, nil
+			return &clusterv1.ListClustersResponse{Items: items, NextPageToken: next}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*clusterv1.Cluster](w)
@@ -156,21 +123,7 @@ qcloud cluster list --page-size 10`,
 		},
 	}.CobraCommand(s)
 
-	cmd.Long = `List all clusters in the current account.
-
-By default, all clusters are fetched automatically across multiple pages.
-
-Use --page-size and --page-token for manual pagination:
-  --page-size limits how many clusters are returned per call.
-  --page-token resumes from a specific page (token is printed when more pages exist).
-  If --page-token is omitted, listing starts from the beginning.
-
-Use --cloud-provider and --cloud-region to filter results server-side:
-  --cloud-provider filters clusters by cloud provider ID (e.g. aws, gcp).
-  --cloud-region filters clusters by cloud provider region ID (e.g. us-east-1).`
-
-	cmd.Flags().Int32("page-size", 0, "Maximum number of clusters to return per page (manual pagination mode)")
-	cmd.Flags().String("page-token", "", "Page token from a previous response to resume from (manual pagination mode)")
+	util.AddPaginationFlags(cmd, "clusters")
 	cmd.Flags().String("cloud-provider", "", "Filter by cloud provider ID")
 	cmd.Flags().String("cloud-region", "", "Filter by cloud provider region ID")
 

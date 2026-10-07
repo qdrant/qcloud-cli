@@ -1,21 +1,21 @@
-package space
+package util
 
 import (
 	"github.com/spf13/cobra"
 )
 
-// addPaginationFlags registers the --page-size and --page-token flags used by
+// AddPaginationFlags registers the --page-size and --page-token flags used by
 // list commands. what names the listed resources in the flag help.
-func addPaginationFlags(cmd *cobra.Command, what string) {
+func AddPaginationFlags(cmd *cobra.Command, what string) {
 	cmd.Flags().Int32("page-size", 0, "Maximum number of "+what+" to return per page (manual pagination mode)")
 	cmd.Flags().String("page-token", "", "Page token from a previous response to resume from (manual pagination mode)")
 }
 
-// fetchPages runs a paginated list call. Unless --page-size or --page-token is
+// FetchPages runs a paginated list call. Unless --page-size or --page-token is
 // set, it follows next-page tokens and returns all items with a nil next token.
 // Otherwise it performs a single request with the given flags and returns the
 // next page token, if any.
-func fetchPages[T any](
+func FetchPages[T any](
 	cmd *cobra.Command,
 	fetch func(pageSize *int32, pageToken *string) (items []T, nextPageToken string, err error),
 ) ([]T, *string, error) {

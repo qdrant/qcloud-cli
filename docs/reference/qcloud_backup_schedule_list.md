@@ -2,8 +2,32 @@
 
 List backup schedules
 
+### Synopsis
+
+List backup schedules in the current account.
+
+Schedules can be filtered by cluster. The NEXT RUN column is computed locally
+from the cron expression.
+
+By default, all schedules are fetched automatically across multiple pages. Use
+--page-size and --page-token for manual pagination; the next page token is
+included in the JSON output when more pages exist.
+
 ```
 qcloud backup schedule list [flags]
+```
+
+### Examples
+
+```
+# List all backup schedules in the account
+qcloud backup schedule list
+
+# List schedules of a cluster
+qcloud backup schedule list --cluster-id 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+
+# Manual pagination
+qcloud backup schedule list --page-size 10 --json
 ```
 
 ### Options
@@ -12,6 +36,8 @@ qcloud backup schedule list [flags]
       --cluster-id string   Filter by cluster ID
   -h, --help                help for list
       --no-headers          Do not print column headers
+      --page-size int32     Maximum number of schedules to return per page (manual pagination mode)
+      --page-token string   Page token from a previous response to resume from (manual pagination mode)
 ```
 
 ### Options inherited from parent commands
