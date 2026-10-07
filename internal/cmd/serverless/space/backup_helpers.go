@@ -6,7 +6,6 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 )
 
@@ -23,16 +22,6 @@ func retentionFromDays(days uint32) (*durationpb.Duration, error) {
 	}
 
 	return durationpb.New(time.Duration(days) * 24 * time.Hour), nil
-}
-
-// formatRetention renders a retention period in days; an unset period means
-// the backups are kept indefinitely.
-func formatRetention(d *durationpb.Duration) string {
-	if d == nil {
-		return "indefinite"
-	}
-
-	return output.Duration(d.AsDuration())
 }
 
 // formatCollection renders an optional collection name; unset means the whole

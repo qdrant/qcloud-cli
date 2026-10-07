@@ -63,9 +63,7 @@ The --cluster-id flag is required because the API requires the cluster ID to loo
 				fmt.Fprintf(w, "Created:   %s  (%s)\n", output.HumanTime(t), output.FullDateTime(t))
 			}
 
-			if sched.GetRetentionPeriod() != nil {
-				fmt.Fprintf(w, "Retention: %s\n", output.Duration(sched.GetRetentionPeriod().AsDuration()))
-			}
+			fmt.Fprintf(w, "Retention: %s\n", output.RetentionPeriod(sched.GetRetentionPeriod()))
 
 			return nil
 		},

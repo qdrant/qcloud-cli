@@ -32,6 +32,7 @@ func TestBackupDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "my-backup")
 	assert.Contains(t, stdout, "cluster-123")
 	assert.Contains(t, stdout, "SUCCEEDED")
+	assert.Contains(t, stdout, "Retention: indefinite")
 
 	req, ok := env.BackupServer.GetBackupCalls.Last()
 	require.True(t, ok)

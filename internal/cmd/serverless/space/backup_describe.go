@@ -68,7 +68,7 @@ qcloud serverless space backup describe 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d --j
 				fmt.Fprintf(w, "Schedule:    %s\n", b.GetBackupScheduleId())
 			}
 
-			fmt.Fprintf(w, "Retention:   %s\n", formatRetention(b.GetRetentionPeriod()))
+			fmt.Fprintf(w, "Retention:   %s\n", output.RetentionPeriod(b.GetRetentionPeriod()))
 
 			if st := b.GetStats(); st != nil {
 				fmt.Fprintln(w)

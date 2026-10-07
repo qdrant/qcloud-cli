@@ -40,6 +40,7 @@ func TestScheduleDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "0 2 * * *")
 	assert.Contains(t, stdout, "Next Run:")
 	assert.Contains(t, stdout, "ACTIVE")
+	assert.Contains(t, stdout, "Retention: indefinite")
 }
 
 func TestScheduleDescribe_JSONOutput(t *testing.T) {

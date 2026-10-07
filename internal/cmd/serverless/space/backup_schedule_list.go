@@ -87,7 +87,7 @@ qcloud serverless space backup schedule list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-
 			})
 			t.AddField("PAUSED", schedulePauseState)
 			t.AddField("RETENTION", func(v *spacebackupv1.BackupSchedule) string {
-				return formatRetention(v.GetRetentionPeriod())
+				return output.RetentionPeriod(v.GetRetentionPeriod())
 			})
 			t.AddField("LAST RUN", func(v *spacebackupv1.BackupSchedule) string {
 				if v.GetLastFiredAt() != nil {
