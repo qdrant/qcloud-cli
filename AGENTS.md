@@ -231,7 +231,7 @@ base.Cmd{
 
 ### Shared helpers (`internal/cmd/util`, `internal/cmd/output`)
 
-Before writing a polling loop, a flag-registration block, a parser or a display formatter, read `internal/cmd/util` and `internal/cmd/output`: it most likely exists already. If you write a helper that a second cmd package could use, put it there, not in your cmd package.
+Before writing a polling loop, a flag-registration block, a parser or a display formatter, read `internal/cmd/util` and `internal/cmd/output` (e.g. `output.BoolYesNo`, `output.HumanTime`, `output.Duration`): it most likely exists already. If you write a helper that a second cmd package could use, put it there, not in your cmd package.
 
 The concerns below come up in most new commands. Each has a reference implementation; copy its shape.
 
@@ -275,15 +275,7 @@ Register the flags with `util.AddPaginationFlags(cmd, "clusters")`. Reference: `
 
 ### Proto enum pretty printing (`internal/cmd/output/`)
 
-All TrimPrefix-based enum formatters live in `internal/cmd/output/`, grouped by proto package:
-
-| File | Functions |
-|------|-----------|
-| `output/cluster.go` | `ClusterPhase`, `ClusterNodeState`, `TolerationOperator`, `TolerationEffect` |
-| `output/booking.go` | `PackageTier` |
-| `output/hybrid.go` | `HybridEnvironmentPhase`, `ClusterCreationStatus`, `HybridComponentPhase` |
-| `output/backup.go` | `BackupStatus`, `BackupScheduleStatus`, `BackupRestoreStatus` |
-| `output/serverless.go` | `SpacePhase`, `SpaceApiKeyPhase`, `SpaceGlobalAccessType`, `SpaceCollectionAccessType`, `SpaceBackupStatus`, `SpaceBackupScheduleStatus`, `SpaceBackupRestoreStatus` |
+All TrimPrefix-based enum formatters live in `internal/cmd/output/<proto package>.go` (e.g. `output/cluster.go`, `output/serverless.go`). Check there before adding one.
 
 Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "PREFIX_")`. Functions are named after the type they format, without a redundant `String` suffix, since the package qualifier already provides context (`output.ClusterPhase(...)`).
 
@@ -291,16 +283,6 @@ Each function strips the proto enum prefix via `strings.TrimPrefix(x.String(), "
 - Never inline `strings.TrimPrefix(x.String(), "PREFIX_")` in a cmd package. Add a function to the appropriate `output/*.go` file instead.
 - Never define a private `phaseString` / `statusString` / etc. helper in a cmd package for TrimPrefix formatting. These belong in `output`.
 - Switch-based format/parse pairs (`storageTierString`, `restartPolicyString`, etc.) encode semantic mappings paired with parse functions and belong with their cmd package, not in `output`.
-
-### Output helpers (`internal/cmd/output/`)
-
-General-purpose output formatting helpers belong in the `output` package, not in individual cmd packages.
-
-Examples: `BoolYesNo` (formats a bool as `"yes"` / `"no"`), `BoolMark`, `HumanTime`, `OptionalValue`, etc.
-
-**Rules:**
-- If a helper formats a value for display and could be reused across more than one cmd package, add it to `output/`.
-- Never define a private display-formatting helper in a cmd package when it belongs in `output`.
 
 ### Inline pointer literals
 
