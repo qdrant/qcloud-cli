@@ -130,7 +130,7 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 				if s.Config.JSONOutput() {
 					_ = output.PrintJSON(cmd.OutOrStdout(), created)
 				} else {
-					printCreatedKey(cmd.OutOrStdout(), created)
+					output.CreatedAPIKey(cmd.OutOrStdout(), created)
 				}
 
 				return nil, fmt.Errorf("API key %s was created but did not become ready: %w", created.GetId(), err)
@@ -141,20 +141,10 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 			return ready, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, key *spaceauthv1.SpaceApiKey) {
-			printCreatedKey(out, key)
+			output.CreatedAPIKey(out, key)
 		},
 		ValidArgsFunction: completion.SpaceIDCompletion(s),
 	}.CobraCommand(s)
-}
-
-// printCreatedKey prints the creation message and the one-time secret of a key.
-func printCreatedKey(out io.Writer, key *spaceauthv1.SpaceApiKey) {
-	fmt.Fprintf(out, "API key %s (%s) created.\n", key.GetId(), key.GetName())
-	if k := key.GetKey(); k != "" {
-		fmt.Fprintln(out, "")
-		fmt.Fprintln(out, "Save this key now — it will not be shown again:")
-		fmt.Fprintf(out, "  %s\n", k)
-	}
 }
 
 // parseKeyAccessRules builds the access rules from the --access-type and

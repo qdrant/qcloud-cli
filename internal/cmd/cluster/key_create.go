@@ -127,7 +127,7 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 				if s.Config.JSONOutput() {
 					_ = output.PrintJSON(cmd.OutOrStdout(), created)
 				} else {
-					printCreatedKey(cmd.OutOrStdout(), created)
+					output.CreatedAPIKey(cmd.OutOrStdout(), created)
 				}
 
 				return nil, fmt.Errorf("API key %s was created but is not active on the cluster: %w", created.GetId(), err)
@@ -136,20 +136,10 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			return created, nil
 		},
 		PrintResource: func(_ *cobra.Command, out io.Writer, key *clusterauthv2.DatabaseApiKey) {
-			printCreatedKey(out, key)
+			output.CreatedAPIKey(out, key)
 		},
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
-}
-
-// printCreatedKey prints the creation message and the one-time secret of a key.
-func printCreatedKey(out io.Writer, key *clusterauthv2.DatabaseApiKey) {
-	fmt.Fprintf(out, "API key %s (%s) created.\n", key.GetId(), key.GetName())
-	if k := key.GetKey(); k != "" {
-		fmt.Fprintln(out, "")
-		fmt.Fprintln(out, "Save this key now — it will not be shown again:")
-		fmt.Fprintf(out, "  %s\n", k)
-	}
 }
 
 const defaultQdrantRESTPort = 6333
