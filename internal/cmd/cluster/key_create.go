@@ -95,13 +95,12 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 			}
 
 			if expiresStr != "" {
-				t, err := time.Parse("2006-01-02", expiresStr)
+				t, err := util.ParseDateEndOfDay(expiresStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --expires %q: must be in YYYY-MM-DD format", expiresStr)
 				}
 
-				// Keep the key valid for the whole given day.
-				key.ExpiresAt = timestamppb.New(t.AddDate(0, 0, 1).Add(-time.Second))
+				key.ExpiresAt = timestamppb.New(t)
 			}
 
 			resp, err := client.DatabaseApiKey().CreateDatabaseApiKey(ctx, &clusterauthv2.CreateDatabaseApiKeyRequest{

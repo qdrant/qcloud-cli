@@ -79,13 +79,12 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
 
 			var expiresAt *timestamppb.Timestamp
 			if expiresStr != "" {
-				t, err := time.Parse("2006-01-02", expiresStr)
+				t, err := util.ParseDateEndOfDay(expiresStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --expires %q: must be in YYYY-MM-DD format", expiresStr)
 				}
 
-				// Expire at the end of the given day so the date is inclusive.
-				expiresAt = timestamppb.New(t.AddDate(0, 0, 1).Add(-time.Second))
+				expiresAt = timestamppb.New(t)
 			}
 
 			ctx := cmd.Context()

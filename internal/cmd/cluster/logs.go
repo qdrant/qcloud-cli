@@ -22,6 +22,12 @@ func newLogsCommand(s *state.State) *cobra.Command {
 		Use:   "logs <cluster-id>",
 		Short: "Retrieve logs for a cluster",
 		Args:  util.ExactArgs(1, "a cluster ID"),
+		Long: `Retrieve logs for a cluster.
+
+By default, logs from the last 3 days up to now are returned. --since and --until
+accept an RFC3339 timestamp or a YYYY-MM-DD date in UTC. A date passed to
+--since starts at the beginning of that day, and a date passed to --until
+includes the whole day.`,
 		Example: `# Get logs for a cluster
 qcloud cluster logs abc-123
 
@@ -52,7 +58,7 @@ qcloud cluster logs abc-123 --json`,
 
 			if cmd.Flags().Changed("since") {
 				sinceStr, _ := cmd.Flags().GetString("since")
-				t, err := parseLogTime(sinceStr)
+				t, err := parseLogTime(sinceStr, false)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --since %q: must be RFC3339 or YYYY-MM-DD", sinceStr)
 				}
@@ -62,7 +68,7 @@ qcloud cluster logs abc-123 --json`,
 
 			if cmd.Flags().Changed("until") {
 				untilStr, _ := cmd.Flags().GetString("until")
-				t, err := parseLogTime(untilStr)
+				t, err := parseLogTime(untilStr, true)
 				if err != nil {
 					return nil, fmt.Errorf("invalid --until %q: must be RFC3339 or YYYY-MM-DD", untilStr)
 				}
@@ -99,11 +105,17 @@ qcloud cluster logs abc-123 --json`,
 	return cmd
 }
 
-func parseLogTime(s string) (time.Time, error) {
+// parseLogTime parses an RFC3339 timestamp or a YYYY-MM-DD date. Dates resolve
+// to the start of the day, or to its end when endOfDay is set.
+func parseLogTime(s string, endOfDay bool) (time.Time, error) {
 	t, err := time.Parse(time.RFC3339, s)
 	if err == nil {
 		return t, nil
 	}
 
-	return time.Parse("2006-01-02", s)
+	if endOfDay {
+		return util.ParseDateEndOfDay(s)
+	}
+
+	return time.Parse(time.DateOnly, s)
 }
