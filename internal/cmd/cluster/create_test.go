@@ -2,6 +2,7 @@ package cluster_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -144,7 +145,7 @@ func TestCreateCluster_WaitFailure(t *testing.T) {
 		},
 	}, nil)
 
-	_, _, err := testutil.Exec(t, env,
+	stdout, _, err := testutil.Exec(t, env,
 		"cluster", "create",
 		"--name", "my-cluster",
 		"--cloud-provider", "aws",
@@ -155,8 +156,42 @@ func TestCreateCluster_WaitFailure(t *testing.T) {
 		"--wait-poll-interval", "10ms",
 	)
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cluster cluster-fail was created but did not become healthy")
 	assert.Contains(t, err.Error(), "FAILED_TO_CREATE")
 	assert.Contains(t, err.Error(), "quota exceeded")
+	assert.Contains(t, stdout, "Cluster cluster-fail () created successfully.")
+}
+
+func TestCreateCluster_WaitFailureJSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-fail"},
+	}, nil)
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id:    "cluster-fail",
+			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_CREATE},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--wait",
+		"--wait-poll-interval", "10ms",
+		"--json",
+	)
+	require.Error(t, err)
+
+	var result struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	assert.Equal(t, "cluster-fail", result.ID)
 }
 
 func TestCreateCluster_WaitTimeout(t *testing.T) {

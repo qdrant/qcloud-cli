@@ -138,3 +138,28 @@ func TestCreateFromBackup_WaitSuccess(t *testing.T) {
 	assert.Contains(t, stdout, "https://restored.aws.cloud.qdrant.io")
 	assert.Positive(t, env.Server.GetClusterCalls.Count())
 }
+
+func TestCreateFromBackup_WaitFailure(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterFromBackupCalls.Returns(&clusterv1.CreateClusterFromBackupResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-restored", Name: "my-restored-cluster"},
+	}, nil)
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id:    "cluster-restored",
+			State: &clusterv1.ClusterState{Phase: clusterv1.ClusterPhase_CLUSTER_PHASE_FAILED_TO_CREATE},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env,
+		"cluster", "create-from-backup",
+		"--backup-id", "backup-abc",
+		"--name", "my-restored-cluster",
+		"--wait",
+		"--wait-poll-interval", "10ms",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cluster cluster-restored was created but did not become healthy")
+	assert.Contains(t, stdout, "Cluster cluster-restored (my-restored-cluster) created from backup.")
+}
