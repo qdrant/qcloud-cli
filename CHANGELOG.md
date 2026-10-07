@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.30.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.30.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.29.0...v0.30.0)
+
+### Features
+
+- **serverless**: Add serverless space commands (part1) (#210) ([abe70f0](https://github.com/qdrant/qcloud-cli/commit/abe70f08b60928bba2f246cb9769bf5bd348b532))
+
 ## [v0.29.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.29.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.28.1...v0.29.0)
