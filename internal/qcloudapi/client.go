@@ -19,6 +19,9 @@ import (
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
+	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
+	serverlessplatformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/platform/v1"
+	serverlessquotav1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/quota/v1"
 	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
@@ -40,6 +43,9 @@ type Client struct {
 	serverlessSpace       spacev1.SpaceServiceClient
 	serverlessSpaceApiKey spaceauthv1.SpaceApiKeyServiceClient
 	serverlessBackup      spacebackupv1.BackupServiceClient
+	serverlessPlatform    serverlessplatformv1.PlatformServiceClient
+	serverlessQuota       serverlessquotav1.QuotaServiceClient
+	serverlessMonitoring  serverlessmonitoringv1.MonitoringServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -78,6 +84,9 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 		serverlessSpace:       spacev1.NewSpaceServiceClient(conn),
 		serverlessSpaceApiKey: spaceauthv1.NewSpaceApiKeyServiceClient(conn),
 		serverlessBackup:      spacebackupv1.NewBackupServiceClient(conn),
+		serverlessPlatform:    serverlessplatformv1.NewPlatformServiceClient(conn),
+		serverlessQuota:       serverlessquotav1.NewQuotaServiceClient(conn),
+		serverlessMonitoring:  serverlessmonitoringv1.NewMonitoringServiceClient(conn),
 	}
 }
 
@@ -144,6 +153,21 @@ func (c *Client) ServerlessSpaceApiKey() spaceauthv1.SpaceApiKeyServiceClient {
 // ServerlessBackup returns the serverless BackupService gRPC client.
 func (c *Client) ServerlessBackup() spacebackupv1.BackupServiceClient {
 	return c.serverlessBackup
+}
+
+// ServerlessPlatform returns the serverless PlatformService gRPC client.
+func (c *Client) ServerlessPlatform() serverlessplatformv1.PlatformServiceClient {
+	return c.serverlessPlatform
+}
+
+// ServerlessQuota returns the serverless QuotaService gRPC client.
+func (c *Client) ServerlessQuota() serverlessquotav1.QuotaServiceClient {
+	return c.serverlessQuota
+}
+
+// ServerlessMonitoring returns the serverless MonitoringService gRPC client.
+func (c *Client) ServerlessMonitoring() serverlessmonitoringv1.MonitoringServiceClient {
+	return c.serverlessMonitoring
 }
 
 // Close closes the underlying gRPC connection.

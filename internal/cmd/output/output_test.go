@@ -81,3 +81,8 @@ func TestDuration(t *testing.T) {
 		assert.Equal(t, tt.want, output.Duration(tt.in))
 	}
 }
+
+func TestUnlimitedIfZero(t *testing.T) {
+	assert.Equal(t, "unlimited", output.UnlimitedIfZero("0", 0))
+	assert.Equal(t, "10", output.UnlimitedIfZero("10", 10))
+}

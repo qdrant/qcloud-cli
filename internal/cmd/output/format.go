@@ -16,6 +16,16 @@ func Duration(d time.Duration) string {
 	return durafmt.Parse(d).LimitToUnit("days").LimitFirstN(2).String()
 }
 
+// UnlimitedIfZero returns "unlimited" when v is 0 and formatted otherwise. It is
+// used for limits where 0 means no limit.
+func UnlimitedIfZero(formatted string, v uint64) string {
+	if v == 0 {
+		return "unlimited"
+	}
+
+	return formatted
+}
+
 // HumanTime returns a relative human-readable time (e.g., "3 hours ago").
 // Returns empty string for zero time.
 func HumanTime(t time.Time) string {
