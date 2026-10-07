@@ -26,6 +26,9 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
 
 # Show a metrics overview of the collections in a space
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
+
+# List the alerts that are currently firing for a space
+qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --state firing
 ```
 
 ### Options
@@ -50,6 +53,7 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
 ### SEE ALSO
 
 * [qcloud serverless](qcloud_serverless.md)	 - Manage Qdrant Cloud Serverless resources
+* [qcloud serverless space alert](qcloud_serverless_space_alert.md)	 - Show alerts of serverless spaces
 * [qcloud serverless space backup](qcloud_serverless_space_backup.md)	 - Manage backups of serverless spaces
 * [qcloud serverless space create](qcloud_serverless_space_create.md)	 - Create a new space
 * [qcloud serverless space create-from-backup](qcloud_serverless_space_create-from-backup.md)	 - Create a new space from a backup
