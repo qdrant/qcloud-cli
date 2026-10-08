@@ -1,6 +1,6 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)
 
-.PHONY: build debug debug-run test lint format clean bootstrap docs docs-check e2e
+.PHONY: build debug debug-run test lint format clean bootstrap docs docs-check skills skills-check e2e
 
 build:
 	CGO_ENABLED=0 go build -ldflags "-X main.version=$(VERSION)" -o build/qcloud ./cmd/qcloud
@@ -42,3 +42,10 @@ docs-check: docs
 	@git diff --exit-code docs/reference/ || \
 		(echo "docs/reference is out of date — run 'make docs' and commit the result" && exit 1)
 
+
+skills:
+	go run ./cmd/skillgen ./skills
+
+skills-check: skills
+	@git diff --exit-code skills/ && test -z "$$(git ls-files --others --exclude-standard skills/)" || \
+		(echo "skills/ is out of date — run 'make skills' and commit the result" && exit 1)
