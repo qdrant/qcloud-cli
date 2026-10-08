@@ -22,7 +22,7 @@ import (
 func newCreateCommand(s *state.State) *cobra.Command {
 	cmd := base.CreateCmd[*clusterv1.Cluster]{
 		Example: `# Create a free-tier cluster
-qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --package free
+qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --package free2
 
 # Create a cluster with specific resources
 qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 --cpu 0.5 --ram 4Gi
