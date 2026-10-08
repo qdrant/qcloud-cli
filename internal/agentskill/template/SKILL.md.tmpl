@@ -1,0 +1,100 @@
+---
+name: qcloud
+description: Manage Qdrant Cloud with the qcloud CLI, covering clusters, cluster API keys, backups and restores, hybrid cloud environments, serverless spaces, inference models, IAM (users, roles, management keys) and accounts. Use when the user wants to create, inspect, scale, update, delete or script anything in Qdrant Cloud, or mentions qcloud.
+metadata:
+  qcloud-version: "{{ .Version }}"
+---
+
+# qcloud
+
+`qcloud` is the official CLI for the Qdrant Cloud management API. It manages cloud resources (clusters, keys, backups, environments). It does not read or write vectors: for collections and points, use the cluster's own REST/gRPC endpoint with a cluster API key.
+
+## Ground rules
+
+- Pass `--json` to every command whose output you need to read, and parse it with `jq`. Table output is for humans and may change between versions.
+- Commands that delete, restart, suspend or restore ask for confirmation on stdin. You cannot answer the prompt, so confirm with the user first, then re-run with `--force`.
+- Never print, log or commit API keys. `cluster key create`, `iam key create` and `hybrid bootstrap` print secrets only once, so pass them straight to the user or a secret store.
+- Resource IDs are UUIDs. Look them up with `list --json` and do not guess them. Names are not accepted where an ID is expected.
+- Run `qcloud <command> --help` when unsure. The reference files below are generated from the same help text.
+
+## Authentication and contexts
+
+Each command needs a management API key and an account ID, resolved in this order (highest first):
+
+1. Flags: `--api-key`, `--account-id`, `--context <name>`
+2. Environment variables: `QDRANT_CLOUD_API_KEY`, `QDRANT_CLOUD_ACCOUNT_ID`, `QDRANT_CLOUD_CONTEXT`
+3. The active context in `~/.config/qcloud/config.yaml`
+
+```sh
+qcloud context show --json            # what is active right now
+qcloud context list                   # all saved contexts
+qcloud context use production         # switch the active context
+qcloud context set staging --api-key-command 'op read op://vault/qdrant/api-key' --account-id <account-id>
+```
+
+If a command fails with an authentication or missing-account error, run `qcloud context show` and ask the user which context or credentials to use. Do not create contexts with plaintext keys unless the user asks for that.
+
+## Conventions
+
+- `--wait` (with `--wait-timeout`) on create and similar commands blocks until the resource is ready. Use it when later steps depend on the resource. Without it, poll with `qcloud cluster wait <id>` or `qcloud serverless space wait <id>`.
+- If a create with `--wait` fails during the wait, the resource still exists. The error contains its ID, so don't create it again.
+- List commands fetch every page by default. `--page-size` and `--page-token` switch to manual paging, and the next token is included in the JSON output.
+- Repeatable `key=value` flags (`--label`, `--allowed-ip`, ...) add or overwrite entries on update. Append `-` to remove one (`--label env-`).
+- Date-only values such as `--expires 2026-12-31` include the whole day (until 23:59:59 UTC).
+
+## Workflows
+
+### Create a cluster and give the user a key
+
+```sh
+qcloud cloud-provider list --json
+qcloud cloud-region list --cloud-provider aws --json
+qcloud package list --cloud-provider aws --cloud-region eu-central-1 --json
+qcloud cluster create --cloud-provider aws --cloud-region eu-central-1 \
+  --cpu 2 --ram 8Gi --name my-cluster --wait --json
+qcloud cluster describe <cluster-id> --json        # includes the endpoint URL
+qcloud cluster key create <cluster-id> --name my-key --wait --json
+```
+
+Use either `--package <name>` or `--cpu`/`--ram` (with optional `--disk`, `--gpu`, `--multi-az`) to choose a package. `--package free` creates a free-tier cluster.
+
+### Back up and restore
+
+```sh
+qcloud backup create --cluster-id <cluster-id> --retention-days 7 --json
+qcloud backup list --cluster-id <cluster-id> --json
+qcloud cluster create-from-backup --backup-id <backup-id> --name restored --wait
+qcloud backup restore trigger <backup-id> --force        # only after the user confirms
+qcloud backup restore list --json
+```
+
+`cluster create-from-backup` creates a new cluster and leaves the original alone. `backup restore trigger` restores into the cluster the backup was taken from, so confirm with the user before running it. Use `qcloud backup schedule ...` for recurring backups.
+
+### Hybrid cloud (customer-managed Kubernetes)
+
+```sh
+qcloud hybrid create --name my-env --json
+qcloud hybrid bootstrap <env-id>        # prints kubectl/helm commands and secrets; each run issues new credentials
+qcloud cluster create --cloud-provider hybrid --cloud-region <env-id> --cpu 2 --ram 8Gi --wait
+```
+
+Run `hybrid bootstrap` only when the Kubernetes cluster is not registered yet. Show its output to the user rather than piping it to a shell yourself. Hybrid-only cluster flags are marked `(cloud-provider: hybrid)` in `--help`.
+
+### Serverless spaces
+
+```sh
+qcloud serverless space create --cloud-region eu-central-1 --name my-space --wait --json
+qcloud serverless space key create <space-id> --name my-key --json
+qcloud serverless space list --json
+```
+
+A space's region cannot change after creation. Backups and schedules live under `qcloud serverless space backup ...`.
+
+## Command reference
+
+Read the file for the command group you need. Each file lists every subcommand with its usage, description, flags and examples.
+
+- [Global flags](references/global-flags.md): flags accepted by every command
+{{- range .References }}
+- [`qcloud {{ .Name }}`](references/{{ .Name }}.md): {{ .Short }}
+{{- end }}
