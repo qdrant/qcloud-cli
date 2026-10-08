@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.31.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.31.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.30.0...v0.31.0)
+
+### Features
+
+- **serverless**: add cloud-region list and describe commands ([8ef136e](https://github.com/qdrant/qcloud-cli/commit/8ef136eba59c63911e1fc5a4cc9664d3bad10b4e))
+- **serverless**: add quota command ([8ef136e](https://github.com/qdrant/qcloud-cli/commit/8ef136eba59c63911e1fc5a4cc9664d3bad10b4e))
+- **serverless**: add space metrics summary and usage commands ([8ef136e](https://github.com/qdrant/qcloud-cli/commit/8ef136eba59c63911e1fc5a4cc9664d3bad10b4e))
+- **serverless**: add space alert list command ([8ef136e](https://github.com/qdrant/qcloud-cli/commit/8ef136eba59c63911e1fc5a4cc9664d3bad10b4e))
+- **cluster**: accept relative durations in logs --since and --until ([8ef136e](https://github.com/qdrant/qcloud-cli/commit/8ef136eba59c63911e1fc5a4cc9664d3bad10b4e))
+
 ## [v0.30.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.30.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.29.0...v0.30.0)
