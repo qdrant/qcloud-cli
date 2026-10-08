@@ -21,6 +21,9 @@ import (
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
+	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
+	serverlessplatformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/platform/v1"
+	serverlessquotav1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/quota/v1"
 	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
@@ -73,6 +76,9 @@ type TestEnv struct {
 	ServerlessSpaceServer       *FakeServerlessSpaceService
 	ServerlessSpaceApiKeyServer *FakeServerlessSpaceApiKeyService
 	ServerlessBackupServer      *FakeServerlessBackupService
+	ServerlessPlatformServer    *FakeServerlessPlatformService
+	ServerlessQuotaServer       *FakeServerlessQuotaService
+	ServerlessMonitoringServer  *FakeServerlessMonitoringService
 	Capture                     *RequestCapture
 	Cleanup                     func()
 }
@@ -129,6 +135,9 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fakeServerlessSpace := &FakeServerlessSpaceService{}
 	fakeServerlessSpaceApiKey := &FakeServerlessSpaceApiKeyService{}
 	fakeServerlessBackup := &FakeServerlessBackupService{}
+	fakeServerlessPlatform := &FakeServerlessPlatformService{}
+	fakeServerlessQuota := &FakeServerlessQuotaService{}
+	fakeServerlessMonitoring := &FakeServerlessMonitoringService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -147,6 +156,9 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	spacev1.RegisterSpaceServiceServer(srv, fakeServerlessSpace)
 	spaceauthv1.RegisterSpaceApiKeyServiceServer(srv, fakeServerlessSpaceApiKey)
 	spacebackupv1.RegisterBackupServiceServer(srv, fakeServerlessBackup)
+	serverlessplatformv1.RegisterPlatformServiceServer(srv, fakeServerlessPlatform)
+	serverlessquotav1.RegisterQuotaServiceServer(srv, fakeServerlessQuota)
+	serverlessmonitoringv1.RegisterMonitoringServiceServer(srv, fakeServerlessMonitoring)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -205,6 +217,9 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		ServerlessSpaceServer:       fakeServerlessSpace,
 		ServerlessSpaceApiKeyServer: fakeServerlessSpaceApiKey,
 		ServerlessBackupServer:      fakeServerlessBackup,
+		ServerlessPlatformServer:    fakeServerlessPlatform,
+		ServerlessQuotaServer:       fakeServerlessQuota,
+		ServerlessMonitoringServer:  fakeServerlessMonitoring,
 		Capture:                     capture,
 		Cleanup:                     cleanup,
 	}

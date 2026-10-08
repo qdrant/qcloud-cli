@@ -112,15 +112,6 @@ func getSpace(s *state.State, cmd *cobra.Command, spaceID string) (*spacev1.Spac
 	return resp.GetSpace(), nil
 }
 
-// unlimitedIfZero returns "unlimited" for platform limits where 0 means no limit.
-func unlimitedIfZero(formatted string, v uint64) string {
-	if v == 0 {
-		return "unlimited"
-	}
-
-	return formatted
-}
-
 // printSpaceConfiguration prints the configuration of a space as indented
 // "key: value" lines.
 func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
@@ -128,7 +119,7 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 
 	fmt.Fprintf(w, "  Allowed IPs:                     %s\n", output.JoinOrDefault(cfg.GetAllowedIpSourceRanges(), "(any)"))
 	fmt.Fprintf(w, "  Allowed Origins:                 %s\n", output.JoinOrDefault(cfg.GetAllowedOrigins(), notSet))
-	fmt.Fprintf(w, "  Max Collections (platform):      %s\n", unlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxCollectionsPerSpace()), cfg.GetMaxCollectionsPerSpace()))
+	fmt.Fprintf(w, "  Max Collections (platform):      %s\n", output.UnlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxCollectionsPerSpace()), cfg.GetMaxCollectionsPerSpace()))
 
 	col := cfg.GetCollectionSettings()
 	maxSize := notSet
@@ -139,7 +130,7 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 	fmt.Fprintf(w, "  Max Collection Size:             %s\n", maxSize)
 	platformMaxSize := notSet
 	if col != nil {
-		platformMaxSize = unlimitedIfZero(resource.ByteQuantity(col.GetPlatformMaxSize()).String(), col.GetPlatformMaxSize())
+		platformMaxSize = output.UnlimitedIfZero(resource.ByteQuantity(col.GetPlatformMaxSize()).String(), col.GetPlatformMaxSize())
 	}
 
 	fmt.Fprintf(w, "  Max Collection Size (platform):  %s\n", platformMaxSize)
@@ -159,7 +150,7 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 	fmt.Fprintf(w, "  Searcher Max Workers:            %s\n", maxWorkers)
 	platformMaxWorkers := notSet
 	if searcher != nil {
-		platformMaxWorkers = unlimitedIfZero(fmt.Sprintf("%d", searcher.GetPlatformMaxWorkers()), searcher.GetPlatformMaxWorkers())
+		platformMaxWorkers = output.UnlimitedIfZero(fmt.Sprintf("%d", searcher.GetPlatformMaxWorkers()), searcher.GetPlatformMaxWorkers())
 	}
 
 	fmt.Fprintf(w, "  Searcher Max Workers (platform): %s\n", platformMaxWorkers)
