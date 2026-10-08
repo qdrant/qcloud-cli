@@ -30,14 +30,16 @@ internal/
 
 **Always use Makefile targets — never raw `go build`, `go test`, or linter commands.**
 
-| Target           | What it does                                  |
-|------------------|-----------------------------------------------|
-| `make build`     | Compile binary to `build/qcloud`              |
-| `make test`      | Run all tests                                 |
-| `make lint`      | Run golangci-lint (installs it if missing)    |
-| `make format`    | Run golangci-lint with `--fix`                |
-| `make bootstrap` | Install tool dependencies via `mise install`  |
-| `make clean`     | Remove build artifacts                        |
+| Target           | What it does                                       |
+|------------------|----------------------------------------------------|
+| `make build`     | Compile binary to `build/qcloud`                   |
+| `make test`      | Run all tests                                      |
+| `make lint`      | Run golangci-lint (installs it if missing)         |
+| `make format`    | Run golangci-lint with `--fix`                     |
+| `make bootstrap` | Install tool dependencies via `mise install`       |
+| `make clean`     | Remove build artifacts                             |
+| `make docs`      | Regenerate `docs/reference/` from the command tree |
+| `make skills`    | Regenerate the agent skill in `skills/qcloud/`     |
 
 To verify your changes, you should run the following makefile targets:
 ```bash
@@ -272,6 +274,10 @@ Register the flags with `util.AddPaginationFlags(cmd, "clusters")`. Reference: `
 **Date-only upper bounds.** `--expires 2026-12-31` or `--until 2026-12-31` includes that whole day: parse with `util.ParseDateEndOfDay` (23:59:59 UTC), not `time.Parse(time.DateOnly, ...)`. Reference: `internal/cmd/cluster/key_create.go`, `internal/cmd/cluster/logs.go`.
 
 **Unset values.** An unset optional proto message or field renders as `not set` or as what it means, never as a misleading zero value. A nil retention period is `indefinite`, not `0s` (`output.RetentionPeriod`); a nil optional field goes through `output.OptionalValue(v, "not set")`, not `fmt.Sprint(v.GetX())`. Reference: `internal/cmd/output/backup.go`, `internal/cmd/output/format.go`.
+
+### Agent skill (`internal/agentskill`)
+
+`qcloud skills install` and `skills/qcloud/` ship an [Agent Skill](https://agentskills.io) built from two sources: the handwritten `internal/agentskill/template/SKILL.md.tmpl` (ground rules, auth, cross-command workflows) and one `references/<group>.md` per top-level command group, generated from `Short`, `Long`, flags and `Example`. New commands and groups show up in the references automatically; update the template when a change affects auth, conventions or a documented workflow. After changing commands, run `make docs skills` and commit the result (CI runs `docs-check` and `skills-check`).
 
 ### Proto enum pretty printing (`internal/cmd/output/`)
 

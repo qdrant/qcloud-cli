@@ -89,5 +89,8 @@ jobs:
       - name: Check docs are up to date
         run: make docs-check
 
+      - name: Check agent skill is up to date
+        run: make skills-check
+
       - if: failure()
         run: echo "::error::Check failed, please run 'make docs' and commit the changes."
