@@ -47,7 +47,12 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
 qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 7d --json`,
 		Args: util.ExactArgs(1, "a space ID"),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*serverlessmonitoringv1.GetSpaceUsageMetricsResponse, error) {
-			since, until, err := readTimeRange(cmd, time.Now())
+			since, until, err := util.ReadTimeRange(cmd, time.Now())
+			if err != nil {
+				return nil, err
+			}
+
+			filter, err := readCollectionFilter(cmd)
 			if err != nil {
 				return nil, err
 			}
@@ -74,7 +79,6 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 				return nil, err
 			}
 
-			filter := readCollectionFilter(cmd)
 			var quota *serverlessmonitoringv1.SpaceQuotaSnapshot
 			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionUsageMetrics, string, error) {
 				req := &serverlessmonitoringv1.GetSpaceUsageMetricsRequest{
@@ -159,10 +163,6 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 			t.AddField("LATENCY MAX", func(r row) string { return value(r.latency, r.latency.max, output.Milliseconds) })
 			t.SetItems(rows)
 			t.Render()
-
-			if resp.NextPageToken != nil {
-				fmt.Fprintf(w, "\nNext page token: %s\n", resp.GetNextPageToken())
-			}
 
 			return nil
 		},

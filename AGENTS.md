@@ -271,7 +271,7 @@ Register the flags with `util.AddPaginationFlags(cmd, "clusters")`. Reference: `
 
 **Date-only upper bounds.** `--expires 2026-12-31` or `--until 2026-12-31` includes that whole day: parse with `util.ParseDateEndOfDay` (23:59:59 UTC), not `time.Parse(time.DateOnly, ...)`. Reference: `internal/cmd/cluster/key_create.go`.
 
-**Time-range flags.** `--since` / `--until` accept RFC3339, `YYYY-MM-DD`, or a duration ago (`30m`, `24h`, `7d`): parse `--since` with `util.ParseTimeFlag` and `--until` with `util.ParseUntilFlag`, which treats a date as the end of that day. Reference: `internal/cmd/cluster/logs.go`.
+**Time-range flags.** `--since` / `--until` accept RFC3339, `YYYY-MM-DD`, or a duration ago (`30m`, `24h`, `7d`): read both with `util.ReadTimeRange`, which treats a `--until` date as the end of that day and rejects a `--since` that is not before `--until`. Reference: `internal/cmd/cluster/logs.go`, `internal/cmd/serverless/space/metrics_usage.go`.
 
 **Unset values.** An unset optional proto message or field renders as `not set` or as what it means, never as a misleading zero value. A nil retention period is `indefinite`, not `0s` (`output.RetentionPeriod`); a nil optional field goes through `output.OptionalValue(v, "not set")`, not `fmt.Sprint(v.GetX())`. Reference: `internal/cmd/output/backup.go`, `internal/cmd/output/format.go`.
 

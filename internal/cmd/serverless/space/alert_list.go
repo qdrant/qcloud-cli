@@ -56,6 +56,11 @@ qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 				alertState = &st
 			}
 
+			filter, err := readCollectionFilter(cmd)
+			if err != nil {
+				return nil, err
+			}
+
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
 			if err != nil {
@@ -68,7 +73,6 @@ qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 			}
 
 			spaceID := cmd.Flags().Arg(0)
-			filter := readCollectionFilter(cmd)
 			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceAlert, string, error) {
 				req := &serverlessmonitoringv1.ListSpaceAlertsRequest{
 					AccountId: accountID,
@@ -124,7 +128,7 @@ qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 					return output.HumanTime(v.GetLastFiringAt().AsTime())
 				}
 
-				return ""
+				return "never"
 			})
 			t.SetItems(resp.GetItems())
 			return t, nil

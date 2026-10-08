@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 
@@ -54,32 +53,17 @@ qcloud cluster logs abc-123 --json`,
 				return nil, err
 			}
 
-			req := &monitoringv1.GetClusterLogsRequest{
+			since, until, err := util.ReadTimeRange(cmd, time.Now())
+			if err != nil {
+				return nil, err
+			}
+
+			resp, err := client.Monitoring().GetClusterLogs(ctx, &monitoringv1.GetClusterLogsRequest{
 				AccountId: accountID,
 				ClusterId: args[0],
-			}
-
-			if cmd.Flags().Changed("since") {
-				sinceStr, _ := cmd.Flags().GetString("since")
-				t, err := util.ParseTimeFlag(sinceStr, time.Now())
-				if err != nil {
-					return nil, fmt.Errorf("invalid --since %q: %w", sinceStr, err)
-				}
-
-				req.Since = timestamppb.New(t)
-			}
-
-			if cmd.Flags().Changed("until") {
-				untilStr, _ := cmd.Flags().GetString("until")
-				t, err := util.ParseUntilFlag(untilStr, time.Now())
-				if err != nil {
-					return nil, fmt.Errorf("invalid --until %q: %w", untilStr, err)
-				}
-
-				req.Until = timestamppb.New(t)
-			}
-
-			resp, err := client.Monitoring().GetClusterLogs(ctx, req)
+				Since:     since,
+				Until:     until,
+			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to get cluster logs: %w", err)
 			}

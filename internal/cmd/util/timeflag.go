@@ -2,9 +2,13 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // errInvalidTimeFlag describes the formats accepted by ParseTimeFlag.
@@ -22,6 +26,38 @@ func ParseTimeFlag(s string, now time.Time) (time.Time, error) {
 // resolves to the end of that day, so that the whole day is included.
 func ParseUntilFlag(s string, now time.Time) (time.Time, error) {
 	return parseTimeFlag(s, now, true)
+}
+
+// ReadTimeRange parses the --since and --until flags of cmd with ParseTimeFlag
+// and ParseUntilFlag. Unset flags yield nil so that the server defaults apply.
+// It returns an error when both are set and --since is not before --until.
+func ReadTimeRange(cmd *cobra.Command, now time.Time) (since, until *timestamppb.Timestamp, err error) {
+	var sinceT, untilT time.Time
+	if cmd.Flags().Changed("since") {
+		v, _ := cmd.Flags().GetString("since")
+		sinceT, err = ParseTimeFlag(v, now)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid --since %q: %w", v, err)
+		}
+
+		since = timestamppb.New(sinceT)
+	}
+
+	if cmd.Flags().Changed("until") {
+		v, _ := cmd.Flags().GetString("until")
+		untilT, err = ParseUntilFlag(v, now)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid --until %q: %w", v, err)
+		}
+
+		until = timestamppb.New(untilT)
+	}
+
+	if since != nil && until != nil && !sinceT.Before(untilT) {
+		return nil, nil, errors.New("--since must be before --until")
+	}
+
+	return since, until, nil
 }
 
 func parseTimeFlag(s string, now time.Time, endOfDay bool) (time.Time, error) {

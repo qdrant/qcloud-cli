@@ -1,18 +1,16 @@
 package space
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
-	"time"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
-	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/resource"
 )
 
@@ -22,13 +20,12 @@ import (
 func addCollectionFilterFlags(cmd *cobra.Command, allowSpaceOnly bool) {
 	cmd.Flags().String("collection", "", "Only include the collection with this exact name")
 	cmd.Flags().String("collection-contains", "", "Only include collections whose name contains this substring")
-	names := []string{"collection", "collection-contains"}
+	cmd.MarkFlagsMutuallyExclusive("collection", "collection-contains")
 	if allowSpaceOnly {
+		// Not part of the mutually exclusive group: cobra would also reject an
+		// explicit --space-only=false. readCollectionFilter checks the value.
 		cmd.Flags().Bool("space-only", false, "Only include entries that are not tied to a collection")
-		names = append(names, "space-only")
 	}
-
-	cmd.MarkFlagsMutuallyExclusive(names...)
 }
 
 // collectionFilter holds the collection filter flags. At most one field is set.
@@ -38,7 +35,7 @@ type collectionFilter struct {
 	spaceOnly bool
 }
 
-func readCollectionFilter(cmd *cobra.Command) collectionFilter {
+func readCollectionFilter(cmd *cobra.Command) (collectionFilter, error) {
 	var f collectionFilter
 	if cmd.Flags().Changed("collection") {
 		v, _ := cmd.Flags().GetString("collection")
@@ -54,7 +51,11 @@ func readCollectionFilter(cmd *cobra.Command) collectionFilter {
 		f.spaceOnly, _ = cmd.Flags().GetBool("space-only")
 	}
 
-	return f
+	if f.spaceOnly && (f.name != nil || f.contains != nil) {
+		return collectionFilter{}, errors.New("--space-only cannot be combined with --collection or --collection-contains")
+	}
+
+	return f, nil
 }
 
 // addTimeRangeFlags registers --since and --until. defaultSince describes the
@@ -62,37 +63,6 @@ func readCollectionFilter(cmd *cobra.Command) collectionFilter {
 func addTimeRangeFlags(cmd *cobra.Command, defaultSince string) {
 	cmd.Flags().String("since", "", "Start of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 6h or 7d; default "+defaultSince+")")
 	cmd.Flags().String("until", "", "End of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default now)")
-}
-
-// readTimeRange parses --since and --until. Unset flags yield nil so that the
-// server defaults apply.
-func readTimeRange(cmd *cobra.Command, now time.Time) (since, until *timestamppb.Timestamp, err error) {
-	var sinceT, untilT time.Time
-	if cmd.Flags().Changed("since") {
-		v, _ := cmd.Flags().GetString("since")
-		sinceT, err = util.ParseTimeFlag(v, now)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid --since %q: %w", v, err)
-		}
-
-		since = timestamppb.New(sinceT)
-	}
-
-	if cmd.Flags().Changed("until") {
-		v, _ := cmd.Flags().GetString("until")
-		untilT, err = util.ParseUntilFlag(v, now)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid --until %q: %w", v, err)
-		}
-
-		until = timestamppb.New(untilT)
-	}
-
-	if since != nil && until != nil && !sinceT.Before(untilT) {
-		return nil, nil, fmt.Errorf("--since must be before --until")
-	}
-
-	return since, until, nil
 }
 
 // seriesRollup summarizes a metric time series.

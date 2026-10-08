@@ -51,7 +51,7 @@ func TestSpaceAlertList_TableOutput(t *testing.T) {
 	}
 
 	assert.Regexp(t, `alert-1\s+WARNING\s+COLLECTION_STORAGE_OVERUTILIZED\s+FIRING\s+products\s+Collection storage almost full\s+2 hours ago`, stdout)
-	assert.Regexp(t, `alert-2\s+CRITICAL\s+SPACE_UNHEALTHY\s+RESOLVED\s+\(space\)\s+Space unhealthy`, stdout)
+	assert.Regexp(t, `alert-2\s+CRITICAL\s+SPACE_UNHEALTHY\s+RESOLVED\s+\(space\)\s+Space unhealthy\s+never`, stdout)
 
 	req, ok := env.ServerlessMonitoringServer.ListSpaceAlertsCalls.Last()
 	require.True(t, ok)
@@ -223,6 +223,18 @@ func TestSpaceAlertList_InputErrors(t *testing.T) {
 			assert.Equal(t, 0, env.ServerlessMonitoringServer.ListSpaceAlertsCalls.Count())
 		})
 	}
+}
+
+func TestSpaceAlertList_SpaceOnlyFalseWithCollection(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.ListSpaceAlertsCalls.Returns(sampleAlerts(), nil)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "alert", "list", "space-abc", "--space-only=false", "--collection", "products")
+	require.NoError(t, err)
+
+	req, ok := env.ServerlessMonitoringServer.ListSpaceAlertsCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "products", req.GetCollectionName())
 }
 
 func TestSpaceAlertList_APIError(t *testing.T) {

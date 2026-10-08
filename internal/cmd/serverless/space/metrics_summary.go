@@ -47,6 +47,11 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --c
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 		Args: util.ExactArgs(1, "a space ID"),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*serverlessmonitoringv1.GetSpaceSummaryMetricsResponse, error) {
+			filter, err := readCollectionFilter(cmd)
+			if err != nil {
+				return nil, err
+			}
+
 			ctx := cmd.Context()
 			client, err := s.Client(ctx)
 			if err != nil {
@@ -58,7 +63,6 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 				return nil, err
 			}
 
-			filter := readCollectionFilter(cmd)
 			var quota *serverlessmonitoringv1.SpaceQuotaSnapshot
 			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionMetrics, string, error) {
 				req := &serverlessmonitoringv1.GetSpaceSummaryMetricsRequest{
@@ -105,7 +109,7 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 				}
 
 				for _, a := range o.GetAvg() {
-					if a.GetInterval().AsDuration() == interval {
+					if a.GetInterval() != nil && a.GetInterval().AsDuration() == interval {
 						return format(a.GetValue())
 					}
 				}
@@ -138,10 +142,6 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 			t.SetItems(resp.GetItems())
 			t.Render()
 
-			if resp.NextPageToken != nil {
-				fmt.Fprintf(w, "\nNext page token: %s\n", resp.GetNextPageToken())
-			}
-
 			return nil
 		},
 		ValidArgsFunction: completion.SpaceIDCompletion(s),
@@ -154,13 +154,17 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 }
 
 // shortestOverviewInterval returns the shortest averaging interval reported
-// for any collection.
+// for any collection. Averages without an interval are ignored.
 func shortestOverviewInterval(items []*serverlessmonitoringv1.SpaceCollectionMetrics) (time.Duration, bool) {
 	var shortest time.Duration
 	found := false
 	for _, item := range items {
 		for _, o := range []*serverlessmonitoringv1.SpaceMetricOverview{item.GetSearchRequests(), item.GetWriteRequests(), item.GetSearchLatency()} {
 			for _, a := range o.GetAvg() {
+				if a.GetInterval() == nil {
+					continue
+				}
+
 				d := a.GetInterval().AsDuration()
 				if !found || d < shortest {
 					shortest = d

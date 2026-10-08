@@ -240,6 +240,15 @@ func TestClusterLogs_InvalidUntil(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestClusterLogs_SinceAfterUntil(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--since", "1h", "--until", "2h")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--since must be before --until")
+	assert.Equal(t, 0, env.MonitoringServer.GetClusterLogsCalls.Count())
+}
+
 func TestClusterLogs_MissingArg(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 

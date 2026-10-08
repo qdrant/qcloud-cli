@@ -55,8 +55,8 @@ qcloud serverless cloud-region describe eu-central-1 --json`,
 			fmt.Fprintf(w, "ID:         %s\n", r.GetId())
 			fmt.Fprintf(w, "Name:       %s\n", r.GetName())
 			fmt.Fprintf(w, "Available:  %s\n", output.BoolYesNo(r.GetAvailable()))
-			fmt.Fprintf(w, "Sub-region: %s\n", output.OptionalValue(r.GeographicalSubRegion, "-"))
-			fmt.Fprintf(w, "Country:    %s\n", output.OptionalValue(r.CountryIsoCode, "-"))
+			fmt.Fprintf(w, "Sub-region: %s\n", output.OptionalValue(r.GeographicalSubRegion, "not set"))
+			fmt.Fprintf(w, "Country:    %s\n", output.OptionalValue(r.CountryIsoCode, "not set"))
 			return nil
 		},
 		ValidArgsFunction: completion.ServerlessCloudRegionCompletion(s),

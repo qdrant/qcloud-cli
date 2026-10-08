@@ -227,7 +227,7 @@ func TestSpaceMetricsSummary_ManualPagination(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc", "--page-size", "1")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "Next page token: page-2")
+	assert.NotContains(t, stdout, "page-2")
 	assert.Equal(t, 1, env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Count())
 
 	req, ok := env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Last()
@@ -242,6 +242,33 @@ func TestSpaceMetricsSummary_APIError(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get space summary metrics")
+}
+
+func TestSpaceMetricsSummary_NilIntervalIgnored(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Returns(&serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{
+		Items: []*serverlessmonitoringv1.SpaceCollectionMetrics{{
+			CollectionName: "products",
+			SearchRequests: &serverlessmonitoringv1.SpaceMetricOverview{Avg: []*serverlessmonitoringv1.IntervalAverage{
+				{Value: 99},
+				{Interval: durationpb.New(time.Hour), Value: 1.5},
+			}},
+		}},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "averaged over the last 1h.")
+	assert.Regexp(t, `products\s+0\s+0 B\s+0\s+1\.50/s`, stdout)
+}
+
+func TestSpaceMetricsSummary_ConflictingFilters(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc",
+		"--collection", "a", "--collection-contains", "b")
+	require.Error(t, err)
+	assert.Equal(t, 0, env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Count())
 }
 
 func TestSpaceMetricsSummary_MissingArg(t *testing.T) {

@@ -86,6 +86,6 @@ func TestCloudRegionDescribe_UnsetOptionalFields(t *testing.T) {
 	stdout, _, err := testutil.Exec(t, env, "serverless", "cloud-region", "describe", "eu-central-1")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Available:  no")
-	assert.Contains(t, stdout, "Sub-region: -")
-	assert.Contains(t, stdout, "Country:    -")
+	assert.Contains(t, stdout, "Sub-region: not set")
+	assert.Contains(t, stdout, "Country:    not set")
 }
