@@ -61,7 +61,7 @@ func (d Discoverer) Login(ctx context.Context, opts LoginOptions) (Token, Discov
 	}
 
 	if opts.ClientID == "" {
-		return Token{}, disc, fmt.Errorf("OAuth client id is required (--client-id or QDRANT_CLOUD_OAUTH_CLIENT_ID) once the Qdrant Cloud CLI Auth0 app exists for this tenant")
+		return Token{}, disc, fmt.Errorf("OAuth client id is required (--client-id or QDRANT_CLOUD_OAUTH_CLIENT_ID) once the Qdrant Cloud CLI OAuth app exists for this tenant")
 	}
 
 	as, err := d.fetchASMetadata(ctx, disc.Issuer)

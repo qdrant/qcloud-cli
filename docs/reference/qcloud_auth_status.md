@@ -17,7 +17,6 @@ qcloud auth status [flags]
 
 ```
 qcloud auth status
-qcloud auth status --endpoint grpc.staging-cloud.qdrant.io:443
 ```
 
 ### Options

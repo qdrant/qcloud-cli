@@ -33,9 +33,12 @@ func NewRootCommand(s *state.State) *cobra.Command {
 		Short: "Qdrant Cloud CLI",
 		Long: `The command-line interface for Qdrant Cloud.
 
-Get started:
+Get started — choose one of:
+
   qcloud auth login
   qcloud context set default --api-key <KEY> --account-id <ID>
+
+Then:
   qcloud cluster list
 
 Documentation: https://github.com/qdrant/qcloud-cli`,
