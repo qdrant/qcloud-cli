@@ -12,7 +12,7 @@ import (
 )
 
 func TestAuthInterceptor_TraceID(t *testing.T) {
-	interceptor := authInterceptor("test-key")
+	interceptor := authInterceptor("apikey test-key")
 
 	t.Run("no error returns nil", func(t *testing.T) {
 		invoker := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
@@ -74,4 +74,16 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 		err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)
 		assert.NoError(t, err)
 	})
+}
+
+func TestAuthInterceptor_Bearer(t *testing.T) {
+	interceptor := authInterceptor("Bearer access-token")
+	invoker := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+		md, ok := metadata.FromOutgoingContext(ctx)
+		assert.True(t, ok)
+		assert.Equal(t, []string{"Bearer access-token"}, md.Get("authorization"))
+		return nil
+	}
+	err := interceptor(context.Background(), "/test", nil, nil, nil, invoker)
+	assert.NoError(t, err)
 }
