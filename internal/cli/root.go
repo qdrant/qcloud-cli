@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/account"
+	"github.com/qdrant/qcloud-cli/internal/cmd/auth"
 	"github.com/qdrant/qcloud-cli/internal/cmd/backup"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudprovider"
 	"github.com/qdrant/qcloud-cli/internal/cmd/cloudregion"
@@ -32,8 +33,12 @@ func NewRootCommand(s *state.State) *cobra.Command {
 		Short: "Qdrant Cloud CLI",
 		Long: `The command-line interface for Qdrant Cloud.
 
-Get started:
+Get started — choose one of:
+
+  qcloud auth login
   qcloud context set default --api-key <KEY> --account-id <ID>
+
+Then:
   qcloud cluster list
 
 Documentation: https://github.com/qdrant/qcloud-cli`,
@@ -73,6 +78,7 @@ Documentation: https://github.com/qdrant/qcloud-cli`,
 	s.Config.BindPFlag(config.KeyConsoleURL, cmd.PersistentFlags().Lookup("console-url"))
 
 	cmd.AddCommand(account.NewCommand(s))
+	cmd.AddCommand(auth.NewCommand(s))
 	cmd.AddCommand(version.NewCommand(s))
 	cmd.AddCommand(iam.NewCommand(s))
 	cmd.AddCommand(cluster.NewCommand(s))
