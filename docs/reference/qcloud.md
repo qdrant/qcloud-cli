@@ -7,6 +7,7 @@ Qdrant Cloud CLI
 The command-line interface for Qdrant Cloud.
 
 Get started:
+  qcloud auth login
   qcloud context set default --api-key <KEY> --account-id <ID>
   qcloud cluster list
 
@@ -29,6 +30,7 @@ Documentation: https://github.com/qdrant/qcloud-cli
 ### SEE ALSO
 
 * [qcloud account](qcloud_account.md)	 - Manage Qdrant Cloud accounts
+* [qcloud auth](qcloud_auth.md)	 - Log in to Qdrant Cloud with a browser
 * [qcloud backup](qcloud_backup.md)	 - Manage Qdrant Cloud backups
 * [qcloud cloud-provider](qcloud_cloud-provider.md)	 - Manage cloud providers
 * [qcloud cloud-region](qcloud_cloud-region.md)	 - Manage cloud regions

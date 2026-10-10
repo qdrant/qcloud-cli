@@ -56,10 +56,27 @@ func New(ctx context.Context, endpoint, apiKey, version string) (*Client, error)
 	)
 }
 
+// NewWithBearer creates a client that sends Authorization: Bearer <token>.
+func NewWithBearer(ctx context.Context, endpoint, accessToken, version string) (*Client, error) {
+	return newWithAuthorization(endpoint, "Bearer "+accessToken,
+		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		grpc.WithUserAgent("qcloud-cli/"+version),
+	)
+}
+
 // NewWithDialOptions creates a Client with the auth interceptor always applied,
 // plus any additional dial options (e.g. custom transport for testing).
 func NewWithDialOptions(endpoint, apiKey string, opts ...grpc.DialOption) (*Client, error) {
-	all := append([]grpc.DialOption{grpc.WithUnaryInterceptor(authInterceptor(apiKey))}, opts...)
+	header := ""
+	if apiKey != "" {
+		header = "apikey " + apiKey
+	}
+
+	return newWithAuthorization(endpoint, header, opts...)
+}
+
+func newWithAuthorization(endpoint, authorization string, opts ...grpc.DialOption) (*Client, error) {
+	all := append([]grpc.DialOption{grpc.WithUnaryInterceptor(authInterceptor(authorization))}, opts...)
 	conn, err := grpc.NewClient(endpoint, all...)
 	if err != nil {
 		return nil, err
@@ -177,7 +194,7 @@ func (c *Client) Close() error {
 
 const traceIDTrailer = "qc-trace-id"
 
-func authInterceptor(apiKey string) grpc.UnaryClientInterceptor {
+func authInterceptor(authorization string) grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
 		method string,
@@ -188,7 +205,10 @@ func authInterceptor(apiKey string) grpc.UnaryClientInterceptor {
 	) error {
 		var trailer metadata.MD
 		opts = append(opts, grpc.Trailer(&trailer))
-		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "apikey "+apiKey)
+		if authorization != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", authorization)
+		}
+
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		if err != nil {
 			if ids := trailer.Get(traceIDTrailer); len(ids) > 0 {
