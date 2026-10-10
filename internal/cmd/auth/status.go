@@ -17,8 +17,7 @@ func newStatusCommand(s *state.State) *cobra.Command {
 
 Prints the inferred login URL, token expiry, and scope. Does not print the
 access token.`,
-		Example: `qcloud auth status
-qcloud auth status --endpoint grpc.staging-cloud.qdrant.io:443`,
+		Example: `qcloud auth status`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "status",
