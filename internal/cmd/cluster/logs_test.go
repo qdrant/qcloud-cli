@@ -156,6 +156,21 @@ func TestClusterLogs_SinceFlag_RFC3339(t *testing.T) {
 	assert.Equal(t, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), req.GetSince().AsTime())
 }
 
+func TestClusterLogs_SinceFlag_Relative(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.MonitoringServer.GetClusterLogsCalls.Returns(&monitoringv1.GetClusterLogsResponse{}, nil)
+
+	before := time.Now()
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--since", "6h")
+	require.NoError(t, err)
+
+	req, ok := env.MonitoringServer.GetClusterLogsCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, req.GetSince())
+	assert.WithinRange(t, req.GetSince().AsTime(), before.Add(-6*time.Hour), time.Now().Add(-6*time.Hour))
+}
+
 func TestClusterLogs_SinceFlag_DateOnly(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
@@ -223,6 +238,15 @@ func TestClusterLogs_InvalidUntil(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--until", "not-a-date")
 	require.Error(t, err)
+}
+
+func TestClusterLogs_SinceAfterUntil(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--since", "1h", "--until", "2h")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--since must be before --until")
+	assert.Equal(t, 0, env.MonitoringServer.GetClusterLogsCalls.Count())
 }
 
 func TestClusterLogs_MissingArg(t *testing.T) {

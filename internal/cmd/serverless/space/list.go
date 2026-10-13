@@ -9,6 +9,7 @@ import (
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -107,6 +108,7 @@ qcloud serverless space list --page-size 10`,
 
 	util.AddPaginationFlags(cmd, "spaces")
 	cmd.Flags().String("cloud-region", "", "Filter by cloud region ID")
+	_ = cmd.RegisterFlagCompletionFunc("cloud-region", completion.ServerlessCloudRegionFlagCompletion(s))
 
 	return cmd
 }

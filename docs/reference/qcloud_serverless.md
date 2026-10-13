@@ -10,11 +10,18 @@ Qdrant Cloud Serverless runs collections in spaces instead of dedicated clusters
 A space is hosted in a single cloud region and scales its search workers
 automatically, so there are no nodes, packages or disks to size. Use the
 commands in this group to manage spaces together with their API keys and
-backups.
+backups, to explore the regions spaces can be created in, and to inspect the
+account's serverless quota.
 
 ### Examples
 
 ```
+# List the regions in which spaces can be created
+qcloud serverless cloud-region list
+
+# Show how many spaces the account can still create
+qcloud serverless quota
+
 # List all serverless spaces
 qcloud serverless space list
 
@@ -44,5 +51,7 @@ qcloud serverless space create --cloud-region eu-central-1 --wait
 ### SEE ALSO
 
 * [qcloud](qcloud.md)	 - Qdrant Cloud CLI
+* [qcloud serverless cloud-region](qcloud_serverless_cloud-region.md)	 - Explore cloud regions for serverless spaces
+* [qcloud serverless quota](qcloud_serverless_quota.md)	 - Show the serverless quota of the account
 * [qcloud serverless space](qcloud_serverless_space.md)	 - Manage serverless spaces
 

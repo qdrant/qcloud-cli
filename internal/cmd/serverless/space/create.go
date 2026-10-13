@@ -10,13 +10,14 @@ import (
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/completion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 func newCreateCommand(s *state.State) *cobra.Command {
-	return base.CreateCmd[*spacev1.Space]{
+	cmd := base.CreateCmd[*spacev1.Space]{
 		Long: `Create a new serverless space in a cloud region.
 
 The region is fixed for the lifetime of the space. When --name is omitted, a
@@ -118,4 +119,6 @@ qcloud serverless space create --cloud-region eu-central-1 --name my-space \
 			fmt.Fprint(out, spaceResultMessage(created, "created"))
 		},
 	}.CobraCommand(s)
+	_ = cmd.RegisterFlagCompletionFunc("cloud-region", completion.ServerlessCloudRegionFlagCompletion(s))
+	return cmd
 }

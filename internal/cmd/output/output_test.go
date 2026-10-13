@@ -81,3 +81,41 @@ func TestDuration(t *testing.T) {
 		assert.Equal(t, tt.want, output.Duration(tt.in))
 	}
 }
+
+func TestUnlimitedIfZero(t *testing.T) {
+	assert.Equal(t, "unlimited", output.UnlimitedIfZero("0", 0))
+	assert.Equal(t, "10", output.UnlimitedIfZero("10", 10))
+}
+
+func TestCompactDuration(t *testing.T) {
+	cases := map[time.Duration]string{
+		0:                          "0s",
+		10 * time.Second:           "10s",
+		90 * time.Second:           "1m30s",
+		2 * time.Minute:            "2m",
+		10 * time.Minute:           "10m",
+		time.Hour:                  "1h",
+		24 * time.Hour:             "24h",
+		time.Hour + 30*time.Minute: "1h30m",
+		time.Hour + 30*time.Second: "1h0m30s",
+		500 * time.Millisecond:     "500ms",
+	}
+	for d, want := range cases {
+		assert.Equal(t, want, output.CompactDuration(d), d.String())
+	}
+}
+
+func TestRate(t *testing.T) {
+	assert.Equal(t, "0.00/s", output.Rate(0))
+	assert.Equal(t, "1.25/s", output.Rate(1.2499))
+}
+
+func TestMilliseconds(t *testing.T) {
+	assert.Equal(t, "0.0ms", output.Milliseconds(0))
+	assert.Equal(t, "12.3ms", output.Milliseconds(12.34))
+}
+
+func TestBytes(t *testing.T) {
+	assert.Equal(t, "0 B", output.Bytes(0))
+	assert.Equal(t, "1.5 GiB", output.Bytes(3<<29))
+}

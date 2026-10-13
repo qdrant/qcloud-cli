@@ -8,6 +8,7 @@ import (
 	backupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/backup/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
+	serverlessplatformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/platform/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
@@ -381,6 +382,55 @@ func SpaceBackupIDCompletion(s *state.State) func(*cobra.Command, []string, stri
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, b := range resp.GetItems() {
 			completions = append(completions, b.GetId()+"\t"+b.GetName())
+		}
+
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// ServerlessCloudRegionCompletion returns a ValidArgsFunction that completes
+// serverless cloud region IDs for the first positional argument.
+func ServerlessCloudRegionCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		return ServerlessCloudRegionFlagCompletion(s)(cmd, args, "")
+	}
+}
+
+// ServerlessCloudRegionFlagCompletion returns a completion function for
+// --cloud-region flags of serverless commands. Unavailable regions are marked
+// in the description.
+func ServerlessCloudRegionFlagCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.ServerlessPlatform().ListCloudRegions(ctx, &serverlessplatformv1.ListCloudRegionsRequest{
+			AccountId: accountID,
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, r := range resp.GetItems() {
+			desc := r.GetName()
+			if !r.GetAvailable() {
+				desc += " (unavailable)"
+			}
+
+			completions = append(completions, r.GetId()+"\t"+desc)
 		}
 
 		return completions, cobra.ShellCompDirectiveNoFileComp

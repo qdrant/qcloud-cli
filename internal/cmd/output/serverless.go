@@ -3,6 +3,7 @@ package output
 import (
 	"strings"
 
+	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
 	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
@@ -41,4 +42,19 @@ func SpaceBackupScheduleStatus(s spacebackupv1.BackupScheduleStatus) string {
 // SpaceBackupRestoreStatus returns a concise label for a serverless BackupRestoreStatus.
 func SpaceBackupRestoreStatus(s spacebackupv1.BackupRestoreStatus) string {
 	return strings.TrimPrefix(s.String(), "BACKUP_RESTORE_STATUS_")
+}
+
+// SpaceAlertType returns a concise label for a serverless SpaceAlertType.
+func SpaceAlertType(t serverlessmonitoringv1.SpaceAlertType) string {
+	return strings.TrimPrefix(t.String(), "SPACE_ALERT_TYPE_")
+}
+
+// SpaceAlertSeverity returns a concise label for a serverless SpaceAlertSeverity.
+func SpaceAlertSeverity(s serverlessmonitoringv1.SpaceAlertSeverity) string {
+	return strings.TrimPrefix(s.String(), "SPACE_ALERT_SEVERITY_")
+}
+
+// SpaceAlertState returns a concise label for a serverless SpaceAlertState.
+func SpaceAlertState(s serverlessmonitoringv1.SpaceAlertState) string {
+	return strings.TrimPrefix(s.String(), "SPACE_ALERT_STATE_")
 }
