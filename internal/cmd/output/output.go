@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -22,6 +23,7 @@ type Table[T any] struct {
 	w         io.Writer
 	headers   []string
 	fields    []func(T) string
+	maxWidths []int
 	items     []T
 	noHeaders bool
 }
@@ -35,6 +37,15 @@ func NewTable[T any](w io.Writer) *Table[T] {
 func (t *Table[T]) AddField(name string, fn func(T) string) {
 	t.headers = append(t.headers, name)
 	t.fields = append(t.fields, fn)
+	t.maxWidths = append(t.maxWidths, 0)
+}
+
+// AddWrappedField adds a column whose values are word-wrapped onto multiple
+// lines when they are longer than maxWidth characters. Use it for free-text
+// values such as descriptions that would otherwise make the table too wide.
+func (t *Table[T]) AddWrappedField(name string, maxWidth int, fn func(T) string) {
+	t.AddField(name, fn)
+	t.maxWidths[len(t.maxWidths)-1] = maxWidth
 }
 
 // SetNoHeaders controls whether the header row is suppressed when rendering.
@@ -77,6 +88,19 @@ func (t *Table[T]) render(items []T) {
 	tw := table.NewWriter()
 	tw.SetOutputMirror(t.w)
 	tw.SetStyle(style)
+
+	var columnConfigs []table.ColumnConfig
+	for i, w := range t.maxWidths {
+		if w > 0 {
+			columnConfigs = append(columnConfigs, table.ColumnConfig{
+				Number:           i + 1,
+				WidthMax:         w,
+				WidthMaxEnforcer: text.WrapSoft,
+			})
+		}
+	}
+
+	tw.SetColumnConfigs(columnConfigs)
 
 	if !t.noHeaders {
 		header := make(table.Row, len(t.headers))

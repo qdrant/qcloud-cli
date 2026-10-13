@@ -2,10 +2,12 @@ package output_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 )
@@ -64,6 +66,28 @@ func TestTable_Write_BackwardCompat(t *testing.T) {
 	assert.Contains(t, out, "NAME")
 	assert.Contains(t, out, "1")
 	assert.Contains(t, out, "alpha")
+}
+
+func TestTable_AddWrappedField(t *testing.T) {
+	var buf bytes.Buffer
+	tbl := output.NewTable[testItem](&buf)
+	tbl.AddField("ID", func(v testItem) string { return v.ID })
+	tbl.AddWrappedField("NAME", 12, func(v testItem) string { return v.Name })
+	tbl.SetItems([]testItem{
+		{ID: "1", Name: "a rather long name that wraps"},
+		{ID: "2", Name: "short"},
+	})
+	tbl.Render()
+
+	lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+	require.Len(t, lines, 5)
+	assert.Regexp(t, `^1\s+a rather\s*$`, lines[1])
+	assert.Regexp(t, `^\s+long name\s*$`, lines[2])
+	assert.Regexp(t, `^\s+that wraps\s*$`, lines[3])
+	assert.Regexp(t, `^2\s+short\s*$`, lines[4])
+	for _, l := range lines {
+		assert.LessOrEqual(t, len(strings.TrimRight(l, " ")), len("ID   ")+12)
+	}
 }
 
 func TestDuration(t *testing.T) {

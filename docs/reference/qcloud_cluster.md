@@ -24,6 +24,7 @@ Manage Qdrant Cloud clusters
 ### SEE ALSO
 
 * [qcloud](qcloud.md)	 - Qdrant Cloud CLI
+* [qcloud cluster alert](qcloud_cluster_alert.md)	 - Show alerts of clusters
 * [qcloud cluster create](qcloud_cluster_create.md)	 - Create a new cluster
 * [qcloud cluster create-from-backup](qcloud_cluster_create-from-backup.md)	 - Create a new cluster from a backup
 * [qcloud cluster dashboard](qcloud_cluster_dashboard.md)	 - Open a cluster's dashboard in your browser

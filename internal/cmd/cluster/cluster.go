@@ -29,6 +29,7 @@ func NewCommand(s *state.State) *cobra.Command {
 		newScaleCommand(s),
 		newLogsCommand(s),
 		newDashboardCommand(s),
+		newAlertCommand(s),
 	)
 	return cmd
 }

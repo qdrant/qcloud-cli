@@ -11,11 +11,18 @@ import (
 type FakeMonitoringService struct {
 	monitoringv1.UnimplementedMonitoringServiceServer
 
-	GetClusterLogsCalls MethodSpy[*monitoringv1.GetClusterLogsRequest, *monitoringv1.GetClusterLogsResponse]
+	GetClusterLogsCalls    MethodSpy[*monitoringv1.GetClusterLogsRequest, *monitoringv1.GetClusterLogsResponse]
+	ListClusterAlertsCalls MethodSpy[*monitoringv1.ListClusterAlertsRequest, *monitoringv1.ListClusterAlertsResponse]
 }
 
 // GetClusterLogs records the call and dispatches via GetClusterLogsCalls.
 func (f *FakeMonitoringService) GetClusterLogs(ctx context.Context, req *monitoringv1.GetClusterLogsRequest) (*monitoringv1.GetClusterLogsResponse, error) {
 	f.GetClusterLogsCalls.record(req)
 	return f.GetClusterLogsCalls.dispatch(ctx, req, f.UnimplementedMonitoringServiceServer.GetClusterLogs)
+}
+
+// ListClusterAlerts records the call and dispatches via ListClusterAlertsCalls.
+func (f *FakeMonitoringService) ListClusterAlerts(ctx context.Context, req *monitoringv1.ListClusterAlertsRequest) (*monitoringv1.ListClusterAlertsResponse, error) {
+	f.ListClusterAlertsCalls.record(req)
+	return f.ListClusterAlertsCalls.dispatch(ctx, req, f.UnimplementedMonitoringServiceServer.ListClusterAlerts)
 }
