@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.32.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.32.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.31.0...v0.32.0)
+
+### Features
+
+- **cluster**: add alerts list command ([23eaa0a](https://github.com/qdrant/qcloud-cli/commit/23eaa0a0cb083cbbc8f662094c131eabad02132f))
+
 ## [v0.31.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.31.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.30.0...v0.31.0)
