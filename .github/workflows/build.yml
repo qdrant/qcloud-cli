@@ -22,14 +22,14 @@ jobs:
           persist-credentials: false
 
       - name: Set up tools
-        uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: 2026.3.8
 
       - name: Run GoReleaser
         run: goreleaser release --clean --snapshot --skip=notarize
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Preview Binaries
           path: dist/qcloud_*/qcloud*
