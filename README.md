@@ -106,6 +106,29 @@ qcloud context show
 Pass `--json` to any command for machine-readable output.
 
 
+## Using qcloud with AI agents
+
+`qcloud` ships an [Agent Skill](https://agentskills.io) that teaches coding agents (Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode, ...) how to use the CLI. The skill includes a reference for every command, generated from the installed binary.
+
+```sh
+# Install into the current project (.agents/skills, plus .claude/skills if .claude exists)
+qcloud skills install
+
+# Install for all projects
+qcloud skills install --global
+
+# Print it instead of installing
+qcloud skills print
+```
+
+Re-run `qcloud skills install` after upgrading `qcloud` to refresh the skill. You can also install it with a skills manager from this repository:
+
+```sh
+npx skills add qdrant/qcloud-cli
+gh skill install qdrant/qcloud-cli qcloud
+```
+
+
 ## Getting Help
 
 Found a bug or something not working as expected? [Open an issue](https://github.com/qdrant/qcloud-cli/issues/new) on GitHub and include:

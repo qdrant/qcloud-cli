@@ -40,5 +40,6 @@ Documentation: https://github.com/qdrant/qcloud-cli
 * [qcloud package](qcloud_package.md)	 - Manage packages
 * [qcloud self-upgrade](qcloud_self-upgrade.md)	 - Upgrade qcloud to the latest version
 * [qcloud serverless](qcloud_serverless.md)	 - Manage Qdrant Cloud Serverless resources
+* [qcloud skills](qcloud_skills.md)	 - Manage the qcloud Agent Skill for AI coding agents
 * [qcloud version](qcloud_version.md)	 - Print the qcloud CLI version
 
