@@ -5,16 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"time"
 
 	"github.com/pkg/browser"
 
+	"github.com/qdrant/qcloud-cli/internal/oauth"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/selfupgrade"
 	"github.com/qdrant/qcloud-cli/internal/state/config"
 )
 
 var (
-	errNoAPIKey    = errors.New("no API Key configured — set QDRANT_CLOUD_API_KEY, use --api-key, or run \"qcloud context set\" to save credentials")
+	errNoAPIKey    = errors.New("no API Key configured — set QDRANT_CLOUD_API_KEY, use --api-key, run \"qcloud auth login\", or run \"qcloud context set\" to save credentials")
 	errNoAccountID = errors.New("no account ID configured — set QDRANT_CLOUD_ACCOUNT_ID, use --account-id, or run \"qcloud context set\" to save credentials")
 )
 
@@ -36,6 +39,9 @@ type State struct {
 	unAuthenticatedClient *qcloudapi.Client
 	updater               Updater
 	openBrowser           BrowserOpener
+	httpClient            *http.Client
+	waitAuthCode          oauth.WaitCodeFunc
+	oauthRedirectURL      string
 }
 
 // New creates a new State with the given version string.
@@ -54,11 +60,22 @@ func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 	}
 
 	key := s.Config.APIKey()
-	if key == "" {
-		return nil, errNoAPIKey
+	if key != "" {
+		c, err := qcloudapi.New(ctx, s.Config.Endpoint(), key, s.Version)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to Qdrant Cloud API: %w", err)
+		}
+
+		s.client = c
+		return s.client, nil
 	}
 
-	c, err := qcloudapi.New(ctx, s.Config.Endpoint(), key, s.Version)
+	tok, err := s.oauthAccessToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := qcloudapi.NewWithBearer(ctx, s.Config.Endpoint(), tok, s.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Qdrant Cloud API: %w", err)
 	}
@@ -104,6 +121,68 @@ func (s *State) OpenBrowser(url string) error {
 // SetBrowserOpener injects a browser opener, bypassing the default. For testing.
 func (s *State) SetBrowserOpener(fn BrowserOpener) {
 	s.openBrowser = fn
+}
+
+// HTTPClient returns the HTTP client used for OAuth discovery and token calls.
+func (s *State) HTTPClient() *http.Client {
+	if s.httpClient != nil {
+		return s.httpClient
+	}
+
+	return http.DefaultClient
+}
+
+// SetHTTPClient injects an HTTP client. For testing.
+func (s *State) SetHTTPClient(c *http.Client) {
+	s.httpClient = c
+}
+
+// SetWaitAuthCode injects a function that supplies the OAuth authorization code. For testing.
+func (s *State) SetWaitAuthCode(fn oauth.WaitCodeFunc, redirectURL string) {
+	s.waitAuthCode = fn
+	s.oauthRedirectURL = redirectURL
+}
+
+// OAuthDiscoverer returns a Discoverer bound to this state's HTTP client.
+func (s *State) OAuthDiscoverer() oauth.Discoverer {
+	return oauth.Discoverer{HTTPClient: s.HTTPClient()}
+}
+
+// WaitAuthCode is the injected authorization-code waiter, or nil for loopback.
+func (s *State) WaitAuthCode() oauth.WaitCodeFunc {
+	return s.waitAuthCode
+}
+
+// OAuthRedirectURL is the injected loopback redirect used with WaitAuthCode.
+func (s *State) OAuthRedirectURL() string {
+	return s.oauthRedirectURL
+}
+
+func (s *State) oauthAccessToken(ctx context.Context) (string, error) {
+	path := oauth.CredentialsPath(s.Config.ConfigFilePath())
+	tok, ok, err := oauth.LoadToken(path, s.Config.Endpoint())
+	if err != nil {
+		return "", err
+	}
+
+	if !ok || tok.AccessToken == "" {
+		return "", errNoAPIKey
+	}
+
+	if tok.Expired(time.Now()) {
+		refreshed, err := s.OAuthDiscoverer().Refresh(ctx, tok, time.Now())
+		if err != nil {
+			return "", fmt.Errorf("refresh OAuth token: %w (run \"qcloud auth login\")", err)
+		}
+
+		if err := oauth.SaveToken(path, refreshed); err != nil {
+			return "", err
+		}
+
+		tok = refreshed
+	}
+
+	return tok.AccessToken, nil
 }
 
 // Updater returns the CLI updater, creating it lazily on first call.
