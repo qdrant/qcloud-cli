@@ -23,6 +23,24 @@
 
 ## Installation
 
+### With Homebrew
+
+On macOS and Linux:
+
+```sh
+brew install qdrant/tap/qcloud
+```
+
+### With the install script
+
+For systems without Homebrew, such as CI runners, containers, and sandboxed agents:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/qdrant/qcloud-cli/main/install.sh | sh
+```
+
+The script installs the latest release for your OS and CPU architecture to `~/.local/bin`, after checking the archive against the release's `checksums.txt`. Set `QCLOUD_VERSION` (for example `v0.32.0`) to pin a release, or `QCLOUD_INSTALL_DIR` to install somewhere else. It needs `curl` or `wget`, `sha256sum` or `shasum`, and `tar`.
+
 ### From GitHub Releases
 
 Download the latest release from [GitHub Releases](https://github.com/qdrant/qcloud-cli/releases).
