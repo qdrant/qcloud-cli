@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,4 +81,121 @@ func TestLogin_RequiresClientID(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "client id")
+}
+
+func TestAuthorizationCallback(t *testing.T) {
+	t.Parallel()
+
+	code, err := authorizationCallback(url.Values{
+		"code":  {"abc"},
+		"state": {"s"},
+		"iss":   {"https://login.cloud.qdrant.io/"},
+	}, "s", "https://login.cloud.qdrant.io/")
+	require.NoError(t, err)
+	assert.Equal(t, "abc", code)
+
+	_, err = authorizationCallback(url.Values{"code": {"abc"}, "state": {"other"}}, "s", "https://login.cloud.qdrant.io/")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "state mismatch")
+
+	_, err = authorizationCallback(url.Values{
+		"code":  {"abc"},
+		"state": {"s"},
+		"iss":   {"https://evil.example/"},
+	}, "s", "https://login.cloud.qdrant.io/")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "issuer mismatch")
+
+	_, err = authorizationCallback(url.Values{"error": {"access_denied"}}, "s", "https://login.cloud.qdrant.io/")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "access_denied")
+}
+
+func TestNextDevicePollInterval(t *testing.T) {
+	t.Parallel()
+
+	next, again := nextDevicePollInterval(5*time.Second, assert.AnError)
+	assert.False(t, again)
+	assert.Equal(t, 5*time.Second, next)
+
+	next, again = nextDevicePollInterval(5*time.Second, errString("token endpoint: authorization_pending"))
+	assert.True(t, again)
+	assert.Equal(t, 5*time.Second, next)
+
+	next, again = nextDevicePollInterval(5*time.Second, errString("token endpoint: slow_down"))
+	assert.True(t, again)
+	assert.Equal(t, 10*time.Second, next)
+}
+
+type errString string
+
+func (e errString) Error() string { return string(e) }
+
+func TestLogin_DeviceUsesAudience(t *testing.T) {
+	t.Parallel()
+
+	var deviceForm, tokenForm url.Values
+	polls := 0
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(wellKnownPRM, func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"resource":              "https://api.development-cloud.qdrant.io",
+			"authorization_servers": []string{"https://login.development-cloud.qdrant.io/"},
+		})
+	})
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"issuer":                        "https://login.development-cloud.qdrant.io/",
+			"authorization_endpoint":        "https://login.development-cloud.qdrant.io/authorize",
+			"token_endpoint":                "https://login.development-cloud.qdrant.io/oauth/token",
+			"device_authorization_endpoint": "https://login.development-cloud.qdrant.io/oauth/device/code",
+		})
+	})
+	mux.HandleFunc("/oauth/device/code", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseForm())
+		deviceForm = r.Form
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"device_code":               "dev-1",
+			"user_code":                 "ABCD-EFGH",
+			"verification_uri_complete": "https://login.development-cloud.qdrant.io/activate?user_code=ABCD-EFGH",
+			"expires_in":                600,
+			"interval":                  1,
+		})
+	})
+	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseForm())
+		tokenForm = r.Form
+		polls++
+		if polls == 1 {
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "authorization_pending", "error_description": "authorization_pending"})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "at-1",
+			"refresh_token": "rt-1",
+			"token_type":    "Bearer",
+			"expires_in":    3600,
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
+	tok, _, err := d.Login(context.Background(), LoginOptions{
+		Endpoint: "grpc.development-cloud.qdrant.io:443",
+		ClientID: "cli-client",
+		Device:   true,
+		Now:      time.Now,
+		Output:   io.Discard,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "at-1", tok.AccessToken)
+	assert.Equal(t, "https://api.development-cloud.qdrant.io", deviceForm.Get("audience"))
+	assert.Empty(t, deviceForm.Get("resource"))
+	assert.Equal(t, "dev-1", tokenForm.Get("device_code"))
+	assert.Empty(t, tokenForm.Get("resource"))
+	assert.Empty(t, tokenForm.Get("audience"))
 }

@@ -7,7 +7,12 @@ Log in with a browser or device code
 Log in and store a refreshable access token for the current endpoint.
 
 The default flow is authorization code + PKCE with a loopback listener on
-127.0.0.1 (RFC 8252). Use --device on SSH or when no browser is available.
+127.0.0.1 (RFC 8252). The browser callback checks state and, when Auth0 sends
+it, iss.
+
+Use --device on SSH or when no browser is available. The CLI only prints the
+verification URL and polls. Sign-in and the Qdrant consent page happen in the
+browser; a declined consent ends the poll with access denied.
 
 The login URL comes from the gateway's unauthenticated protected-resource
 metadata when OAuth is enabled, otherwise from rewriting grpc.cloud.qdrant.io
