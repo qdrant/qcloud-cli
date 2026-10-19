@@ -103,7 +103,7 @@ func (d Discoverer) codeLogin(ctx context.Context, opts LoginOptions, disc Disco
 		defer ln.Close()
 
 		redirectURL = "http://" + ln.Addr().String() + "/callback"
-		wait = loopbackWaiter(ln, opts.Output)
+		wait = loopbackWaiter(ln, opts.Output, disc.Issuer)
 	} else if redirectURL == "" {
 		redirectURL = "http://127.0.0.1:1/callback"
 	}
@@ -178,35 +178,17 @@ func listenLoopback(listen func() (net.Listener, error)) (net.Listener, error) {
 	return ln, nil
 }
 
-func loopbackWaiter(ln net.Listener, out io.Writer) WaitCodeFunc {
+func loopbackWaiter(ln net.Listener, out io.Writer, issuer string) WaitCodeFunc {
 	return func(ctx context.Context, _, wantState string) (string, error) {
 		codeCh := make(chan string, 1)
 		errCh := make(chan error, 1)
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-			q := r.URL.Query()
-			if errParam := q.Get("error"); errParam != "" {
-				msg := q.Get("error_description")
-				if msg == "" {
-					msg = errParam
-				}
-
-				http.Error(w, msg, http.StatusBadRequest)
-				errCh <- fmt.Errorf("authorization: %s", msg)
-				return
-			}
-
-			if q.Get("state") != wantState {
-				http.Error(w, "state mismatch", http.StatusBadRequest)
-				errCh <- fmt.Errorf("authorization state mismatch")
-				return
-			}
-
-			code := q.Get("code")
-			if code == "" {
-				http.Error(w, "missing code", http.StatusBadRequest)
-				errCh <- fmt.Errorf("authorization response missing code")
+			code, err := authorizationCallback(r.URL.Query(), wantState, issuer)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				errCh <- err
 				return
 			}
 
@@ -239,4 +221,34 @@ func loopbackWaiter(ln net.Listener, out io.Writer) WaitCodeFunc {
 			return code, nil
 		}
 	}
+}
+
+// authorizationCallback checks the loopback redirect. state is the client's
+// CSRF value from /authorize, not Auth0's consent-page redirect state.
+// iss is checked when Auth0 sends it (RFC 9207). A missing iss is allowed so
+// login still works before that tenant toggle is on.
+func authorizationCallback(q url.Values, wantState, wantIssuer string) (string, error) {
+	if errParam := q.Get("error"); errParam != "" {
+		msg := q.Get("error_description")
+		if msg == "" {
+			msg = errParam
+		}
+
+		return "", fmt.Errorf("authorization: %s", msg)
+	}
+
+	if q.Get("state") != wantState {
+		return "", fmt.Errorf("authorization state mismatch")
+	}
+
+	if iss := q.Get("iss"); iss != "" && canonicalizeIssuer(iss) != canonicalizeIssuer(wantIssuer) {
+		return "", fmt.Errorf("authorization issuer mismatch")
+	}
+
+	code := q.Get("code")
+	if code == "" {
+		return "", fmt.Errorf("authorization response missing code")
+	}
+
+	return code, nil
 }

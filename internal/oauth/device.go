@@ -27,10 +27,13 @@ func (d Discoverer) deviceLogin(ctx context.Context, opts LoginOptions, disc Dis
 		return Token{}, fmt.Errorf("authorization server does not advertise device_authorization_endpoint")
 	}
 
+	// Auth0 accepts RFC 8707 resource on /authorize and refresh, not on
+	// /oauth/device/code. That endpoint takes audience. The value is the same
+	// API identifier discovery already resolved.
 	form := url.Values{
 		"client_id": {opts.ClientID},
 		"scope":     {scope},
-		"resource":  {disc.Resource},
+		"audience":  {disc.Resource},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, as.DeviceAuthorizationEndpoint, strings.NewReader(form.Encode()))
@@ -71,7 +74,11 @@ func (d Discoverer) deviceLogin(ctx context.Context, opts LoginOptions, disc Dis
 	}
 
 	if opts.Output != nil {
-		fmt.Fprintf(opts.Output, "Open %s and enter code %s\n", verify, dc.UserCode)
+		if dc.VerificationURIComplete != "" {
+			fmt.Fprintf(opts.Output, "Open %s\nConfirm the code %s in the browser. Login continues on the Qdrant consent page; this command waits until that finishes.\n", verify, dc.UserCode)
+		} else {
+			fmt.Fprintf(opts.Output, "Open %s and enter code %s\nLogin continues on the Qdrant consent page; this command waits until that finishes.\n", verify, dc.UserCode)
+		}
 	}
 
 	if opts.OpenURL != nil && verify != "" {
@@ -114,7 +121,6 @@ func (d Discoverer) deviceLogin(ctx context.Context, opts LoginOptions, disc Dis
 			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
 			"device_code": {dc.DeviceCode},
 			"client_id":   {opts.ClientID},
-			"resource":    {disc.Resource},
 		}
 
 		tok, err := d.exchange(ctx, as.TokenEndpoint, tokForm, opts.Now(), base)
@@ -122,9 +128,30 @@ func (d Discoverer) deviceLogin(ctx context.Context, opts LoginOptions, disc Dis
 			return tok, nil
 		}
 
-		if !strings.Contains(err.Error(), "authorization_pending") && !strings.Contains(err.Error(), "slow_down") {
+		next, again := nextDevicePollInterval(interval, err)
+		if !again {
 			return Token{}, err
 		}
+
+		if next != interval {
+			interval = next
+			ticker.Reset(interval)
+		}
+	}
+}
+
+// nextDevicePollInterval applies RFC 8628 polling. authorization_pending retries
+// at the same interval. slow_down adds five seconds. Anything else, including
+// access_denied from a declined consent and expired_token, stops the poll.
+func nextDevicePollInterval(interval time.Duration, err error) (time.Duration, bool) {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "slow_down"):
+		return interval + 5*time.Second, true
+	case strings.Contains(msg, "authorization_pending"):
+		return interval, true
+	default:
+		return interval, false
 	}
 }
 
