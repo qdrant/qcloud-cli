@@ -8,12 +8,10 @@ on:
     branches: [main]
     paths:
       - install.sh
-      - .goreleaser.yaml
       - .github/workflows/install-script.yml
   pull_request:
     paths:
       - install.sh
-      - .goreleaser.yaml
       - .github/workflows/install-script.yml
 
 jobs:
@@ -28,8 +26,8 @@ jobs:
       - name: Run shellcheck
         run: shellcheck --shell=sh install.sh
 
-  # Installs the latest release on each platform it supports. A change to the
-  # archive names in .goreleaser.yaml breaks the script, so that file runs this too.
+  # Runs against published releases, so it can't catch a rename of the archives
+  # in .goreleaser.yaml until a release with the new names ships.
   install:
     strategy:
       fail-fast: false
@@ -47,8 +45,17 @@ jobs:
         env:
           QCLOUD_INSTALL_DIR: ${{ runner.temp }}/bin
 
-      - name: Run it
+      - name: Run qcloud version
         run: '"$RUNNER_TEMP/bin/qcloud" version'
+
+      - name: Install pinned version
+        run: sh install.sh
+        env:
+          QCLOUD_VERSION: 0.31.0
+          QCLOUD_INSTALL_DIR: ${{ runner.temp }}/pinned
+
+      - name: Check pinned version
+        run: '"$RUNNER_TEMP/pinned/qcloud" version | grep -Fx "qcloud 0.31.0"'
 
   # BusyBox userland: wget instead of curl, no bash. The common case for
   # containers and sandboxed agents.

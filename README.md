@@ -23,7 +23,7 @@
 
 ## Installation
 
-### With Homebrew
+### From Homebrew
 
 On macOS and Linux:
 
@@ -31,7 +31,7 @@ On macOS and Linux:
 brew install qdrant/tap/qcloud
 ```
 
-### With the install script
+### From the install script
 
 For systems without Homebrew, such as CI runners, containers, and sandboxed agents:
 
