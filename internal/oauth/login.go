@@ -2,12 +2,14 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,6 +18,11 @@ const (
 	defaultScope = "manage"
 	offlineScope = "offline_access"
 )
+
+// LoopbackPorts are the ports the browser login listens on, tried in order. Auth0 matches a
+// loopback callback's port exactly (it does not apply the any-port rule of RFC 8252 §7.3), so
+// each one is registered on the CLI's Auth0 application as http://127.0.0.1:<port>/callback.
+var LoopbackPorts = []int{48271, 48272, 48273}
 
 // WaitCodeFunc waits for an authorization code at redirectURL (loopback).
 type WaitCodeFunc func(ctx context.Context, redirectURL, state string) (code string, err error)
@@ -170,12 +177,22 @@ func listenLoopback(listen func() (net.Listener, error)) (net.Listener, error) {
 		return listen()
 	}
 
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, fmt.Errorf("listen on loopback: %w", err)
+	return listenFirstFree(LoopbackPorts)
+}
+
+// listenFirstFree listens on the first of ports that is free on 127.0.0.1.
+func listenFirstFree(ports []int) (net.Listener, error) {
+	var errs []error
+	for _, port := range ports {
+		ln, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		if err == nil {
+			return ln, nil
+		}
+
+		errs = append(errs, err)
 	}
 
-	return ln, nil
+	return nil, fmt.Errorf("listen on loopback: none of ports %v is free (or use --device): %w", ports, errors.Join(errs...))
 }
 
 func loopbackWaiter(ln net.Listener, out io.Writer, issuer string) WaitCodeFunc {

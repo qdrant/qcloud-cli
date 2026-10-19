@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -209,4 +210,35 @@ func TestLogin_DeviceUsesAudience(t *testing.T) {
 	assert.Equal(t, "dev-1", tokenForm.Get("device_code"))
 	assert.Empty(t, tokenForm.Get("resource"))
 	assert.Empty(t, tokenForm.Get("audience"))
+}
+
+func TestListenFirstFree_SkipsBusyPort(t *testing.T) {
+	t.Parallel()
+
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer busy.Close()
+
+	free, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	freePort := free.Addr().(*net.TCPAddr).Port
+	require.NoError(t, free.Close())
+
+	ln, err := listenFirstFree([]int{busy.Addr().(*net.TCPAddr).Port, freePort})
+	require.NoError(t, err)
+	defer ln.Close()
+
+	assert.Equal(t, freePort, ln.Addr().(*net.TCPAddr).Port)
+}
+
+func TestListenFirstFree_AllBusy(t *testing.T) {
+	t.Parallel()
+
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer busy.Close()
+
+	_, err = listenFirstFree([]int{busy.Addr().(*net.TCPAddr).Port})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--device")
 }

@@ -7,8 +7,8 @@ Log in with a browser or device code
 Log in and store a refreshable access token for the current endpoint.
 
 The default flow is authorization code + PKCE with a loopback listener on
-127.0.0.1 (RFC 8252). The browser callback checks state and, when Auth0 sends
-it, iss.
+127.0.0.1 (RFC 8252), on the first free port of 48271, 48272 and 48273. The
+browser callback checks state and, when Auth0 sends it, iss.
 
 Use --device on SSH or when no browser is available. The CLI only prints the
 verification URL and polls. Sign-in and the Qdrant consent page happen in the
