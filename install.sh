@@ -81,10 +81,10 @@ main() {
   tar -xzf "$tmp/$archive" -C "$tmp" qcloud
   install_dir="${QCLOUD_INSTALL_DIR:-$HOME/.local/bin}"
   # A quoted ~ from Dockerfile ENV or YAML env: isn't expanded by the shell.
-  case "$install_dir" in "~/"*) install_dir="$HOME/${install_dir#\~/}" ;; esac
+  case "$install_dir" in \~/*) install_dir="$HOME/${install_dir#\~/}" ;; esac
   mkdir -p "$install_dir"
   # Absolute, without a trailing slash, so the PATH check below matches.
-  install_dir=$(CDPATH= cd -- "$install_dir" && pwd)
+  install_dir=$(CDPATH='' cd -- "$install_dir" && pwd)
   # Copy next to the target, then rename over it: a running qcloud is replaced
   # atomically instead of failing with "text file busy".
   cp "$tmp/qcloud" "$install_dir/.qcloud.new"
