@@ -153,7 +153,12 @@ func TestLogin_DeviceUsesAudience(t *testing.T) {
 		})
 	})
 	mux.HandleFunc("/oauth/device/code", func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, r.ParseForm())
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
 		deviceForm = r.Form
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"device_code":               "dev-1",
@@ -164,7 +169,12 @@ func TestLogin_DeviceUsesAudience(t *testing.T) {
 		})
 	})
 	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, r.ParseForm())
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
 		tokenForm = r.Form
 		polls++
 		if polls == 1 {
@@ -172,6 +182,7 @@ func TestLogin_DeviceUsesAudience(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{"error": "authorization_pending", "error_description": "authorization_pending"})
 			return
 		}
+
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "at-1",
 			"refresh_token": "rt-1",
