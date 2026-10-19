@@ -192,20 +192,171 @@ func TestScale_NewPackageWithLargerDiskUpgradesDiskSilently(t *testing.T) {
 	assert.Equal(t, uint32(0), req.GetCluster().GetConfiguration().GetAdditionalResources().GetDisk())
 }
 
-func TestScale_DiskDownscaleIsRejected(t *testing.T) {
+// clusterWithExtraDisk returns a cluster on a 50GiB package with 50GiB of additional disk,
+// so its total disk is 100GiB.
+func clusterWithExtraDisk() *clusterv1.Cluster {
+	cluster := baseCluster()
+	cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{Disk: 50}
+	return cluster
+}
+
+func TestScale_DiskDecreaseOptsIn(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
-	cluster := baseCluster()
-	cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{Disk: 50} // 50GiB pkg + 50GiB extra = 100GiB total
 	setupScale(env, scaleEnv{
-		cluster:    cluster,
+		cluster:    clusterWithExtraDisk(),
 		currentPkg: pkg,
 		newPkg:     pkg,
 	})
 
-	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk", "80GiB", "--force")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot be downscaled")
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk", "80GiB", "--allow-disk-decrease", "--force")
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	// 80GiB total - 50GiB pkg = 30GiB additional, and the request opts in to the decrease.
+	assert.Equal(t, uint32(30), req.GetCluster().GetConfiguration().GetAdditionalResources().GetDisk())
+	assert.True(t, req.GetAllowAdditionalDiskDecrease())
+	// --force skips the prompt, not the warning.
+	assert.Contains(t, stderr, "Warning: Lowering the disk deletes the local snapshots")
+}
+
+func TestScale_DiskDecreaseWithoutFlagIsRejected(t *testing.T) {
+	// --force skips the prompt, but it must not lower the disk on its own.
+	for name, args := range map[string][]string{
+		"with force":    {"--disk", "80GiB", "--force"},
+		"without force": {"--disk", "80GiB"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			env := testutil.NewTestEnv(t)
+			pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+			setupScale(env, scaleEnv{
+				cluster:    clusterWithExtraDisk(),
+				currentPkg: pkg,
+				newPkg:     pkg,
+			})
+
+			_, _, err := testutil.Exec(t, env, append([]string{"cluster", "scale", "cluster-123"}, args...)...)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "--allow-disk-decrease")
+			assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+		})
+	}
+}
+
+func TestScale_DiskDecreaseToPackageMinimum(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+	setupScale(env, scaleEnv{
+		cluster:    clusterWithExtraDisk(),
+		currentPkg: pkg,
+		newPkg:     pkg,
+	})
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk", "50GiB", "--allow-disk-decrease", "--force")
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	// The additional resources stay present with 0, because the opt-in requires them. With the
+	// opt-in, 0 removes the additional disk.
+	require.NotNil(t, req.GetCluster().GetConfiguration().GetAdditionalResources())
+	assert.Equal(t, uint32(0), req.GetCluster().GetConfiguration().GetAdditionalResources().GetDisk())
+	assert.True(t, req.GetAllowAdditionalDiskDecrease())
+}
+
+func TestScale_DiskDecreaseBelowPackageMinimumIsClamped(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+	setupScale(env, scaleEnv{
+		cluster:    clusterWithExtraDisk(),
+		currentPkg: pkg,
+		newPkg:     pkg,
+	})
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk", "10GiB", "--allow-disk-decrease")
+	require.NoError(t, err)
+
+	// The disk never goes below the package's baseline: 10GiB requested becomes 50GiB, and the
+	// prompt says so.
+	assert.Contains(t, stderr, "package minimum disk is being applied")
+}
+
+func TestScale_PackageAndDiskDecreaseTogether(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    clusterWithExtraDisk(),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID3, "500m", "2GiB", "25GiB"),
+	})
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "500m", "--ram", "2GiB", "--disk", "60GiB", "--allow-disk-decrease", "--force")
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, pkgID3, req.GetCluster().GetConfiguration().GetPackageId())
+	// 60GiB total - 25GiB pkg = 35GiB additional, down from a 100GiB total.
+	assert.Equal(t, uint32(35), req.GetCluster().GetConfiguration().GetAdditionalResources().GetDisk())
+	assert.True(t, req.GetAllowAdditionalDiskDecrease())
+}
+
+func TestScale_SmallerPackageWithoutDiskFlagKeepsTheTotalDisk(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    clusterWithExtraDisk(),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID3, "500m", "2GiB", "25GiB"),
+	})
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "500m", "--ram", "2GiB", "--force")
+	require.NoError(t, err)
+
+	req, ok := env.Server.UpdateClusterCalls.Last()
+	require.True(t, ok)
+	// The 100GiB total is kept: 100GiB - 25GiB pkg = 75GiB additional. No decrease, no opt-in.
+	assert.Equal(t, uint32(75), req.GetCluster().GetConfiguration().GetAdditionalResources().GetDisk())
+	assert.False(t, req.GetAllowAdditionalDiskDecrease())
+	assert.NotContains(t, stderr, "local snapshots")
+}
+
+func TestScale_DiskIncreaseAndEqualDiskDoNotOptIn(t *testing.T) {
+	for name, disk := range map[string]string{"increase": "150GiB", "equal": "100GiB"} {
+		t.Run(name, func(t *testing.T) {
+			env := testutil.NewTestEnv(t)
+			pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+			setupScale(env, scaleEnv{
+				cluster:    clusterWithExtraDisk(),
+				currentPkg: pkg,
+				newPkg:     pkg,
+			})
+
+			_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk", disk, "--allow-disk-decrease", "--force")
+			require.NoError(t, err)
+
+			req, ok := env.Server.UpdateClusterCalls.Last()
+			require.True(t, ok)
+			// The flag allows a decrease. Without one, the request does not opt in.
+			assert.False(t, req.GetAllowAdditionalDiskDecrease())
+			assert.NotContains(t, stderr, "local snapshots")
+		})
+	}
+}
+
+func TestScale_DiskDecreaseWarningIsShownBeforeAbort(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	pkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+	setupScale(env, scaleEnv{
+		cluster:    clusterWithExtraDisk(),
+		currentPkg: pkg,
+		newPkg:     pkg,
+	})
+
+	stdout, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--disk", "80GiB", "--allow-disk-decrease")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "Warning: Lowering the disk deletes the local snapshots")
+	assert.Contains(t, stdout, "Aborted.")
 	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
 }
 
