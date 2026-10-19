@@ -48,6 +48,7 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 			fmt.Fprintf(w, "Region:    %s\n", space.GetCloudRegionId())
 
 			if ep := space.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
+				// REST and gRPC are both served on the default HTTPS port, so the URL is enough.
 				fmt.Fprintf(w, "Endpoint:  %s\n", ep.GetUrl())
 			}
 
