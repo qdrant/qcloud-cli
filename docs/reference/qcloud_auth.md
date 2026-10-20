@@ -25,7 +25,7 @@ keep working unchanged when --api-key / QDRANT_CLOUD_API_KEY is set.
 qcloud auth discover
 
 # Browser login (authorization code + PKCE on 127.0.0.1)
-qcloud auth login --client-id <native-app>
+qcloud auth login
 
 # Device code (SSH / no browser)
 qcloud auth login --device --scope read-only

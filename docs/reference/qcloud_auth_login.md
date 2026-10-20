@@ -18,8 +18,8 @@ The login URL comes from the gateway's unauthenticated protected-resource
 metadata when OAuth is enabled, otherwise from rewriting grpc.cloud.qdrant.io
 to login.cloud.qdrant.io. Override with --login-url only for debugging.
 
-The native application client id is not hard-coded yet.
-Pass --client-id or QDRANT_CLOUD_OAUTH_CLIENT_ID after that app exists.
+The Qdrant Cloud CLI client id is built in per login URL. --client-id or
+QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
 Tokens are stored in credentials.yaml next to the config file (mode 0600).
 
 ```
@@ -30,19 +30,19 @@ qcloud auth login [flags]
 
 ```
 # Browser login (default production endpoint)
-qcloud auth login --client-id <id>
+qcloud auth login
 
 # Read-only session
-qcloud auth login --scope read-only --client-id <id>
+qcloud auth login --scope read-only
 
 # Device code
-qcloud auth login --device --client-id <id>
+qcloud auth login --device
 ```
 
 ### Options
 
 ```
-      --client-id string   OAuth native app client id (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)
+      --client-id string   Override the built-in OAuth client id (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)
       --device             Use the device authorization grant instead of a loopback browser flow
   -h, --help               help for login
       --login-url string   Override the login issuer URL (defaults to discovery / endpoint inference)
