@@ -242,3 +242,41 @@ func TestListenFirstFree_AllBusy(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--device")
 }
+
+func TestLoopbackWaiter_Pages(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name, query, want string
+		status            int
+	}{
+		{"success", "code=abc&state=s", "Logged in to Qdrant Cloud", http.StatusOK},
+		{"denied", "error=access_denied&error_description=" + url.QueryEscape("<b>not connected</b>") + "&state=s", "&lt;b&gt;not connected&lt;/b&gt;", http.StatusBadRequest},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ln, err := net.Listen("tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+
+			wait := loopbackWaiter(ln, nil, "https://login.cloud.qdrant.io/")
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				_, _ = wait(context.Background(), "", "s")
+			}()
+
+			resp, err := http.Get("http://" + ln.Addr().String() + "/callback?" + tc.query)
+			require.NoError(t, err)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, resp.Body.Close())
+			require.NoError(t, err)
+			<-done
+
+			assert.Equal(t, tc.status, resp.StatusCode)
+			assert.Equal(t, "text/html; charset=utf-8", resp.Header.Get("Content-Type"))
+			assert.Contains(t, string(body), tc.want)
+			assert.NotContains(t, string(body), "<b>not connected</b>")
+		})
+	}
+}
