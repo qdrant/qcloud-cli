@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if .OK}}Logged in{{else}}Login failed{{end}} · Qdrant Cloud CLI</title>
+<style>
+  :root {
+    --bg: #f2f4f7;
+    --card: #ffffff;
+    --fg: #111824;
+    --muted: #5b6577;
+    --border: #e1e5ec;
+    --ok: #1a7f4b;
+    --err: #c62a47;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #090e1a;
+      --card: #111824;
+      --fg: #f2f4f7;
+      --muted: #a3acbd;
+      --border: #263043;
+      --ok: #3ccf8e;
+      --err: #ff516b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  main {
+    width: 100%;
+    max-width: 480px;
+    padding: 48px 32px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--card);
+    text-align: center;
+  }
+  .pair {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  .badge {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+  }
+  .badge svg { width: 40px; height: 40px; }
+  .terminal { color: var(--fg); }
+  .link { color: var(--muted); font-size: 24px; }
+  h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; }
+  p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+  .status { display: inline-flex; align-items: center; gap: 8px; }
+  .status svg { width: 20px; height: 20px; flex: none; }
+  .ok { color: var(--ok); }
+  .err { color: var(--err); }
+  .detail {
+    margin-top: 20px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="pair" aria-hidden="true">
+    <div class="badge">
+      <svg viewBox="0 0 174 200" role="img" aria-label="Qdrant">
+        <polygon fill="#dc244c" points="86.6 0 0 50 0 150 86.6 200 119.08 181.25 119.08 143.75 86.6 162.5 32.48 131.25 32.48 68.75 86.6 37.5 140.73 68.75 140.73 193.75 173.21 175 173.21 50 86.6 0"/>
+        <polygon fill="#dc244c" points="54.13 81.25 54.13 118.75 86.6 137.5 119.08 118.75 119.08 81.25 86.6 62.5 54.13 81.25"/>
+        <polygon fill="#9e0d38" points="119.08 143.75 119.08 181.25 86.6 200 86.6 162.5 119.08 143.75"/>
+        <polygon fill="#9e0d38" points="173.21 50 173.21 175 140.73 193.75 140.73 68.75 173.21 50"/>
+        <polygon fill="#ff516b" points="173.21 50 140.73 68.75 86.6 37.5 32.48 68.75 0 50 86.6 0 173.21 50"/>
+        <polygon fill="#dc244c" points="86.6 162.5 86.6 200 0 150 0 50 32.48 68.75 32.48 131.25 86.6 162.5"/>
+        <polygon fill="#ff516b" points="119.08 81.25 86.6 100 54.13 81.25 86.6 62.5 119.08 81.25"/>
+        <polygon fill="#dc244c" points="86.6 100 86.6 137.5 54.13 118.75 54.13 81.25 86.6 100"/>
+        <polygon fill="#9e0d38" points="119.08 81.25 119.08 118.75 86.6 137.5 86.6 100 119.08 81.25"/>
+      </svg>
+    </div>
+    <span class="link">&#8596;</span>
+    <div class="badge terminal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Terminal">
+        <rect x="2.5" y="4" width="19" height="16" rx="2.5"/>
+        <polyline points="7 10 10 12.5 7 15"/>
+        <line x1="12.5" y1="15" x2="17" y2="15"/>
+      </svg>
+    </div>
+  </div>
+{{if .OK}}
+  <h1>Logged in to Qdrant Cloud</h1>
+  <p class="status ok">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 12.5 10 17 19 7"/></svg>
+    <span>You can close this tab and return to the terminal.</span>
+  </p>
+{{else}}
+  <h1>Login failed</h1>
+  <p class="status err">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    <span>Run <code>qcloud auth login</code> again.</span>
+  </p>
+  <div class="detail">{{.Detail}}</div>
+{{end}}
+</main>
+</body>
+</html>

@@ -209,12 +209,13 @@ func loopbackWaiter(ln net.Listener, out io.Writer, issuer string) WaitCodeFunc 
 		mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 			code, err := authorizationCallback(r.URL.Query(), wantState, issuer)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeCallbackPage(w, http.StatusBadRequest, err.Error())
 				errCh <- err
+
 				return
 			}
 
-			fmt.Fprint(w, "You can close this window and return to the CLI.")
+			writeCallbackPage(w, http.StatusOK, "")
 			codeCh <- code
 		})
 
