@@ -250,7 +250,7 @@ func TestLoopbackWaiter_Pages(t *testing.T) {
 		name, query, want string
 		status            int
 	}{
-		{"success", "code=abc&state=s", "Logged in to Qdrant Cloud", http.StatusOK},
+		{"success", "code=abc&state=s", "Login Complete", http.StatusOK},
 		{"denied", "error=access_denied&error_description=" + url.QueryEscape("<b>not connected</b>") + "&state=s", "&lt;b&gt;not connected&lt;/b&gt;", http.StatusBadRequest},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
