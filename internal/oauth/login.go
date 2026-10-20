@@ -68,7 +68,12 @@ func (d Discoverer) Login(ctx context.Context, opts LoginOptions) (Token, Discov
 	}
 
 	if opts.ClientID == "" {
-		return Token{}, disc, fmt.Errorf("OAuth client id is required (--client-id or QDRANT_CLOUD_OAUTH_CLIENT_ID) once the Qdrant Cloud CLI OAuth app exists for this tenant")
+		id, ok := DefaultClientID(disc.Issuer)
+		if !ok {
+			return Token{}, disc, fmt.Errorf("no built-in OAuth client id for %s yet: pass --client-id or QDRANT_CLOUD_OAUTH_CLIENT_ID", disc.Issuer)
+		}
+
+		opts.ClientID = id
 	}
 
 	as, err := d.fetchASMetadata(ctx, disc.Issuer)
