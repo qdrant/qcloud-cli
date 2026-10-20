@@ -1,0 +1,71 @@
+name: Install script
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - install.sh
+      - .github/workflows/install-script.yml
+  pull_request:
+    paths:
+      - install.sh
+      - .github/workflows/install-script.yml
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run shellcheck
+        run: shellcheck --shell=sh install.sh
+
+  # Runs against published releases, so it can't catch a rename of the archives
+  # in .goreleaser.yaml until a release with the new names ships.
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install latest
+        run: sh install.sh
+        env:
+          QCLOUD_INSTALL_DIR: ${{ runner.temp }}/bin
+
+      - name: Run qcloud version
+        run: '"$RUNNER_TEMP/bin/qcloud" version'
+
+      - name: Install pinned version
+        run: sh install.sh
+        env:
+          QCLOUD_VERSION: 0.31.0
+          QCLOUD_INSTALL_DIR: ${{ runner.temp }}/pinned
+
+      - name: Check pinned version
+        run: '"$RUNNER_TEMP/pinned/qcloud" version | grep -Fx "qcloud 0.31.0"'
+
+  # BusyBox userland: wget instead of curl, no bash. The common case for
+  # containers and sandboxed agents.
+  install-alpine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install in Alpine
+        run: docker run --rm -v "$PWD:/src:ro" alpine:3.22 sh -c 'sh /src/install.sh && /root/.local/bin/qcloud version'
