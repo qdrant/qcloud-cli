@@ -23,6 +23,7 @@ func TestDiscover_FallsBackToInferredIssuer(t *testing.T) {
 	assert.Equal(t, "https://login.development-cloud.qdrant.io/", disc.Issuer)
 	assert.Equal(t, "https://api.development-cloud.qdrant.io", disc.Resource)
 	assert.Equal(t, sourceEndpointInference, disc.Source)
+	assert.Contains(t, disc.MetadataError, assert.AnError.Error())
 }
 
 func TestDiscover_UsesProtectedResourceMetadata(t *testing.T) {

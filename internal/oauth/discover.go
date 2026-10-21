@@ -22,6 +22,9 @@ type Discovery struct {
 	Issuer   string
 	Scopes   []string
 	Source   string
+	// MetadataError is why the protected-resource metadata could not be used, when Source is
+	// endpoint inference. The inferred values work too; this explains why they were inferred.
+	MetadataError string
 }
 
 // Discoverer resolves the authorization server for a gRPC endpoint.
@@ -53,10 +56,12 @@ func (d Discoverer) Discover(ctx context.Context, endpoint string) (Discovery, e
 		Source:   sourceEndpointInference,
 	}
 
-	prm, ok := d.tryPRM(ctx, hosts.ProtectedResourceMetadataURL())
-	if !ok {
+	prm, err := d.fetchPRM(ctx, hosts.ProtectedResourceMetadataURL())
+	if err != nil {
 		// OAuth may not be enabled yet; hostname inference still works.
-		return out, nil
+		out.MetadataError = err.Error()
+
+		return out, nil //nolint:nilerr // the inferred values are the fallback; the reason is in MetadataError
 	}
 
 	if len(prm.AuthorizationServers) > 0 && prm.AuthorizationServers[0] != "" {
@@ -79,15 +84,6 @@ type prmDocument struct {
 	Resource             string   `json:"resource"`
 	AuthorizationServers []string `json:"authorization_servers"`
 	ScopesSupported      []string `json:"scopes_supported"`
-}
-
-func (d Discoverer) tryPRM(ctx context.Context, url string) (prmDocument, bool) {
-	doc, err := d.fetchPRM(ctx, url)
-	if err != nil {
-		return prmDocument{}, false
-	}
-
-	return doc, true
 }
 
 func (d Discoverer) fetchPRM(ctx context.Context, url string) (prmDocument, error) {
