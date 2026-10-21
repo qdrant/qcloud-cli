@@ -280,3 +280,10 @@ func TestLoopbackWaiter_Pages(t *testing.T) {
 		})
 	}
 }
+
+func TestJoinScopes(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "manage openid email offline_access", joinScopes("manage"))
+	assert.Equal(t, "read-only openid email offline_access", joinScopes("read-only openid"))
+}
