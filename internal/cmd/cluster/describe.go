@@ -362,6 +362,22 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 
 						fmt.Fprintf(w, "  %-40s  %-12s  %-10s  %s\n",
 							n.GetName(), output.ClusterNodeState(n.GetState()), n.GetVersion(), started)
+
+						if info := n.GetNotReadyInfo(); info != nil {
+							msg := info.GetConditionMessage()
+							if info.ReasonMessage != nil {
+								msg += ": " + info.GetReasonMessage()
+							}
+
+							fmt.Fprintf(w, "    %s\n", msg)
+							for _, a := range info.GetActions() {
+								if a.Url != nil {
+									fmt.Fprintf(w, "      - %s: %s\n", a.GetDescription(), a.GetUrl())
+								} else {
+									fmt.Fprintf(w, "      - %s\n", a.GetDescription())
+								}
+							}
+						}
 					}
 				}
 			}

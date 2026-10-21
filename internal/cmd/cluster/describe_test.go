@@ -291,6 +291,59 @@ func TestDescribeCluster_Nodes(t *testing.T) {
 	assert.Contains(t, stdout, "HEALTHY")
 	assert.Contains(t, stdout, "1.13.0")
 	assert.Contains(t, stdout, "ago")
+	assert.NotContains(t, stdout, "Not ready")
+}
+
+func TestDescribeCluster_NodeNotReadyInfo(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{
+		Cluster: &clusterv1.Cluster{
+			Id:   "nodes-cluster",
+			Name: "nodes",
+			State: &clusterv1.ClusterState{
+				Nodes: []*clusterv1.ClusterNodeInfo{
+					{
+						Name:    "node-0",
+						State:   clusterv1.ClusterNodeState_CLUSTER_NODE_STATE_UNHEALTHY,
+						Version: "1.13.0",
+						NotReadyInfo: &clusterv1.ClusterNodeNotReadyInfo{
+							Condition:        clusterv1.ClusterNodeNotReadyCondition_CLUSTER_NODE_NOT_READY_CONDITION_CONTAINER_RESTARTING,
+							ConditionMessage: "Your container is restarting",
+							Reason:           clusterv1.ClusterNodeNotReadyReason_CLUSTER_NODE_NOT_READY_REASON_OUT_OF_MEMORY.Enum(),
+							ReasonMessage:    new("Your node has reached its memory limit"),
+							Actions: []*clusterv1.ClusterNodeAction{
+								{
+									Kind:        clusterv1.ClusterNodeActionKind_CLUSTER_NODE_ACTION_KIND_SCALE_VERTICALLY,
+									Description: "Scale your cluster",
+								},
+								{
+									Kind:        clusterv1.ClusterNodeActionKind_CLUSTER_NODE_ACTION_KIND_DOCUMENTATION,
+									Description: "Read about memory usage",
+									Url:         new("https://qdrant.tech/documentation/guides/capacity-planning/"),
+								},
+							},
+						},
+					},
+					{
+						Name:    "node-1",
+						State:   clusterv1.ClusterNodeState_CLUSTER_NODE_STATE_STARTING,
+						Version: "1.13.0",
+						NotReadyInfo: &clusterv1.ClusterNodeNotReadyInfo{
+							Condition:        clusterv1.ClusterNodeNotReadyCondition_CLUSTER_NODE_NOT_READY_CONDITION_READINESS_FAILING,
+							ConditionMessage: "Your node is not passing its readiness checks",
+						},
+					},
+				},
+			},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "describe", "nodes-cluster")
+	require.NoError(t, err)
+
+	assert.Regexp(t, `node-0\s+UNHEALTHY[^\n]*\n\s+Your container is restarting: Your node has reached its memory limit\n\s+- Scale your cluster\n\s+- Read about memory usage: https://qdrant.tech/documentation/guides/capacity-planning/\n`, stdout)
+	assert.Regexp(t, `node-1\s+STARTING[^\n]*\n\s+Your node is not passing its readiness checks\n`, stdout)
 }
 
 func TestDescribeCluster_JSONOutput(t *testing.T) {
