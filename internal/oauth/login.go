@@ -19,6 +19,12 @@ const (
 	offlineScope = "offline_access"
 )
 
+// requiredScopes are requested on every login next to read-only or manage. offline_access gives a
+// refresh token. openid and email make Auth0 put email_verified in the access token, which
+// iam-service requires: Auth0 drops email_verified when an Action sets it, as it is a reserved
+// OpenID Connect claim name, so only the email scope brings it in.
+var requiredScopes = []string{"openid", "email", offlineScope}
+
 // LoopbackPorts are the ports the browser login listens on, tried in order. Auth0 matches a
 // loopback callback's port exactly (it does not apply the any-port rule of RFC 8252 §7.3), so
 // each one is registered on the CLI's Auth0 application as http://127.0.0.1:<port>/callback.
@@ -94,10 +100,10 @@ func (d Discoverer) Login(ctx context.Context, opts LoginOptions) (Token, Discov
 
 func joinScopes(scope string) string {
 	parts := strings.Fields(scope)
-	hasOffline := slices.Contains(parts, offlineScope)
-
-	if !hasOffline {
-		parts = append(parts, offlineScope)
+	for _, required := range requiredScopes {
+		if !slices.Contains(parts, required) {
+			parts = append(parts, required)
+		}
 	}
 
 	return strings.Join(parts, " ")
