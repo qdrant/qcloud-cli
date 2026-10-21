@@ -38,6 +38,10 @@ login.cloud.qdrant.io is inferred. No client id is required.`,
 			fmt.Fprintf(out, "API resource: %s\n", disc.Resource)
 			fmt.Fprintf(out, "Login URL:    %s\n", disc.Issuer)
 			fmt.Fprintf(out, "Source:       %s\n", disc.Source)
+			if disc.MetadataError != "" {
+				fmt.Fprintf(out, "Metadata:     not used (%s)\n", disc.MetadataError)
+			}
+
 			if len(disc.Scopes) > 0 {
 				fmt.Fprintf(out, "Scopes:       %s\n", strings.Join(disc.Scopes, ", "))
 			}
