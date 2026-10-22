@@ -60,11 +60,11 @@ access token.`,
 			}
 
 			fmt.Fprintf(out, "Status:    %s\n", status)
+			// The access the user granted on the consent page. The requested scope (what qcloud asked for)
+			// is in credentials.yaml; showing it here next to this only confuses.
 			if tok.GrantedScope != "" {
-				fmt.Fprintf(out, "Granted:   %s\n", tok.GrantedScope)
+				fmt.Fprintf(out, "Access:    %s\n", oauth.ScopeLabel(tok.GrantedScope))
 			}
-
-			fmt.Fprintf(out, "Requested: %s\n", tok.Scope)
 			if id, source := accountSource(cmd, s, tok); id != "" {
 				fmt.Fprintf(out, "Account:   %s (from %s)\n", id, source)
 			} else {
