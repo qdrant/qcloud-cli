@@ -87,6 +87,7 @@ qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --database-storage-cl
       --api-key-secret string                    (cloud-provider: hybrid) API key Kubernetes secret ('secretName:key')
       --async-scorer                             Enable async scorer (uses io_uring on Linux)
       --audit-log-max-files uint32               Maximum number of audit log files (1-1000)
+      --audit-log-output string                  (cloud-provider: hybrid) Audit log output ("file", "stdout", "file-and-stdout"); default file, requires Qdrant v1.20.0 or later
       --audit-log-rotation string                Audit log rotation ("daily", "hourly")
       --audit-log-trust-forwarded-headers        Trust forwarded headers in audit logs
       --audit-logging                            Enable audit logging
