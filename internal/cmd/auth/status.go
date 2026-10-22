@@ -65,6 +65,7 @@ access token.`,
 			if tok.GrantedScope != "" {
 				fmt.Fprintf(out, "Access:    %s\n", oauth.ScopeLabel(tok.GrantedScope))
 			}
+
 			if id, source := accountSource(cmd, s, tok); id != "" {
 				fmt.Fprintf(out, "Account:   %s (from %s)\n", id, source)
 			} else {
