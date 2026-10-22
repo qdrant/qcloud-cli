@@ -206,7 +206,7 @@ func TestAuthLogin_ShowsTheGrantedScope(t *testing.T) {
 	assert.NotContains(t, statusOut, "Requested")
 }
 
-func TestAuthLogin_SeveralAccountsGetAContextEachAndNoneIsSelected(t *testing.T) {
+func TestAuthLogin_SeveralAccountsGetAContextEachAndTheFirstIsSelected(t *testing.T) {
 	env := testutil.NewBareTestEnv(t)
 	prepareLogin(t, env)
 	grantAccounts(env,
@@ -218,13 +218,17 @@ func TestAuthLogin_SeveralAccountsGetAContextEachAndNoneIsSelected(t *testing.T)
 	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Contexts for your 2 accounts:")
-	assert.Contains(t, stdout, "dev-robert-stam-base-account")
-	assert.Contains(t, stdout, "dev-andrey-vasnetsov-base-account")
-	assert.Contains(t, stdout, "Select one with: qcloud context use <name>")
+	assert.Contains(t, stdout, "  * dev-robert-stam-base-account  (Robert Stam - Base Account)")
+	assert.Contains(t, stdout, "    dev-andrey-vasnetsov-base-account  (Andrey Vasnetsov - Base Account)")
+	assert.Contains(t, stdout, "Switch with: qcloud context use <name>")
 
-	_, _, err = testutil.Exec(t, env, "cluster", "list", "--config", cfg, "--endpoint", devEndpoint)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no account ID configured")
+	// The first account's context is current.
+	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+	_, _, err = testutil.Exec(t, env, "cluster", "list", "--config", cfg)
+	require.NoError(t, err)
+	req, ok := env.Server.ListClustersCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "a1", req.GetAccountId())
 }
 
 func TestAuthLogin_UpdatesOnlyItsOwnContexts(t *testing.T) {
