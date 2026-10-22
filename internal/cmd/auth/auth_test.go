@@ -184,8 +184,8 @@ func TestAuthLogin_ShowsTheGrantedScope(t *testing.T) {
 
 	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
 	require.NoError(t, err)
-	assert.Contains(t, statusOut, "Granted:   read-only")
-	assert.Contains(t, statusOut, "Requested: manage")
+	assert.Contains(t, statusOut, "Access:    read only")
+	assert.NotContains(t, statusOut, "Requested")
 }
 
 func TestAuthStatus_ShowsWhereTheAccountComesFrom(t *testing.T) {
