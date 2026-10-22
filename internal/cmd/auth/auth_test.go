@@ -11,6 +11,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
+	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/state"
 	"github.com/qdrant/qcloud-cli/internal/testutil"
@@ -61,10 +66,10 @@ func TestAuthDiscover_UsesGatewayMetadata(t *testing.T) {
 	assert.Contains(t, stdout, "protected-resource metadata")
 }
 
-func TestAuthLogin_StoresToken(t *testing.T) {
-	env := newEnv(t)
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+// prepareLogin points env at a fake authorization server that completes a browser login.
+func prepareLogin(t *testing.T, env *testutil.TestEnv) {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/oauth-protected-resource", func(w http.ResponseWriter, _ *http.Request) {
@@ -103,40 +108,83 @@ func TestAuthLogin_StoresToken(t *testing.T) {
 	env.State.SetWaitAuthCode(func(context.Context, string, string) (string, error) {
 		return "test-code", nil
 	}, "http://127.0.0.1:1/callback")
+}
 
-	stdout, _, err := testutil.Exec(t, env,
-		"auth", "login",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-		"--client-id", "cli-app",
-	)
+const devEndpoint = "grpc.development-cloud.qdrant.io:443"
+
+func TestAuthLogin_StoresToken(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Logged in")
 
-	tokenOut, _, err := testutil.Exec(t, env,
-		"auth", "token",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-	)
+	tokenOut, _, err := testutil.Exec(t, env, "auth", "token", "--endpoint", devEndpoint)
 	require.NoError(t, err)
 	assert.Equal(t, "access-from-login\n", tokenOut)
 
-	statusOut, _, err := testutil.Exec(t, env,
-		"auth", "status",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-	)
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
 	require.NoError(t, err)
 	assert.Contains(t, statusOut, "logged in")
 
-	_, _, err = testutil.Exec(t, env,
-		"auth", "logout",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-	)
+	_, _, err = testutil.Exec(t, env, "auth", "logout", "--endpoint", devEndpoint)
 	require.NoError(t, err)
 
-	_, _, err = testutil.Exec(t, env,
-		"auth", "token",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-	)
+	_, _, err = testutil.Exec(t, env, "auth", "token", "--endpoint", devEndpoint)
 	require.Error(t, err)
+}
+
+func TestAuthLogin_RemembersTheOnlyGrantedAccount(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
+		Items: []*accountv1.Account{{Id: "acc-only", Name: "Only Account"}},
+	}, nil)
+	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Account:   Only Account (acc-only)")
+
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
+	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Account:   acc-only")
+
+	// No --account-id: the command uses the account the login was granted.
+	_, _, err = testutil.Exec(t, env, "cluster", "list", "--endpoint", devEndpoint)
+	require.NoError(t, err)
+	req, ok := env.Server.ListClustersCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "acc-only", req.GetAccountId())
+}
+
+func TestAuthLogin_SeveralGrantedAccountsAreNotChosen(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
+		Items: []*accountv1.Account{{Id: "a1", Name: "One"}, {Id: "a2", Name: "Two"}},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Accounts:  2 available")
+
+	_, _, err = testutil.Exec(t, env, "cluster", "list", "--endpoint", devEndpoint)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no account ID configured")
+}
+
+func TestAuthLogin_AccountLookupFailureDoesNotFailLogin(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	env.AccountServer.ListAccountsCalls.Returns(nil, status.Error(codes.Unavailable, "down"))
+
+	stdout, stderr, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Logged in")
+	assert.Contains(t, stderr, "Could not list your accounts")
 }
 
 func TestAuthLogin_MissingClientID(t *testing.T) {

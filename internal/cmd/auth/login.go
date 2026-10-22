@@ -1,10 +1,14 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/oauth"
@@ -29,7 +33,11 @@ to login.cloud.qdrant.io. Override with --login-url only for debugging.
 
 The Qdrant Cloud CLI client id is built in per login URL. --client-id or
 QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
-Tokens are stored in credentials.yaml next to the config file (mode 0600).`,
+Tokens are stored in credentials.yaml next to the config file (mode 0600).
+
+When the login is granted exactly one account, that account is stored with the
+session and used by commands when no --account-id, QDRANT_CLOUD_ACCOUNT_ID or
+context sets one ("qcloud auth status" shows it).`,
 		Example: `# Browser login (default production endpoint)
 qcloud auth login
 
@@ -79,7 +87,51 @@ qcloud auth login --device`,
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "Logged in.\nLogin URL: %s (%s)\nResource:  %s\nScope:     %s\n", disc.Issuer, disc.Source, disc.Resource, tok.Scope)
+			rememberGrantedAccount(cmd, s, path, tok)
+
 			return nil
 		},
 	}.CobraCommand(s)
+}
+
+// accountLookupTimeout bounds the account lookup after login; the login itself has already succeeded.
+const accountLookupTimeout = 15 * time.Second
+
+// rememberGrantedAccount stores the account the login was granted when it was granted exactly one, so
+// commands need no --account-id. It never fails the login: without it, commands ask for an account as
+// before. An API key takes precedence over the OAuth session, so then there is nothing to look up.
+func rememberGrantedAccount(cmd *cobra.Command, s *state.State, path string, tok oauth.Token) {
+	if s.Config.APIKey() != "" {
+		return
+	}
+
+	stderr := cmd.ErrOrStderr()
+	ctx, cancel := context.WithTimeout(cmd.Context(), accountLookupTimeout)
+	defer cancel()
+
+	client, err := s.Client(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "Could not list your accounts (%v); pass --account-id to commands.\n", err)
+		return
+	}
+
+	resp, err := client.Account().ListAccounts(ctx, &accountv1.ListAccountsRequest{})
+	if err != nil {
+		fmt.Fprintf(stderr, "Could not list your accounts (%v); pass --account-id to commands.\n", err)
+		return
+	}
+
+	accounts := resp.GetItems()
+	if len(accounts) != 1 {
+		fmt.Fprintf(cmd.OutOrStdout(), "Accounts:  %d available; pass --account-id, or set a context with \"qcloud context set\"\n", len(accounts))
+		return
+	}
+
+	tok.AccountID = accounts[0].GetId()
+	if err := oauth.SaveToken(path, tok); err != nil {
+		fmt.Fprintf(stderr, "Could not store the account: %v\n", err)
+		return
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Account:   %s (%s), used when no --account-id is given\n", accounts[0].GetName(), tok.AccountID)
 }

@@ -53,6 +53,10 @@ access token.`,
 
 			fmt.Fprintf(out, "Status:    %s\n", status)
 			fmt.Fprintf(out, "Scope:     %s\n", tok.Scope)
+			if tok.AccountID != "" {
+				fmt.Fprintf(out, "Account:   %s (default for commands)\n", tok.AccountID)
+			}
+
 			if !tok.Expiry.IsZero() {
 				fmt.Fprintf(out, "Expiry:    %s\n", tok.Expiry.UTC().Format(time.RFC3339))
 			}

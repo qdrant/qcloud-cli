@@ -22,6 +22,9 @@ type Token struct {
 	Issuer       string    `yaml:"issuer,omitempty"`
 	ClientID     string    `yaml:"client_id,omitempty"`
 	Resource     string    `yaml:"resource,omitempty"`
+	// AccountID is the account the login was granted, when it was granted exactly one. Commands use it
+	// when no account is set by flag, environment or context.
+	AccountID string `yaml:"account_id,omitempty"`
 }
 
 // Expired reports whether the access token should be refreshed.
