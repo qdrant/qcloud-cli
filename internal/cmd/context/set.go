@@ -1,7 +1,6 @@
 package context
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -12,6 +11,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
+	"github.com/qdrant/qcloud-cli/internal/state/config"
 )
 
 // apiKeyHelpers maps --api-key-helper names to command templates.
@@ -35,16 +35,21 @@ qcloud context set staging --api-key sk-... --account-id acc-123
 qcloud context set staging --api-key-command 'op read op://vault/qdrant/api-key' --account-id acc-123
 
 # Use a named helper preset
-qcloud context set staging --api-key-helper 1password --api-key-ref op://vault/qdrant/api-key --account-id acc-123`,
+qcloud context set staging --api-key-helper 1password --api-key-ref op://vault/qdrant/api-key --account-id acc-123
+
+# Use the OAuth login for the endpoint instead of an API key
+qcloud context set dev --endpoint grpc.development-cloud.qdrant.io:443 --account-id acc-123 --oauth`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "set <name>",
 				Short: "Create or update a context",
 				Long: `Create or update a named context in the configuration file.
 
-A context stores connection settings (endpoint, account ID) and API key
-credentials under a name, so you can switch between environments with
-"qcloud context use <name>".
+A context stores connection settings (endpoint, account ID) and one credential
+under a name, so you can switch between environments with
+"qcloud context use <name>". The credential is either an API key or, with
+--oauth, the OAuth login for the endpoint ("qcloud auth login", which also
+creates OAuth contexts for your accounts itself); never both, never none.
 
 There are three ways to provide the API key:
 
@@ -83,10 +88,14 @@ still take precedence over the command at runtime.`,
 			})
 			cmd.Flags().String("api-key-ref", "", "Secret reference for the credential helper")
 			cmd.Flags().String("account-id", "", "Account ID for this context")
+			cmd.Flags().Bool("oauth", false, "Use the OAuth login for the endpoint (qcloud auth login) instead of an API key")
 			cmd.MarkFlagsRequiredTogether("api-key-helper", "api-key-ref")
 			cmd.MarkFlagsMutuallyExclusive("api-key", "api-key-command")
 			cmd.MarkFlagsMutuallyExclusive("api-key", "api-key-helper")
 			cmd.MarkFlagsMutuallyExclusive("api-key-command", "api-key-helper")
+			cmd.MarkFlagsMutuallyExclusive("oauth", "api-key")
+			cmd.MarkFlagsMutuallyExclusive("oauth", "api-key-command")
+			cmd.MarkFlagsMutuallyExclusive("oauth", "api-key-helper")
 			return cmd
 		},
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
@@ -106,14 +115,24 @@ still take precedence over the command at runtime.`,
 				return err
 			}
 
-			if apiKeyCommand != "" {
+			useOAuth, _ := cmd.Flags().GetBool("oauth")
+			switch {
+			case useOAuth:
+				ctx.Auth = config.AuthOAuth
+				ctx.APIKey = ""
+				ctx.APIKeyCommand = ""
+			case apiKeyCommand != "":
 				ctx.APIKeyCommand = apiKeyCommand
 				ctx.APIKey = ""
-			} else if key, ok := flagChangedWithValue(cmd, "api-key"); ok {
-				ctx.APIKey = key
-				ctx.APIKeyCommand = ""
-			} else if ctx.APIKey == "" && ctx.APIKeyCommand == "" {
-				ctx.APIKey = s.Config.APIKey()
+				ctx.Auth = ""
+			default:
+				if key, ok := flagChangedWithValue(cmd, "api-key"); ok {
+					ctx.APIKey = key
+					ctx.APIKeyCommand = ""
+					ctx.Auth = ""
+				} else if !ctx.IsOAuth() && ctx.APIKey == "" && ctx.APIKeyCommand == "" {
+					ctx.APIKey = s.Config.APIKey()
+				}
 			}
 
 			if id, ok := flagChangedWithValue(cmd, "account-id"); ok {
@@ -122,16 +141,8 @@ still take precedence over the command at runtime.`,
 				ctx.AccountID = s.Config.AccountID()
 			}
 
-			if ctx.Endpoint == "" {
-				return errors.New("cannot set a context with an empty endpoint")
-			}
-
-			if ctx.APIKey == "" && ctx.APIKeyCommand == "" {
-				return errors.New("cannot set a context with an empty API key (use --api-key, --api-key-command, or --api-key-helper)")
-			}
-
-			if ctx.AccountID == "" {
-				return errors.New("cannot set a context with an empty account id")
+			if err := ctx.Validate(); err != nil {
+				return err
 			}
 
 			s.Config.UpsertContext(ctx)

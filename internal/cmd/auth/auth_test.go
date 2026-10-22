@@ -121,52 +121,71 @@ func prepareLoginWithToken(t *testing.T, env *testutil.TestEnv, accessToken stri
 
 const devEndpoint = "grpc.development-cloud.qdrant.io:443"
 
+// tempConfig writes a config file for the test and returns its path; credentials.yaml goes next to it.
+func tempConfig(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+
+	return path
+}
+
+func grantAccounts(env *testutil.TestEnv, accounts ...*accountv1.Account) {
+	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{Items: accounts}, nil)
+}
+
 func TestAuthLogin_StoresToken(t *testing.T) {
 	env := testutil.NewBareTestEnv(t)
 	prepareLogin(t, env)
-	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{}, nil)
+	grantAccounts(env)
+	cfg := tempConfig(t, "")
 
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "Logged in")
+	assert.Contains(t, stdout, "Logged in; no accounts were granted.")
 
-	tokenOut, _, err := testutil.Exec(t, env, "auth", "token", "--endpoint", devEndpoint)
+	tokenOut, _, err := testutil.Exec(t, env, "auth", "token", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
 	assert.Equal(t, "access-from-login\n", tokenOut)
 
-	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
 	assert.Contains(t, statusOut, "logged in")
 
-	_, _, err = testutil.Exec(t, env, "auth", "logout", "--endpoint", devEndpoint)
+	_, _, err = testutil.Exec(t, env, "auth", "logout", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
 
-	_, _, err = testutil.Exec(t, env, "auth", "token", "--endpoint", devEndpoint)
+	_, _, err = testutil.Exec(t, env, "auth", "token", "--config", cfg, "--endpoint", devEndpoint)
 	require.Error(t, err)
 }
 
-func TestAuthLogin_RemembersTheOnlyGrantedAccount(t *testing.T) {
+func TestAuthLogin_CreatesAndSelectsTheContextOfTheOnlyAccount(t *testing.T) {
 	env := testutil.NewBareTestEnv(t)
 	prepareLogin(t, env)
-	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
-		Items: []*accountv1.Account{{Id: "acc-only", Name: "Only Account"}},
-	}, nil)
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
 	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
+	cfg := tempConfig(t, "")
 
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "Logged in, account Only Account.")
+	assert.Contains(t, stdout, "Logged in, account Only Account (context dev-only-account).")
+	assert.NotContains(t, stdout, "Switch to it")
 
-	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
-	require.NoError(t, err)
-	assert.Contains(t, statusOut, "Account:   acc-only (from the login)")
-
-	// No --account-id: the command uses the account the login was granted.
-	_, _, err = testutil.Exec(t, env, "cluster", "list", "--endpoint", devEndpoint)
+	// The context is current: no --endpoint, no --account-id.
+	_, _, err = testutil.Exec(t, env, "cluster", "list", "--config", cfg)
 	require.NoError(t, err)
 	req, ok := env.Server.ListClustersCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "acc-only", req.GetAccountId())
+
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg)
+	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Context:   dev-only-account")
+	assert.Contains(t, statusOut, "Account:   acc-only (from context dev-only-account)")
+
+	listOut, _, err := testutil.Exec(t, env, "context", "list", "--config", cfg)
+	require.NoError(t, err)
+	assert.Regexp(t, `\*\s+dev-only-account\s+oauth`, listOut)
 }
 
 func TestAuthLogin_ShowsTheGrantedScope(t *testing.T) {
@@ -174,76 +193,118 @@ func TestAuthLogin_ShowsTheGrantedScope(t *testing.T) {
 	claims := base64.RawURLEncoding.EncodeToString([]byte(
 		`{"user_email":"ada@example.com","https://cloud.qdrant.io/granted_scope":"read-only"}`))
 	prepareLoginWithToken(t, env, "h."+claims+".s")
-	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
-		Items: []*accountv1.Account{{Id: "acc-only", Name: "Only Account"}},
-	}, nil)
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+	cfg := tempConfig(t, "")
 
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "Logged in as ada@example.com, account Only Account, read only.")
+	assert.Contains(t, stdout, "Logged in as ada@example.com, account Only Account, read only (context dev-only-account).")
 
-	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg)
 	require.NoError(t, err)
 	assert.Contains(t, statusOut, "Access:    read only")
 	assert.NotContains(t, statusOut, "Requested")
 }
 
+func TestAuthLogin_SeveralAccountsGetAContextEachAndNoneIsSelected(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	grantAccounts(env,
+		&accountv1.Account{Id: "a1", Name: "Robert Stam - Base Account"},
+		&accountv1.Account{Id: "a2", Name: "Andrey Vasnetsov - Base Account"},
+	)
+	cfg := tempConfig(t, "")
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Contexts for your 2 accounts:")
+	assert.Contains(t, stdout, "dev-robert-stam-base-account")
+	assert.Contains(t, stdout, "dev-andrey-vasnetsov-base-account")
+	assert.Contains(t, stdout, "Select one with: qcloud context use <name>")
+
+	_, _, err = testutil.Exec(t, env, "cluster", "list", "--config", cfg, "--endpoint", devEndpoint)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no account ID configured")
+}
+
+func TestAuthLogin_UpdatesOnlyItsOwnContexts(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	// An API key context with the name the login would pick, current; and an OAuth context of an
+	// account that is no longer granted.
+	cfg := tempConfig(t, `current_context: dev-only-account
+contexts:
+  - name: dev-only-account
+    endpoint: `+devEndpoint+`
+    api_key: secret
+    account_id: key-acc
+  - name: dev-old-account
+    endpoint: `+devEndpoint+`
+    account_id: old-acc
+    auth: oauth
+`)
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+
+	// --context picks the OAuth context for this run: with the API key context active, the login would use
+	// the key and look nothing up.
+	stdout, stderr, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint,
+		"--client-id", "cli-app", "--context", "dev-old-account")
+	require.NoError(t, err)
+	assert.NotContains(t, stderr, "Could not list your accounts")
+	assert.Contains(t, stdout, "account Only Account (context dev-only-account-2).")
+	assert.Contains(t, stdout, "Switch to it with: qcloud context use dev-only-account-2")
+
+	listOut, _, err := testutil.Exec(t, env, "context", "list", "--config", cfg)
+	require.NoError(t, err)
+	assert.Regexp(t, `\*\s+dev-only-account\s+api key`, listOut, "the API key context is untouched and still current")
+	assert.Regexp(t, `dev-only-account-2\s+oauth`, listOut)
+	assert.NotContains(t, listOut, "dev-old-account", "the context of an account no longer granted is removed")
+}
+
+func TestAuthLogout_RemovesTheOAuthContexts(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+	cfg := tempConfig(t, "")
+
+	_, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
+	require.NoError(t, err)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "logout", "--config", cfg, "--endpoint", devEndpoint)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Logged out; removed contexts dev-only-account.")
+
+	listOut, _, err := testutil.Exec(t, env, "context", "list", "--config", cfg)
+	require.NoError(t, err)
+	assert.NotContains(t, listOut, "dev-only-account")
+}
+
 func TestAuthStatus_ShowsWhereTheAccountComesFrom(t *testing.T) {
 	env := testutil.NewBareTestEnv(t)
 	prepareLogin(t, env)
-	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
-		Items: []*accountv1.Account{{Id: "acc-only", Name: "Only Account"}},
-	}, nil)
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+	cfg := tempConfig(t, "")
 
-	// A context that also sets an account, active through current_context.
-	configPath := filepath.Join(t.TempDir(), "config.yaml")
-	require.NoError(t, os.WriteFile(configPath, []byte(`current_context: dev
-contexts:
-  - name: dev
-    endpoint: `+devEndpoint+`
-    account_id: ctx-acc
-`), 0o600))
-
-	_, _, err := testutil.Exec(t, env, "auth", "login", "--config", configPath, "--client-id", "cli-app")
+	_, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
 
-	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", configPath)
-	require.NoError(t, err)
-	assert.Contains(t, statusOut, "Context:   dev")
-	assert.Contains(t, statusOut, "Account:   ctx-acc (from context dev)")
-
-	statusOut, _, err = testutil.Exec(t, env, "auth", "status", "--config", configPath, "--account-id", "flag-acc")
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg, "--account-id", "flag-acc")
 	require.NoError(t, err)
 	assert.Contains(t, statusOut, "Account:   flag-acc (from --account-id)")
 
 	t.Setenv("QDRANT_CLOUD_ACCOUNT_ID", "env-acc")
-	statusOut, _, err = testutil.Exec(t, env, "auth", "status", "--config", configPath)
+	statusOut, _, err = testutil.Exec(t, env, "auth", "status", "--config", cfg)
 	require.NoError(t, err)
 	assert.Contains(t, statusOut, "Account:   env-acc (from QDRANT_CLOUD_ACCOUNT_ID)")
-}
-
-func TestAuthLogin_SeveralGrantedAccountsAreNotChosen(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
-	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
-		Items: []*accountv1.Account{{Id: "a1", Name: "One"}, {Id: "a2", Name: "Two"}},
-	}, nil)
-
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
-	require.NoError(t, err)
-	assert.Contains(t, stdout, "Logged in; 2 accounts available, pass --account-id.")
-
-	_, _, err = testutil.Exec(t, env, "cluster", "list", "--endpoint", devEndpoint)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no account ID configured")
 }
 
 func TestAuthLogin_AccountLookupFailureDoesNotFailLogin(t *testing.T) {
 	env := testutil.NewBareTestEnv(t)
 	prepareLogin(t, env)
 	env.AccountServer.ListAccountsCalls.Returns(nil, status.Error(codes.Unavailable, "down"))
+	cfg := tempConfig(t, "")
 
-	stdout, stderr, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	stdout, stderr, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Logged in")
 	assert.Contains(t, stderr, "Could not list your accounts")

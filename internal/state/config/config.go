@@ -38,6 +38,39 @@ type ContextEntry struct {
 	APIKey        string `mapstructure:"api_key"         yaml:"api_key,omitempty"             json:"api_key,omitempty"`
 	APIKeyCommand string `mapstructure:"api_key_command" yaml:"api_key_command,omitempty"     json:"api_key_command,omitempty"`
 	AccountID     string `mapstructure:"account_id"      yaml:"account_id,omitempty"          json:"account_id,omitempty"`
+	// Auth is AuthOAuth for a context that uses the OAuth login for its endpoint ("qcloud auth login")
+	// instead of an API key. Empty for an API key context.
+	Auth string `mapstructure:"auth" yaml:"auth,omitempty" json:"auth,omitempty"`
+}
+
+// AuthOAuth marks a context that authenticates with the OAuth login for its endpoint.
+const AuthOAuth = "oauth"
+
+// IsOAuth reports whether the context uses the OAuth login instead of an API key.
+func (e ContextEntry) IsOAuth() bool {
+	return e.Auth == AuthOAuth
+}
+
+// Validate checks that the context has an endpoint, an account, and exactly one credential: an API key
+// (or a command that prints one), or the OAuth login.
+func (e ContextEntry) Validate() error {
+	if e.Endpoint == "" {
+		return errors.New("cannot set a context with an empty endpoint")
+	}
+
+	hasKey := e.APIKey != "" || e.APIKeyCommand != ""
+	switch {
+	case hasKey && e.IsOAuth():
+		return errors.New("a context uses either an API key or OAuth, not both")
+	case !hasKey && !e.IsOAuth():
+		return errors.New("cannot set a context without a credential (use --api-key, --api-key-command, --api-key-helper, or --oauth)")
+	}
+
+	if e.AccountID == "" {
+		return errors.New("cannot set a context with an empty account id")
+	}
+
+	return nil
 }
 
 // File holds the top-level structure of the config file.
@@ -201,6 +234,11 @@ func (c *Config) ActiveContext() string {
 	}
 
 	return c.file.CurrentContext
+}
+
+// Contexts returns a copy of all contexts, in file order.
+func (c *Config) Contexts() []ContextEntry {
+	return append([]ContextEntry(nil), c.file.Contexts...)
 }
 
 // ContextNames returns a sorted list of all context names.

@@ -35,9 +35,13 @@ The Qdrant Cloud CLI client id is built in per login URL. --client-id or
 QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
 Tokens are stored in credentials.yaml next to the config file (mode 0600).
 
-When the login is granted exactly one account, that account is stored with the
-session and used by commands when no --account-id, QDRANT_CLOUD_ACCOUNT_ID or
-context sets one ("qcloud auth status" shows it).`,
+After the login, qcloud creates a context for every account you granted on the
+consent page (named after the account, prefixed with the environment, e.g.
+dev-my-account), marked as OAuth so it needs no API key. With one account its
+context becomes the current one, unless you already have a current context;
+with several, pick one with "qcloud context use <name>". A later login updates
+these contexts, and "qcloud auth logout" removes them. Contexts with an API key
+are never changed.`,
 		Example: `# Browser login (default production endpoint)
 qcloud auth login
 
@@ -89,19 +93,29 @@ qcloud auth login --device`,
 				return err
 			}
 
-			account := rememberGrantedAccount(cmd, s, path, tok)
-
 			who := "Logged in"
 			if claims.Email != "" {
 				who += " as " + claims.Email
 			}
 
-			granted := ""
+			access := ""
 			if tok.GrantedScope != "" {
-				granted = ", " + oauth.ScopeLabel(tok.GrantedScope)
+				access = ", " + oauth.ScopeLabel(tok.GrantedScope)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "%s%s%s.\n", who, account, granted)
+			accounts, ok := grantedAccounts(cmd, s)
+			if !ok {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s%s.\n", who, access)
+				return nil
+			}
+
+			endpoint := s.Config.Endpoint()
+			names, selected, err := syncOAuthContexts(s, endpoint, accounts)
+			if err != nil {
+				return fmt.Errorf("logged in, but could not write the contexts: %w", err)
+			}
+
+			printLoginResult(cmd, who, access, accounts, names, selected)
 
 			return nil
 		},
@@ -111,41 +125,48 @@ qcloud auth login --device`,
 // accountLookupTimeout bounds the account lookup after login; the login itself has already succeeded.
 const accountLookupTimeout = 15 * time.Second
 
-// rememberGrantedAccount stores the account the login was granted when it was granted exactly one, so
-// commands need no --account-id, and returns the text the login line ends with. It never fails the
-// login: without it, commands ask for an account as before. An API key takes precedence over the OAuth
-// session, so then there is nothing to look up.
-func rememberGrantedAccount(cmd *cobra.Command, s *state.State, path string, tok oauth.Token) string {
+// grantedAccounts lists the accounts the login was granted. It never fails the login: on an error it
+// warns and returns false. An API key takes precedence over the OAuth login, so then there is nothing to
+// look up.
+func grantedAccounts(cmd *cobra.Command, s *state.State) ([]*accountv1.Account, bool) {
 	if s.Config.APIKey() != "" {
-		return ""
+		fmt.Fprintln(cmd.ErrOrStderr(), "An API key is set, so commands use it instead of this login; no contexts were created.")
+		return nil, false
 	}
 
-	stderr := cmd.ErrOrStderr()
 	ctx, cancel := context.WithTimeout(cmd.Context(), accountLookupTimeout)
 	defer cancel()
 
 	client, err := s.Client(ctx)
-	if err != nil {
-		fmt.Fprintf(stderr, "Could not list your accounts (%v); pass --account-id to commands.\n", err)
-		return ""
+	if err == nil {
+		var resp *accountv1.ListAccountsResponse
+		if resp, err = client.Account().ListAccounts(ctx, &accountv1.ListAccountsRequest{}); err == nil {
+			return resp.GetItems(), true
+		}
 	}
 
-	resp, err := client.Account().ListAccounts(ctx, &accountv1.ListAccountsRequest{})
-	if err != nil {
-		fmt.Fprintf(stderr, "Could not list your accounts (%v); pass --account-id to commands.\n", err)
-		return ""
-	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "Could not list your accounts (%v); no contexts were created, pass --account-id to commands.\n", err)
 
-	accounts := resp.GetItems()
-	if len(accounts) != 1 {
-		return fmt.Sprintf("; %d accounts available, pass --account-id", len(accounts))
-	}
+	return nil, false
+}
 
-	tok.AccountID = accounts[0].GetId()
-	if err := oauth.SaveToken(path, tok); err != nil {
-		fmt.Fprintf(stderr, "Could not store the account: %v\n", err)
-		return ""
-	}
+// printLoginResult reports the login and the contexts it created, one line per context.
+func printLoginResult(cmd *cobra.Command, who, access string, accounts []*accountv1.Account, names []string, selected string) {
+	out := cmd.OutOrStdout()
+	switch len(names) {
+	case 0:
+		fmt.Fprintf(out, "%s%s; no accounts were granted.\n", who, access)
+	case 1:
+		fmt.Fprintf(out, "%s, account %s%s (context %s).\n", who, accounts[0].GetName(), access, names[0])
+		if selected == "" {
+			fmt.Fprintf(out, "Switch to it with: qcloud context use %s\n", names[0])
+		}
+	default:
+		fmt.Fprintf(out, "%s%s. Contexts for your %d accounts:\n", who, access, len(names))
+		for i, name := range names {
+			fmt.Fprintf(out, "  %s  (%s)\n", name, accounts[i].GetName())
+		}
 
-	return ", account " + accounts[0].GetName()
+		fmt.Fprintln(out, "Select one with: qcloud context use <name>")
+	}
 }
