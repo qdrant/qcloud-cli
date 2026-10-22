@@ -29,8 +29,15 @@ qcloud context delete staging --force`,
 		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
 			name := args[0]
 
-			if _, ok := s.Config.GetContext(name); !ok {
+			ctx, ok := s.Config.GetContext(name)
+			if !ok {
 				return fmt.Errorf("context %q not found", name)
+			}
+
+			// OAuth contexts follow the login: "qcloud auth login" creates and updates them, "qcloud auth
+			// logout" removes them.
+			if ctx.IsOAuth() {
+				return fmt.Errorf("context %q belongs to your OAuth login; run \"qcloud auth logout --endpoint %s\" to remove it", name, ctx.Endpoint)
 			}
 
 			force, _ := cmd.Flags().GetBool("force")
