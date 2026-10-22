@@ -49,8 +49,6 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 
 			if ep := space.GetState().GetEndpoint(); ep != nil && ep.GetUrl() != "" {
 				fmt.Fprintf(w, "Endpoint:  %s\n", ep.GetUrl())
-				fmt.Fprintf(w, "REST Port: %d\n", ep.GetRestPort())
-				fmt.Fprintf(w, "gRPC Port: %d\n", ep.GetGrpcPort())
 			}
 
 			if space.GetCreatedAt() != nil {
