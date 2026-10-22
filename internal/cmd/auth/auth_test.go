@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -157,7 +159,7 @@ func TestAuthLogin_RemembersTheOnlyGrantedAccount(t *testing.T) {
 
 	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
 	require.NoError(t, err)
-	assert.Contains(t, statusOut, "Account:   acc-only")
+	assert.Contains(t, statusOut, "Account:   acc-only (from the login)")
 
 	// No --account-id: the command uses the account the login was granted.
 	_, _, err = testutil.Exec(t, env, "cluster", "list", "--endpoint", devEndpoint)
@@ -184,6 +186,40 @@ func TestAuthLogin_ShowsTheGrantedScope(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, statusOut, "Granted:   read-only")
 	assert.Contains(t, statusOut, "Requested: manage")
+}
+
+func TestAuthStatus_ShowsWhereTheAccountComesFrom(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	prepareLogin(t, env)
+	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
+		Items: []*accountv1.Account{{Id: "acc-only", Name: "Only Account"}},
+	}, nil)
+
+	// A context that also sets an account, active through current_context.
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(`current_context: dev
+contexts:
+  - name: dev
+    endpoint: `+devEndpoint+`
+    account_id: ctx-acc
+`), 0o600))
+
+	_, _, err := testutil.Exec(t, env, "auth", "login", "--config", configPath, "--client-id", "cli-app")
+	require.NoError(t, err)
+
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", configPath)
+	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Context:   dev")
+	assert.Contains(t, statusOut, "Account:   ctx-acc (from context dev)")
+
+	statusOut, _, err = testutil.Exec(t, env, "auth", "status", "--config", configPath, "--account-id", "flag-acc")
+	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Account:   flag-acc (from --account-id)")
+
+	t.Setenv("QDRANT_CLOUD_ACCOUNT_ID", "env-acc")
+	statusOut, _, err = testutil.Exec(t, env, "auth", "status", "--config", configPath)
+	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Account:   env-acc (from QDRANT_CLOUD_ACCOUNT_ID)")
 }
 
 func TestAuthLogin_SeveralGrantedAccountsAreNotChosen(t *testing.T) {
