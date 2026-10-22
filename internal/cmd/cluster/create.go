@@ -248,5 +248,6 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
 	_ = cmd.RegisterFlagCompletionFunc("service-type", serviceTypeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("db-log-level", dbLogLevelCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("audit-log-rotation", auditLogRotationCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("audit-log-output", auditLogOutputCompletion())
 	return cmd
 }

@@ -39,6 +39,13 @@ func auditLogRotationCompletion() func(*cobra.Command, []string, string) ([]stri
 	}
 }
 
+// auditLogOutputCompletion returns a static completion function for the --audit-log-output flag.
+func auditLogOutputCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{auditLogOutputFile, auditLogOutputStdout, auditLogOutputFileAndStdout}, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
 func serviceTypeCompletion() func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{serviceTypeClusterIP, serviceTypeNodePort, serviceTypeLoadBalancer}, cobra.ShellCompDirectiveNoFileComp

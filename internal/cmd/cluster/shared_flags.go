@@ -35,6 +35,7 @@ func addSharedClusterFlags(cmd *cobra.Command) {
 	cmd.Flags().String("audit-log-rotation", "", `Audit log rotation ("daily", "hourly")`)
 	cmd.Flags().Uint32("audit-log-max-files", 0, "Maximum number of audit log files (1-1000)")
 	cmd.Flags().Bool("audit-log-trust-forwarded-headers", false, "Trust forwarded headers in audit logs")
+	cmd.Flags().String("audit-log-output", "", `(cloud-provider: hybrid) Audit log output ("file", "stdout", "file-and-stdout"); default file, requires Qdrant v1.20.0 or later`)
 
 	// Hybrid Cluster flags
 	cmd.Flags().String("service-type", "", `(cloud-provider: hybrid) Kubernetes service type ("cluster-ip", "node-port", "load-balancer")`)
@@ -285,6 +286,16 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 			if cmd.Flags().Changed("audit-log-trust-forwarded-headers") {
 				v, _ := cmd.Flags().GetBool("audit-log-trust-forwarded-headers")
 				dbCfg.AuditLogging.TrustForwardedHeaders = &v
+			}
+
+			if cmd.Flags().Changed("audit-log-output") {
+				v, _ := cmd.Flags().GetString("audit-log-output")
+				o, err := parseAuditLogOutput(v)
+				if err != nil {
+					return err
+				}
+
+				dbCfg.AuditLogging.Output = o.Enum()
 			}
 		}
 	}
