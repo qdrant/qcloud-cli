@@ -309,3 +309,39 @@ func TestContextSet_APIKeyCommandClearsPlainKey(t *testing.T) {
 	assert.Equal(t, "echo new-command-key", ctxE.APIKeyCommand)
 	assert.Empty(t, ctxE.APIKey)
 }
+
+func TestContextSet_OAuthContext(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	dir := t.TempDir()
+	cfgPath := testutil.WriteContextConfigFile(t, dir, "staging", map[string]map[string]string{
+		"staging": {"api_key": "sk"},
+	})
+
+	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "dev",
+		"--endpoint", "grpc.development-cloud.qdrant.io:443",
+		"--account-id", "acc-1",
+		"--oauth",
+	)
+	require.NoError(t, err)
+
+	ctx := testutil.FindContextEntry(t, cfgPath, "dev")
+	require.NotNil(t, ctx)
+	assert.Equal(t, "oauth", ctx.Auth)
+	assert.Empty(t, ctx.APIKey)
+	assert.Empty(t, ctx.APIKeyCommand)
+}
+
+func TestContextSet_OAuthAndAPIKeyAreExclusive(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+	t.Setenv("HOME", t.TempDir())
+
+	_, _, err := testutil.Exec(t, env, "context", "set", "dev",
+		"--endpoint", "grpc.development-cloud.qdrant.io:443",
+		"--account-id", "acc-1",
+		"--oauth", "--api-key", "sk",
+	)
+	require.Error(t, err)
+}

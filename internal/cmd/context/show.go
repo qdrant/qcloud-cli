@@ -6,6 +6,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/state"
+	"github.com/qdrant/qcloud-cli/internal/state/config"
 )
 
 type showOutput struct {
@@ -13,6 +14,7 @@ type showOutput struct {
 	Endpoint      string `json:"endpoint"`
 	AccountID     string `json:"account_id"`
 	APIKeyCommand string `json:"api_key_command,omitempty"`
+	Auth          string `json:"auth,omitempty"`
 }
 
 func newShowCommand(s *state.State) *cobra.Command {
@@ -31,9 +33,10 @@ qcloud context show`,
 			endpoint := s.Config.Endpoint()
 			accountID := s.Config.AccountID()
 
-			var apiKeyCommand string
+			var apiKeyCommand, auth string
 			if ctx, ok := s.Config.GetContext(activeCtx); ok {
 				apiKeyCommand = ctx.APIKeyCommand
+				auth = ctx.Auth
 			}
 
 			if s.Config.JSONOutput() {
@@ -42,6 +45,7 @@ qcloud context show`,
 					Endpoint:      endpoint,
 					AccountID:     accountID,
 					APIKeyCommand: apiKeyCommand,
+					Auth:          auth,
 				})
 			}
 
@@ -52,6 +56,10 @@ qcloud context show`,
 			}
 			if apiKeyCommand != "" {
 				rows = append(rows, []string{"API Key Command", apiKeyCommand})
+			}
+
+			if auth == config.AuthOAuth {
+				rows = append(rows, []string{"Credential", "OAuth login (qcloud auth login)"})
 			}
 
 			t := output.NewTable[[]string](cmd.OutOrStdout())

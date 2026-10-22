@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -41,6 +42,17 @@ changed.`,
 
 			if err := oauth.DeleteToken(path, endpoint); err != nil {
 				return err
+			}
+
+			// The contexts the login created use this login; without it they cannot work.
+			removed, err := removeOAuthContexts(s, endpoint)
+			if err != nil {
+				return err
+			}
+
+			if len(removed) > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "Logged out; removed contexts %s.\n", strings.Join(removed, ", "))
+				return nil
 			}
 
 			fmt.Fprintln(cmd.OutOrStdout(), "Logged out.")

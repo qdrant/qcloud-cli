@@ -38,6 +38,13 @@ qcloud context list`,
 			t.AddField("NAME", func(name string) string {
 				return name
 			})
+			t.AddField("CREDENTIAL", func(name string) string {
+				if ctx, ok := s.Config.GetContext(name); ok && ctx.IsOAuth() {
+					return "oauth"
+				}
+
+				return "api key"
+			})
 			t.Write(names)
 			return nil
 		},

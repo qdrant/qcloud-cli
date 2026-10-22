@@ -66,10 +66,10 @@ access token.`,
 				fmt.Fprintf(out, "Access:    %s\n", oauth.ScopeLabel(tok.GrantedScope))
 			}
 
-			if id, source := accountSource(cmd, s, tok); id != "" {
+			if id, source := accountSource(cmd, s); id != "" {
 				fmt.Fprintf(out, "Account:   %s (from %s)\n", id, source)
 			} else {
-				fmt.Fprintln(out, "Account:   none; pass --account-id")
+				fmt.Fprintln(out, "Account:   none; select a context with \"qcloud context use <name>\" or pass --account-id")
 			}
 
 			if !tok.Expiry.IsZero() {
@@ -82,9 +82,9 @@ access token.`,
 }
 
 // accountSource returns the account commands will use, and where it comes from, in the order the
-// config resolves it: the --account-id flag, QDRANT_CLOUD_ACCOUNT_ID, the active context, and last the
-// account the login was granted.
-func accountSource(cmd *cobra.Command, s *state.State, tok oauth.Token) (string, string) {
+// config resolves it: the --account-id flag, QDRANT_CLOUD_ACCOUNT_ID, then the active context (which
+// auth login creates for each granted account).
+func accountSource(cmd *cobra.Command, s *state.State) (string, string) {
 	if f := cmd.Flag("account-id"); f != nil && f.Changed {
 		return s.Config.AccountID(), "--account-id"
 	}
@@ -97,10 +97,6 @@ func accountSource(cmd *cobra.Command, s *state.State, tok oauth.Token) (string,
 		if entry, ok := s.Config.GetContext(name); ok && entry.AccountID != "" {
 			return entry.AccountID, "context " + name
 		}
-	}
-
-	if tok.AccountID != "" && s.Config.APIKey() == "" {
-		return tok.AccountID, "the login"
 	}
 
 	return "", ""
