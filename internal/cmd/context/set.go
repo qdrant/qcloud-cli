@@ -96,7 +96,7 @@ still take precedence over the command at runtime.`,
 			ctx, _ := s.Config.GetContext(name)
 			ctx.Name = name
 			if ctx.IsOAuth() {
-				return fmt.Errorf("context %q is managed by \"qcloud auth login\"; log in again to update it, or delete it with \"qcloud context delete %s\"", name, name)
+				return fmt.Errorf("context %q is managed by \"qcloud auth login\"; log in again to update it, or log out to remove it", name)
 			}
 
 			if ep, ok := flagChangedWithValue(cmd, "endpoint"); ok {

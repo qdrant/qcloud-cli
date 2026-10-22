@@ -1,6 +1,8 @@
 package context_test
 
 import (
+	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -70,4 +72,22 @@ func TestContextDelete_RequiresExactlyOneArg(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "delete", "--force")
 	require.Error(t, err)
+}
+
+func TestContextDelete_RefusesAnOAuthContext(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	cfgPath := path.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`contexts:
+  - name: dev-my-account
+    endpoint: grpc.development-cloud.qdrant.io:443
+    account_id: acc-1
+    auth: oauth
+`), 0o600))
+
+	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "delete", "dev-my-account", "--force")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "qcloud auth logout")
+	assert.NotNil(t, testutil.FindContextEntry(t, cfgPath, "dev-my-account"), "still there")
 }
