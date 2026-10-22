@@ -24,9 +24,9 @@ Tokens are stored in credentials.yaml next to the config file (mode 0600).
 
 After the login, qcloud creates a context for every account you granted on the
 consent page (named after the account, prefixed with the environment, e.g.
-dev-my-account), marked as OAuth so it needs no API key. With one account its
-context becomes the current one, unless you already have a current context;
-with several, pick one with "qcloud context use <name>". A later login updates
+dev-my-account), marked as OAuth so it needs no API key. Unless you already have
+a current context, the first one becomes current; switch with
+"qcloud context use <name>". A later login updates
 these contexts, and "qcloud auth logout" removes them. Contexts with an API key
 are never changed.
 

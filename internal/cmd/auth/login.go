@@ -37,9 +37,9 @@ Tokens are stored in credentials.yaml next to the config file (mode 0600).
 
 After the login, qcloud creates a context for every account you granted on the
 consent page (named after the account, prefixed with the environment, e.g.
-dev-my-account), marked as OAuth so it needs no API key. With one account its
-context becomes the current one, unless you already have a current context;
-with several, pick one with "qcloud context use <name>". A later login updates
+dev-my-account), marked as OAuth so it needs no API key. Unless you already have
+a current context, the first one becomes current; switch with
+"qcloud context use <name>". A later login updates
 these contexts, and "qcloud auth logout" removes them. Contexts with an API key
 are never changed.`,
 		Example: `# Browser login (default production endpoint)
@@ -115,7 +115,7 @@ qcloud auth login --device`,
 				return fmt.Errorf("logged in, but could not write the contexts: %w", err)
 			}
 
-			printLoginResult(cmd, who, access, accounts, names, selected)
+			printLoginResult(cmd, who, access, accounts, names, selected, s.Config.CurrentContext())
 
 			return nil
 		},
@@ -151,7 +151,7 @@ func grantedAccounts(cmd *cobra.Command, s *state.State) ([]*accountv1.Account, 
 }
 
 // printLoginResult reports the login and the contexts it created, one line per context.
-func printLoginResult(cmd *cobra.Command, who, access string, accounts []*accountv1.Account, names []string, selected string) {
+func printLoginResult(cmd *cobra.Command, who, access string, accounts []*accountv1.Account, names []string, selected, current string) {
 	out := cmd.OutOrStdout()
 	switch len(names) {
 	case 0:
@@ -164,9 +164,14 @@ func printLoginResult(cmd *cobra.Command, who, access string, accounts []*accoun
 	default:
 		fmt.Fprintf(out, "%s%s. Contexts for your %d accounts:\n", who, access, len(names))
 		for i, name := range names {
-			fmt.Fprintf(out, "  %s  (%s)\n", name, accounts[i].GetName())
+			marker := " "
+			if name == current {
+				marker = "*"
+			}
+
+			fmt.Fprintf(out, "  %s %s  (%s)\n", marker, name, accounts[i].GetName())
 		}
 
-		fmt.Fprintln(out, "Select one with: qcloud context use <name>")
+		fmt.Fprintln(out, "Switch with: qcloud context use <name>")
 	}
 }

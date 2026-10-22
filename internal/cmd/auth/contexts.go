@@ -56,7 +56,7 @@ func contextPrefix(endpoint string) string {
 // syncOAuthContexts keeps one OAuth context per granted account for endpoint: it creates a context for
 // a new account, keeps the name of an existing one, and removes the OAuth contexts of accounts that are
 // no longer granted. Contexts with an API key, and OAuth contexts of other endpoints, are never touched.
-// With exactly one account, its context becomes the current one unless another context already is.
+// When no context is current, the first account's context becomes the current one.
 // It returns the context names in account order, and the name it made current, if any.
 func syncOAuthContexts(s *state.State, endpoint string, accounts []*accountv1.Account) ([]string, string, error) {
 	existingByAccount := map[string]string{}
@@ -95,7 +95,7 @@ func syncOAuthContexts(s *state.State, endpoint string, accounts []*accountv1.Ac
 	}
 
 	selected := ""
-	if len(names) == 1 && s.Config.CurrentContext() == "" {
+	if len(names) > 0 && s.Config.CurrentContext() == "" {
 		s.Config.SetCurrentContext(names[0])
 		selected = names[0]
 	}
