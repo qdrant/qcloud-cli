@@ -75,9 +75,9 @@ func (d Discoverer) deviceLogin(ctx context.Context, opts LoginOptions, disc Dis
 
 	if opts.Output != nil {
 		if dc.VerificationURIComplete != "" {
-			fmt.Fprintf(opts.Output, "Open %s\nConfirm the code %s in the browser. Login continues on the Qdrant consent page; this command waits until that finishes.\n", verify, dc.UserCode)
+			fmt.Fprintf(opts.Output, "Open %s and confirm the code %s.\n", verify, dc.UserCode)
 		} else {
-			fmt.Fprintf(opts.Output, "Open %s and enter code %s\nLogin continues on the Qdrant consent page; this command waits until that finishes.\n", verify, dc.UserCode)
+			fmt.Fprintf(opts.Output, "Open %s and enter the code %s.\n", verify, dc.UserCode)
 		}
 	}
 

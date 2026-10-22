@@ -121,7 +121,7 @@ func (d Discoverer) codeLogin(ctx context.Context, opts LoginOptions, disc Disco
 		defer ln.Close()
 
 		redirectURL = "http://" + ln.Addr().String() + "/callback"
-		wait = loopbackWaiter(ln, opts.Output, disc.Issuer)
+		wait = loopbackWaiter(ln, disc.Issuer)
 	} else if redirectURL == "" {
 		redirectURL = "http://127.0.0.1:1/callback"
 	}
@@ -155,7 +155,7 @@ func (d Discoverer) codeLogin(ctx context.Context, opts LoginOptions, disc Disco
 	}
 
 	if opts.Output != nil {
-		fmt.Fprintf(opts.Output, "Opening browser for login.\nIf it does not open, visit:\n%s\n", authorizeURL)
+		fmt.Fprintf(opts.Output, "Opening the browser to log in. If it does not open, visit:\n%s\n", authorizeURL)
 	}
 
 	code, err := wait(ctx, redirectURL, state)
@@ -206,7 +206,7 @@ func listenFirstFree(ports []int) (net.Listener, error) {
 	return nil, fmt.Errorf("listen on loopback: none of ports %v is free (or use --device): %w", ports, errors.Join(errs...))
 }
 
-func loopbackWaiter(ln net.Listener, out io.Writer, issuer string) WaitCodeFunc {
+func loopbackWaiter(ln net.Listener, issuer string) WaitCodeFunc {
 	return func(ctx context.Context, _, wantState string) (string, error) {
 		codeCh := make(chan string, 1)
 		errCh := make(chan error, 1)
@@ -236,10 +236,6 @@ func loopbackWaiter(ln net.Listener, out io.Writer, issuer string) WaitCodeFunc 
 			defer cancel()
 			_ = srv.Shutdown(shutdownCtx)
 		}()
-
-		if out != nil {
-			fmt.Fprintf(out, "Waiting for login to complete on %s\n", ln.Addr().String())
-		}
 
 		select {
 		case <-ctx.Done():

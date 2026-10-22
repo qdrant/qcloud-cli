@@ -146,7 +146,7 @@ func TestAuthLogin_RemembersTheOnlyGrantedAccount(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "Account:   Only Account (acc-only)")
+	assert.Contains(t, stdout, "Logged in, account Only Account.")
 
 	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
 	require.NoError(t, err)
@@ -169,7 +169,7 @@ func TestAuthLogin_SeveralGrantedAccountsAreNotChosen(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "Accounts:  2 available")
+	assert.Contains(t, stdout, "Logged in; 2 accounts available, pass --account-id.")
 
 	_, _, err = testutil.Exec(t, env, "cluster", "list", "--endpoint", devEndpoint)
 	require.Error(t, err)

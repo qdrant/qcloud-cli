@@ -259,7 +259,7 @@ func TestLoopbackWaiter_Pages(t *testing.T) {
 			ln, err := net.Listen("tcp", "127.0.0.1:0")
 			require.NoError(t, err)
 
-			wait := loopbackWaiter(ln, nil, "https://login.cloud.qdrant.io/")
+			wait := loopbackWaiter(ln, "https://login.cloud.qdrant.io/")
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
