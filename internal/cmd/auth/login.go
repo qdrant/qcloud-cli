@@ -81,6 +81,9 @@ qcloud auth login --device`,
 				return err
 			}
 
+			claims := oauth.ReadTokenClaims(tok.AccessToken)
+			tok.GrantedScope = claims.GrantedScope
+
 			path := oauth.CredentialsPath(s.Config.ConfigFilePath())
 			if err := oauth.SaveToken(path, tok); err != nil {
 				return err
@@ -89,11 +92,16 @@ qcloud auth login --device`,
 			account := rememberGrantedAccount(cmd, s, path, tok)
 
 			who := "Logged in"
-			if email := oauth.TokenEmail(tok.AccessToken); email != "" {
-				who += " as " + email
+			if claims.Email != "" {
+				who += " as " + claims.Email
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "%s%s.\n", who, account)
+			granted := ""
+			if tok.GrantedScope != "" {
+				granted = ", " + oauth.ScopeLabel(tok.GrantedScope)
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "%s%s%s.\n", who, account, granted)
 
 			return nil
 		},

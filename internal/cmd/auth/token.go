@@ -52,7 +52,7 @@ qcloud auth token --json`,
 			}
 
 			if s.Config.JSONOutput() {
-				fmt.Fprintf(cmd.OutOrStdout(), `{"access_token":%q,"token_type":%q,"scope":%q}`+"\n", tok.AccessToken, tok.TokenType, tok.Scope)
+				fmt.Fprintf(cmd.OutOrStdout(), `{"access_token":%q,"token_type":%q,"scope":%q,"granted_scope":%q}`+"\n", tok.AccessToken, tok.TokenType, tok.Scope, tok.GrantedScope)
 				return nil
 			}
 

@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -69,6 +70,12 @@ func TestAuthDiscover_UsesGatewayMetadata(t *testing.T) {
 // prepareLogin points env at a fake authorization server that completes a browser login.
 func prepareLogin(t *testing.T, env *testutil.TestEnv) {
 	t.Helper()
+	prepareLoginWithToken(t, env, "access-from-login")
+}
+
+// prepareLoginWithToken is prepareLogin with the access token the server issues.
+func prepareLoginWithToken(t *testing.T, env *testutil.TestEnv, accessToken string) {
+	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 
 	mux := http.NewServeMux()
@@ -93,7 +100,7 @@ func prepareLogin(t *testing.T, env *testutil.TestEnv) {
 
 		assert.Equal(t, "test-code", r.Form.Get("code"))
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"access_token":  "access-from-login",
+			"access_token":  accessToken,
 			"refresh_token": "refresh-from-login",
 			"token_type":    "Bearer",
 			"expires_in":    3600,
@@ -158,6 +165,25 @@ func TestAuthLogin_RemembersTheOnlyGrantedAccount(t *testing.T) {
 	req, ok := env.Server.ListClustersCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "acc-only", req.GetAccountId())
+}
+
+func TestAuthLogin_ShowsTheGrantedScope(t *testing.T) {
+	env := testutil.NewBareTestEnv(t)
+	claims := base64.RawURLEncoding.EncodeToString([]byte(
+		`{"user_email":"ada@example.com","https://cloud.qdrant.io/granted_scope":"read-only"}`))
+	prepareLoginWithToken(t, env, "h."+claims+".s")
+	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{
+		Items: []*accountv1.Account{{Id: "acc-only", Name: "Only Account"}},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", devEndpoint, "--client-id", "cli-app")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Logged in as ada@example.com, account Only Account, read only.")
+
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint)
+	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Granted:   read-only")
+	assert.Contains(t, statusOut, "Requested: manage")
 }
 
 func TestAuthLogin_SeveralGrantedAccountsAreNotChosen(t *testing.T) {
