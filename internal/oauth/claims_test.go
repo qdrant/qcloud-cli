@@ -7,11 +7,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTokenEmail(t *testing.T) {
+func TestReadTokenClaims(t *testing.T) {
 	t.Parallel()
 
-	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"user_email":"ada@example.com"}`))
-	assert.Equal(t, "ada@example.com", TokenEmail("h."+payload+".s"))
-	assert.Empty(t, TokenEmail("opaque-token"))
-	assert.Empty(t, TokenEmail("h."+base64.RawURLEncoding.EncodeToString([]byte(`{}`))+".s"))
+	payload := base64.RawURLEncoding.EncodeToString(
+		[]byte(`{"user_email":"ada@example.com","https://cloud.qdrant.io/granted_scope":"read-only"}`))
+	assert.Equal(t, TokenClaims{Email: "ada@example.com", GrantedScope: "read-only"}, ReadTokenClaims("h."+payload+".s"))
+	assert.Equal(t, TokenClaims{}, ReadTokenClaims("opaque-token"))
+	assert.Equal(t, TokenClaims{}, ReadTokenClaims("h."+base64.RawURLEncoding.EncodeToString([]byte(`{}`))+".s"))
+}
+
+func TestScopeLabel(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "read only", ScopeLabel("read-only"))
+	assert.Equal(t, "manage", ScopeLabel("manage"))
 }

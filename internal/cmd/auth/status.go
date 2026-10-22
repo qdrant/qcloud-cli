@@ -52,7 +52,11 @@ access token.`,
 			}
 
 			fmt.Fprintf(out, "Status:    %s\n", status)
-			fmt.Fprintf(out, "Scope:     %s\n", tok.Scope)
+			if tok.GrantedScope != "" {
+				fmt.Fprintf(out, "Granted:   %s\n", tok.GrantedScope)
+			}
+
+			fmt.Fprintf(out, "Requested: %s\n", tok.Scope)
 			if tok.AccountID != "" {
 				fmt.Fprintf(out, "Account:   %s (default for commands)\n", tok.AccountID)
 			}

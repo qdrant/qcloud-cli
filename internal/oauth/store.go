@@ -18,10 +18,14 @@ type Token struct {
 	RefreshToken string    `yaml:"refresh_token,omitempty"`
 	TokenType    string    `yaml:"token_type,omitempty"`
 	Expiry       time.Time `yaml:"expiry,omitempty"`
-	Scope        string    `yaml:"scope,omitempty"`
-	Issuer       string    `yaml:"issuer,omitempty"`
-	ClientID     string    `yaml:"client_id,omitempty"`
-	Resource     string    `yaml:"resource,omitempty"`
+	// Scope is the requested scope: what qcloud asked Auth0 for, and what the token's scope claim says.
+	Scope string `yaml:"requested_scope,omitempty"`
+	// GrantedScope is what the user granted on the consent page (read-only or manage), which can be
+	// narrower than the requested scope. iam-service enforces it on every call.
+	GrantedScope string `yaml:"granted_scope,omitempty"`
+	Issuer       string `yaml:"issuer,omitempty"`
+	ClientID     string `yaml:"client_id,omitempty"`
+	Resource     string `yaml:"resource,omitempty"`
 	// AccountID is the account the login was granted, when it was granted exactly one. Commands use it
 	// when no account is set by flag, environment or context.
 	AccountID string `yaml:"account_id,omitempty"`
