@@ -63,7 +63,7 @@ func (e ContextEntry) Validate() error {
 	case hasKey && e.IsOAuth():
 		return errors.New("a context uses either an API key or OAuth, not both")
 	case !hasKey && !e.IsOAuth():
-		return errors.New("cannot set a context without a credential (use --api-key, --api-key-command, --api-key-helper, or --oauth)")
+		return errors.New("cannot set a context with an empty API key (use --api-key, --api-key-command, or --api-key-helper; for OAuth, run \"qcloud auth login\")")
 	}
 
 	if e.AccountID == "" {

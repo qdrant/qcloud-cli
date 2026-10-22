@@ -6,11 +6,11 @@ Create or update a context
 
 Create or update a named context in the configuration file.
 
-A context stores connection settings (endpoint, account ID) and one credential
+A context stores connection settings (endpoint, account ID) and an API key
 under a name, so you can switch between environments with
-"qcloud context use <name>". The credential is either an API key or, with
---oauth, the OAuth login for the endpoint ("qcloud auth login", which also
-creates OAuth contexts for your accounts itself); never both, never none.
+"qcloud context use <name>". Contexts that use your OAuth login instead are
+created by "qcloud auth login", one per account you granted; this command does
+not change those.
 
 There are three ways to provide the API key:
 
@@ -51,9 +51,6 @@ qcloud context set staging --api-key-command 'op read op://vault/qdrant/api-key'
 
 # Use a named helper preset
 qcloud context set staging --api-key-helper 1password --api-key-ref op://vault/qdrant/api-key --account-id acc-123
-
-# Use the OAuth login for the endpoint instead of an API key
-qcloud context set dev --endpoint grpc.development-cloud.qdrant.io:443 --account-id acc-123 --oauth
 ```
 
 ### Options
@@ -66,7 +63,6 @@ qcloud context set dev --endpoint grpc.development-cloud.qdrant.io:443 --account
       --api-key-ref string       Secret reference for the credential helper
       --endpoint string          API endpoint for this context
   -h, --help                     help for set
-      --oauth                    Use the OAuth login for the endpoint (qcloud auth login) instead of an API key
 ```
 
 ### Options inherited from parent commands
