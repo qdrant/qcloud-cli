@@ -1,6 +1,7 @@
 package context_test
 
 import (
+	"os"
 	"path"
 	"testing"
 
@@ -310,38 +311,23 @@ func TestContextSet_APIKeyCommandClearsPlainKey(t *testing.T) {
 	assert.Empty(t, ctxE.APIKey)
 }
 
-func TestContextSet_OAuthContext(t *testing.T) {
+func TestContextSet_RefusesAContextManagedByLogin(t *testing.T) {
 	env := newEnv(t)
 	t.Cleanup(env.Cleanup)
 
-	dir := t.TempDir()
-	cfgPath := testutil.WriteContextConfigFile(t, dir, "staging", map[string]map[string]string{
-		"staging": {"api_key": "sk"},
-	})
+	cfgPath := path.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`contexts:
+  - name: dev-my-account
+    endpoint: grpc.development-cloud.qdrant.io:443
+    account_id: acc-1
+    auth: oauth
+`), 0o600))
 
-	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "dev",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-		"--account-id", "acc-1",
-		"--oauth",
-	)
-	require.NoError(t, err)
-
-	ctx := testutil.FindContextEntry(t, cfgPath, "dev")
-	require.NotNil(t, ctx)
-	assert.Equal(t, "oauth", ctx.Auth)
-	assert.Empty(t, ctx.APIKey)
-	assert.Empty(t, ctx.APIKeyCommand)
-}
-
-func TestContextSet_OAuthAndAPIKeyAreExclusive(t *testing.T) {
-	env := newEnv(t)
-	t.Cleanup(env.Cleanup)
-	t.Setenv("HOME", t.TempDir())
-
-	_, _, err := testutil.Exec(t, env, "context", "set", "dev",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-		"--account-id", "acc-1",
-		"--oauth", "--api-key", "sk",
-	)
+	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "set", "dev-my-account", "--account-id", "acc-2")
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "managed by \"qcloud auth login\"")
+
+	ctx := testutil.FindContextEntry(t, cfgPath, "dev-my-account")
+	require.NotNil(t, ctx)
+	assert.Equal(t, "acc-1", ctx.AccountID, "unchanged")
 }
