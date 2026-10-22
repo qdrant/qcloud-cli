@@ -22,6 +22,10 @@ The Qdrant Cloud CLI client id is built in per login URL. --client-id or
 QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
 Tokens are stored in credentials.yaml next to the config file (mode 0600).
 
+When the login is granted exactly one account, that account is stored with the
+session and used by commands when no --account-id, QDRANT_CLOUD_ACCOUNT_ID or
+context sets one ("qcloud auth status" shows it).
+
 ```
 qcloud auth login [flags]
 ```

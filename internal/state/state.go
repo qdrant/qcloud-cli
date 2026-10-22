@@ -205,12 +205,19 @@ func (s *State) SetUpdater(u Updater) {
 	s.updater = u
 }
 
-// AccountID returns the configured account ID or an error.
+// AccountID returns the configured account ID or an error. Without one from a flag, the environment
+// or a context, it falls back to the account an OAuth login was granted, when it was granted exactly one.
 func (s *State) AccountID() (string, error) {
-	id := s.Config.AccountID()
-	if id == "" {
-		return "", errNoAccountID
+	if id := s.Config.AccountID(); id != "" {
+		return id, nil
 	}
 
-	return id, nil
+	if s.Config.APIKey() == "" {
+		path := oauth.CredentialsPath(s.Config.ConfigFilePath())
+		if tok, ok, err := oauth.LoadToken(path, s.Config.Endpoint()); err == nil && ok && tok.AccountID != "" {
+			return tok.AccountID, nil
+		}
+	}
+
+	return "", errNoAccountID
 }
