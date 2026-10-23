@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.33.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.33.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.32.0...v0.33.0)
+
+### Features
+
+- Add support for audit logging output (#231) ([450029f](https://github.com/qdrant/qcloud-cli/commit/450029faa88e8a98b64733d8a0875af27314be70))
+- **disk-scale-down**: lower the cluster disk only with --allow-disk-decrease (#225) ([afef6e3](https://github.com/qdrant/qcloud-cli/commit/afef6e333cf4345a17c381fe62a0e72b0d949898))
+
 ## [v0.32.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.32.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.31.0...v0.32.0)
