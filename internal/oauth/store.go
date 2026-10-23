@@ -13,8 +13,11 @@ const credentialsFileName = "credentials.yaml"
 
 // Token is a stored OAuth session for one gRPC endpoint.
 type Token struct {
-	Endpoint     string    `yaml:"endpoint"`
-	AccessToken  string    `yaml:"access_token"`
+	Endpoint string `yaml:"endpoint"`
+	// Store is "keychain" when the access and refresh tokens are in the OS keychain; credentials.yaml
+	// then holds only the fields that are not secret. Empty means both are in credentials.yaml.
+	Store        string    `yaml:"store,omitempty"`
+	AccessToken  string    `yaml:"access_token,omitempty"`
 	RefreshToken string    `yaml:"refresh_token,omitempty"`
 	TokenType    string    `yaml:"token_type,omitempty"`
 	Expiry       time.Time `yaml:"expiry,omitempty"`
@@ -53,56 +56,110 @@ func CredentialsPath(configFilePath string) string {
 	return filepath.Join(dir, credentialsFileName)
 }
 
-// LoadToken returns the stored token for endpoint, or false if none.
+// LoadToken returns the stored token for endpoint, with its access and refresh tokens, or false if
+// none.
 func LoadToken(path, endpoint string) (Token, bool, error) {
+	return loadToken(defaultSecrets, path, endpoint)
+}
+
+// LoadTokenInfo returns the stored token for endpoint like LoadToken, but without reading the OS
+// keychain: when the tokens are kept there, AccessToken and RefreshToken are empty.
+func LoadTokenInfo(path, endpoint string) (Token, bool, error) {
 	file, err := readCredentials(path)
 	if err != nil {
 		return Token{}, false, err
 	}
 
-	for _, tok := range file.Tokens {
-		if tok.Endpoint == endpoint {
-			return tok, true, nil
-		}
-	}
+	tok, ok := file.find(endpoint)
 
-	return Token{}, false, nil
+	return tok, ok, nil
 }
 
-// SaveToken upserts a token for its endpoint.
-func SaveToken(path string, tok Token) error {
+func loadToken(secrets secretStore, path, endpoint string) (Token, bool, error) {
+	tok, ok, err := LoadTokenInfo(path, endpoint)
+	if err != nil || !ok || tok.Store != StoreKeychain {
+		return tok, ok, err
+	}
+
+	tok, err = getSecrets(secrets, path, tok)
+	if err != nil {
+		return Token{}, false, err
+	}
+
+	return tok, true, nil
+}
+
+// Saved says where SaveToken put the access and refresh tokens.
+type Saved struct {
+	// Store is StoreKeychain or StoreFile.
+	Store string
+	// KeychainErr is why the tokens went to credentials.yaml although the keychain was to be tried.
+	KeychainErr error
+}
+
+// SaveToken upserts a token for its endpoint. The access and refresh tokens go to the OS keychain and
+// the rest to credentials.yaml; see TokenStoreEnv. A token that was in credentials.yaml moves to the
+// keychain on its next save.
+func SaveToken(path string, tok Token) (Saved, error) {
+	mode, err := storeMode()
+	if err != nil {
+		return Saved{}, err
+	}
+
+	return saveToken(defaultSecrets, mode, path, tok)
+}
+
+func saveToken(secrets secretStore, mode, path string, tok Token) (Saved, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return fmt.Errorf("creating credentials dir: %w", err)
+		return Saved{}, fmt.Errorf("creating credentials dir: %w", err)
 	}
 
 	file, err := readCredentials(path)
 	if err != nil {
-		return err
+		return Saved{}, err
 	}
 
-	replaced := false
-	for i, existing := range file.Tokens {
-		if existing.Endpoint == tok.Endpoint {
-			file.Tokens[i] = tok
-			replaced = true
-			break
+	previous, _ := file.find(tok.Endpoint)
+	saved := Saved{Store: StoreFile}
+	tok.Store = ""
+
+	if mode != StoreFile {
+		err := setSecrets(secrets, path, tok)
+		switch {
+		case err == nil:
+			saved.Store = StoreKeychain
+			tok.Store = StoreKeychain
+			tok.AccessToken = ""
+			tok.RefreshToken = ""
+		case mode == StoreKeychain:
+			return Saved{}, fmt.Errorf("storing the OAuth tokens in the OS keychain: %w (set %s=file to use credentials.yaml)", err, TokenStoreEnv)
+		default:
+			saved.KeychainErr = err
 		}
 	}
 
-	if !replaced {
-		file.Tokens = append(file.Tokens, tok)
+	// Tokens that move to the file must not stay behind in the keychain.
+	if saved.Store == StoreFile && previous.Store == StoreKeychain {
+		_ = deleteSecrets(secrets, path, tok.Endpoint)
 	}
 
-	return writeCredentials(path, file)
+	file.upsert(tok)
+
+	return saved, writeCredentials(path, file)
 }
 
-// DeleteToken removes the stored token for endpoint.
+// DeleteToken removes the stored token for endpoint, from credentials.yaml and the OS keychain.
 func DeleteToken(path, endpoint string) error {
+	return deleteToken(defaultSecrets, path, endpoint)
+}
+
+func deleteToken(secrets secretStore, path, endpoint string) error {
 	file, err := readCredentials(path)
 	if err != nil {
 		return err
 	}
 
+	previous, _ := file.find(endpoint)
 	filtered := file.Tokens[:0]
 	for _, tok := range file.Tokens {
 		if tok.Endpoint != endpoint {
@@ -111,7 +168,38 @@ func DeleteToken(path, endpoint string) error {
 	}
 
 	file.Tokens = filtered
-	return writeCredentials(path, file)
+	if err := writeCredentials(path, file); err != nil {
+		return err
+	}
+
+	// Without a keychain entry there may be no keychain at all (headless Linux, CI); only a failure to
+	// remove tokens that are known to be there is an error.
+	if err := deleteSecrets(secrets, path, endpoint); err != nil && previous.Store == StoreKeychain {
+		return fmt.Errorf("removing the OAuth tokens from the OS keychain: %w", err)
+	}
+
+	return nil
+}
+
+func (f credentialsFile) find(endpoint string) (Token, bool) {
+	for _, tok := range f.Tokens {
+		if tok.Endpoint == endpoint {
+			return tok, true
+		}
+	}
+
+	return Token{}, false
+}
+
+func (f *credentialsFile) upsert(tok Token) {
+	for i, existing := range f.Tokens {
+		if existing.Endpoint == tok.Endpoint {
+			f.Tokens[i] = tok
+			return
+		}
+	}
+
+	f.Tokens = append(f.Tokens, tok)
 }
 
 func readCredentials(path string) (credentialsFile, error) {

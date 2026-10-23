@@ -44,7 +44,7 @@ qcloud auth token --json`,
 					return fmt.Errorf("refresh OAuth token: %w", err)
 				}
 
-				if err := oauth.SaveToken(path, refreshed); err != nil {
+				if _, err := oauth.SaveToken(path, refreshed); err != nil {
 					return err
 				}
 

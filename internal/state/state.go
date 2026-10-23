@@ -175,7 +175,7 @@ func (s *State) oauthAccessToken(ctx context.Context) (string, error) {
 			return "", fmt.Errorf("refresh OAuth token: %w (run \"qcloud auth login\")", err)
 		}
 
-		if err := oauth.SaveToken(path, refreshed); err != nil {
+		if _, err := oauth.SaveToken(path, refreshed); err != nil {
 			return "", err
 		}
 
