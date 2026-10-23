@@ -31,7 +31,10 @@ qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --cpu 4 --ram 16Gi
 qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --nodes 3
 
 # Increase disk and wait for completion
-qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 500Gi --wait`,
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 500Gi --wait
+
+# Lower the disk (deletes the local snapshots of the cluster)
+qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 100Gi --allow-disk-decrease --wait`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "scale <cluster-id>",
@@ -49,9 +52,16 @@ packages can be listed with 'package list' using the --cloud-provider and
 --cloud-region flags.
 
 Each package includes a baseline disk size. Requesting more disk than the baseline with
---disk provisions the difference as additional storage. Disk cannot be downscaled. If a
-new package has a larger baseline disk than the current total, the disk size increases to
-match.
+--disk provisions the difference as additional storage. If a new package has a larger
+baseline disk than the current total, the disk size increases to match.
+
+Lowering the disk below the current total needs --allow-disk-decrease, also with --force.
+A --disk below the baseline of the package is raised to the baseline. Each node is
+replaced by a smaller one and its shard data is transferred. This deletes the local
+snapshots of the cluster, so copy any you need first. A warning is printed before the
+scale; --force skips the confirmation but not the warning. The disk can only be lowered
+on a cluster running Qdrant v1.19.2 or later. On a hybrid cloud cluster, the operator
+must support it too.
 
 Reducing RAM is always allowed, but a cluster whose memory usage does not fit the smaller
 package can run out of memory and become unavailable. A warning is printed before the
@@ -61,6 +71,7 @@ confirmation but not the warning.`,
 			}
 			cmd.Flags().Uint32("nodes", 0, "Number of nodes")
 			cmd.Flags().BoolP("force", "f", false, "Skip confirmation prompts")
+			cmd.Flags().Bool("allow-disk-decrease", false, "Allow --disk to lower the disk below the current total; this deletes the local snapshots of the cluster")
 			cmd.Flags().Var(new(resource.Millicores), "cpu", "CPU per node (e.g. \"1\", \"0.5\", or \"1000m\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "ram", "RAM per node (e.g. \"8\", \"8G\", \"8Gi\", or \"8GiB\")")
 			cmd.Flags().Var(new(resource.ByteQuantity), "disk", "Total disk size per node (e.g. \"200GiB\"); if larger than the node's included disk, the difference is provisioned as additional storage")
@@ -195,9 +206,6 @@ confirmation but not the warning.`,
 			if cmd.Flags().Changed("disk") {
 				requestedDisk = *cmd.Flags().Lookup("disk").Value.(*resource.ByteQuantity)
 				newEffectiveDisk = max(requestedDisk, newPkgDisk)
-				if newEffectiveDisk < currentTotalDisk {
-					return nil, fmt.Errorf("disk cannot be downscaled from %s to %s", currentTotalDisk, requestedDisk)
-				}
 
 				// only apply additional disk calculation if requested disk is bigger than the disk package
 				// if disk is less than the package disk, let the api fail
@@ -216,6 +224,17 @@ confirmation but not the warning.`,
 				cluster.Configuration.AdditionalResources = &clusterv1.AdditionalResources{
 					Disk: uint32(newEffectiveDisk.GiB() - newPkgDisk.GiB()),
 				}
+			}
+
+			// A lower disk deletes the local snapshots, so it needs its own flag. --force alone
+			// must not lower the disk of a cluster.
+			diskDecrease := newEffectiveDisk < currentTotalDisk
+			allowDiskDecrease, _ := cmd.Flags().GetBool("allow-disk-decrease")
+			if diskDecrease && !allowDiskDecrease {
+				return nil, fmt.Errorf(
+					"the disk would be lowered from %s to %s, which deletes the local snapshots of the cluster; pass --allow-disk-decrease to lower it",
+					currentTotalDisk, newEffectiveDisk,
+				)
 			}
 
 			oldNodes := cluster.Configuration.NumberOfNodes
@@ -258,6 +277,13 @@ confirmation but not the warning.`,
 				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s\n", warning)
 			}
 
+			// A lower disk replaces each node with a smaller one. The platform transfers the shard
+			// data but not the local snapshots. Like the memory warning, this is printed
+			// independently of the prompt so that --force keeps it in the log.
+			if diskDecrease {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s\n", diskDecreaseWarning)
+			}
+
 			force, _ := cmd.Flags().GetBool("force")
 			prompt := scaleConfirmPrompt(
 				cluster,
@@ -278,6 +304,10 @@ confirmation but not the warning.`,
 
 			resp, err := client.Cluster().UpdateCluster(ctx, &clusterv1.UpdateClusterRequest{
 				Cluster: cluster,
+				// The platform refuses a lower disk unless the request opts in. The opt-in is
+				// sent only when the disk drops, even if --allow-disk-decrease was passed. The
+				// additional resources are always set above, which the opt-in requires.
+				AllowAdditionalDiskDecrease: diskDecrease,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to update cluster: %w", err)
@@ -361,6 +391,10 @@ func scaleConfirmPrompt(
 	prompt += "\nProceed?"
 	return prompt
 }
+
+// The warning shown before a scale that lowers the disk.
+const diskDecreaseWarning = "Lowering the disk deletes the local snapshots of the cluster. " +
+	"The shard data is transferred, but nothing copies the snapshot files."
 
 // downscaleRiskTimeout bounds the risk read. The verdict costs the platform a metrics
 // query, and a slow metrics source must not hold up a scale the platform accepts either

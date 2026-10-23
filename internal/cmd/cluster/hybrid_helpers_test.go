@@ -62,6 +62,32 @@ func TestParseAuditLogRotation(t *testing.T) {
 	}
 }
 
+func TestParseAuditLogOutput(t *testing.T) {
+	tests := []struct {
+		input   string
+		want    clusterv1.AuditLogOutput
+		wantErr bool
+	}{
+		{"file", clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_FILE, false},
+		{"stdout", clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_STDOUT, false},
+		{"file-and-stdout", clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_FILE_AND_STDOUT, false},
+		// stderr exists in Qdrant but is not offered on hybrid cloud.
+		{"stderr", clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_UNSPECIFIED, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := parseAuditLogOutput(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+				assert.Equal(t, tt.input, auditLogOutputString(got))
+			}
+		})
+	}
+}
+
 func TestParseTopologySpreadConstraint(t *testing.T) {
 	t.Run("key only", func(t *testing.T) {
 		tsc, err := parseTopologySpreadConstraint("topology.kubernetes.io/zone")
