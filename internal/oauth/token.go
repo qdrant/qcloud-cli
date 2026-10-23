@@ -47,12 +47,7 @@ func (d Discoverer) exchange(ctx context.Context, tokenURL string, form url.Valu
 	}
 
 	if tr.Error != "" {
-		desc := tr.ErrorDesc
-		if desc == "" {
-			desc = tr.Error
-		}
-
-		return Token{}, fmt.Errorf("token endpoint: %s", desc)
+		return Token{}, &TokenError{Code: tr.Error, Description: tr.ErrorDesc}
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -106,4 +101,21 @@ func (d Discoverer) Refresh(ctx context.Context, tok Token, now time.Time) (Toke
 	}
 
 	return d.exchange(ctx, meta.TokenEndpoint, form, now, tok)
+}
+
+// TokenError is an OAuth error response from the token endpoint (RFC 6749 §5.2).
+type TokenError struct {
+	// Code is the error code, such as invalid_grant or, while polling a device login,
+	// authorization_pending.
+	Code string
+	// Description is the human-readable error_description, if the server sent one.
+	Description string
+}
+
+func (e *TokenError) Error() string {
+	if e.Description == "" {
+		return "token endpoint: " + e.Code
+	}
+
+	return "token endpoint: " + e.Description
 }
