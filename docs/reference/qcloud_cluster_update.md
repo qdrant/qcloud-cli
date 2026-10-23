@@ -13,7 +13,7 @@ cluster configuration.
 Version upgrades (--version) will trigger a rolling restart of the cluster.
 
 Database configuration changes (--replication-factor, --write-consistency-factor,
---async-scorer, --optimizer-cpu-budget, --vectors-on-disk, --db-log-level,
+--optimizer-cpu-budget, --vectors-on-disk, --db-log-level,
 --audit-logging and related flags, --enable-tls, --api-key-secret,
 --read-only-api-key-secret, --tls-cert-secret, --tls-key-secret) will trigger a
 rolling restart of the cluster. The cluster remains available during the restart,
@@ -85,7 +85,6 @@ qcloud cluster update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --database-storage-cl
       --allowed-ip stringArray                   Allowed client IP CIDR range (e.g. "10.0.0.0/8"); append '-' to remove; max 20
       --annotation stringArray                   (cloud-provider: hybrid) Pod annotation ('key=value'); append '-' to remove, can be specified multiple times
       --api-key-secret string                    (cloud-provider: hybrid) API key Kubernetes secret ('secretName:key')
-      --async-scorer                             Enable async scorer (uses io_uring on Linux)
       --audit-log-max-files uint32               Maximum number of audit log files (1-1000)
       --audit-log-output string                  (cloud-provider: hybrid) Audit log output ("file", "stdout", "file-and-stdout"); default file, requires Qdrant v1.20.0 or later
       --audit-log-rotation string                Audit log rotation ("daily", "hourly")

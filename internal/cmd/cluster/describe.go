@@ -232,10 +232,8 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 					fmt.Fprintln(w, "  Advanced Optimizations:")
 					if perf != nil {
 						fmt.Fprintf(w, "    Optimizer CPU Budget:      %s\n", output.OptionalValue(perf.OptimizerCpuBudget, notSet))
-						fmt.Fprintf(w, "    Async Scorer:              %s\n", output.OptionalValue(perf.AsyncScorer, notSet))
 					} else {
 						fmt.Fprintf(w, "    Optimizer CPU Budget:      %s\n", notSet)
-						fmt.Fprintf(w, "    Async Scorer:              %s\n", notSet)
 					}
 
 					// Hybrid-only DB config sections

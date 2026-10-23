@@ -18,7 +18,6 @@ func addSharedClusterFlags(cmd *cobra.Command) {
 	cmd.Flags().String("version", "", `Qdrant version (e.g. "v1.17.0" or "latest")`)
 	cmd.Flags().StringArray("label", nil, "Label ('key=value') to add/overwrite; append '-' to remove ('key-'), can be specified multiple times")
 	cmd.Flags().String("disk-performance", "", `Disk performance tier ("balanced", "cost-optimised", "performance")`)
-	cmd.Flags().Bool("async-scorer", false, "Enable async scorer (uses io_uring on Linux)")
 	cmd.Flags().Int32("optimizer-cpu-budget", 0, `CPU threads for optimization (0=auto, negative=subtract from available CPUs, positive=exact count)`)
 	cmd.Flags().StringArray("allowed-ip", nil, "Allowed client IP CIDR range (e.g. \"10.0.0.0/8\"); append '-' to remove; max 20")
 	cmd.Flags().String("restart-mode", "", `Restart policy ("rolling", "parallel", "automatic")`)
@@ -153,11 +152,6 @@ func applySharedClusterFlags(cmd *cobra.Command, cluster *clusterv1.Cluster) err
 
 			if dbCfg.Storage.Performance == nil {
 				dbCfg.Storage.Performance = &clusterv1.DatabaseConfigurationStoragePerformance{}
-			}
-
-			if cmd.Flags().Changed("async-scorer") {
-				v, _ := cmd.Flags().GetBool("async-scorer")
-				dbCfg.Storage.Performance.AsyncScorer = &v
 			}
 
 			if cmd.Flags().Changed("optimizer-cpu-budget") {
