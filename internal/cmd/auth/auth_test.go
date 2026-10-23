@@ -216,7 +216,7 @@ func TestAuthLogin_SeveralAccountsGetAContextEachAndTheFirstIsSelected(t *testin
 	env := testutil.NewBareTestEnv(t)
 	prepareLogin(t, env)
 	grantAccounts(env,
-		&accountv1.Account{Id: "a1", Name: "Robert Stam - Base Account"},
+		&accountv1.Account{Id: "a1", Name: "Jane Doe - Base Account"},
 		&accountv1.Account{Id: "a2", Name: "Andrey Vasnetsov - Base Account"},
 	)
 	cfg := tempConfig(t, "")
@@ -224,7 +224,7 @@ func TestAuthLogin_SeveralAccountsGetAContextEachAndTheFirstIsSelected(t *testin
 	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Contexts for your 2 accounts:")
-	assert.Contains(t, stdout, "  * dev-robert-stam-base-account  (Robert Stam - Base Account)")
+	assert.Contains(t, stdout, "  * dev-jane-doe-base-account  (Jane Doe - Base Account)")
 	assert.Contains(t, stdout, "    dev-andrey-vasnetsov-base-account  (Andrey Vasnetsov - Base Account)")
 	assert.Contains(t, stdout, "Switch with: qcloud context use <name>")
 

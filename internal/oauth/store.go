@@ -24,7 +24,7 @@ type Token struct {
 	// Scope is the requested scope: what qcloud asked Auth0 for, and what the token's scope claim says.
 	Scope string `yaml:"requested_scope,omitempty"`
 	// GrantedScope is what the user granted on the consent page (read-only or manage), which can be
-	// narrower than the requested scope. iam-service enforces it on every call.
+	// narrower than the requested scope. Qdrant Cloud enforces it on every call.
 	GrantedScope string `yaml:"granted_scope,omitempty"`
 	Issuer       string `yaml:"issuer,omitempty"`
 	ClientID     string `yaml:"client_id,omitempty"`

@@ -22,7 +22,7 @@ func TestContextPrefix(t *testing.T) {
 func TestSlug(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "robert-stam-base-account", slug("Robert Stam - Base Account"))
-	assert.Equal(t, "cloud-test-functional-qdrant-com-base-account", slug("cloud-test+functional@qdrant.com - Base Account"))
+	assert.Equal(t, "jane-doe-base-account", slug("Jane Doe - Base Account"))
+	assert.Equal(t, "dummy-test-example-com-base-account", slug("dummy+test@example.com - Base Account"))
 	assert.Empty(t, slug("  --  "))
 }

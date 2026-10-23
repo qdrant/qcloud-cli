@@ -21,7 +21,7 @@ const (
 
 // requiredScopes are requested on every login next to read-only or manage. offline_access gives a
 // refresh token. openid and email make Auth0 put email_verified in the access token, which
-// iam-service requires: Auth0 drops email_verified when an Action sets it, as it is a reserved
+// Qdrant Cloud requires: Auth0 drops email_verified when an Action sets it, as it is a reserved
 // OpenID Connect claim name, so only the email scope brings it in.
 var requiredScopes = []string{"openid", "email", offlineScope}
 
@@ -249,9 +249,10 @@ func loopbackWaiter(ln net.Listener, issuer string) WaitCodeFunc {
 }
 
 // authorizationCallback checks the loopback redirect. state is the client's
-// CSRF value from /authorize, not Auth0's consent-page redirect state.
-// iss is checked when Auth0 sends it (RFC 9207). A missing iss is allowed so
-// login still works before that tenant toggle is on.
+// CSRF value from /authorize, not the authentication server's consent-page
+// redirect state. iss is checked when the authentication server sends it
+// (RFC 9207). A missing iss is allowed so login still works before the server
+// sends it.
 func authorizationCallback(q url.Values, wantState, wantIssuer string) (string, error) {
 	if errParam := q.Get("error"); errParam != "" {
 		msg := q.Get("error_description")
