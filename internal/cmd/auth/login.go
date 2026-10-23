@@ -33,7 +33,11 @@ to login.cloud.qdrant.io. Override with --login-url only for debugging.
 
 The Qdrant Cloud CLI client id is built in per login URL. --client-id or
 QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
-Tokens are stored in credentials.yaml next to the config file (mode 0600).
+The access and refresh tokens are stored in the OS keychain (macOS Keychain,
+Windows Credential Manager, or the Secret Service on Linux); the rest of the
+session is in credentials.yaml next to the config file. Without a keychain, the
+tokens go to credentials.yaml (mode 0600) too. Set QDRANT_CLOUD_TOKEN_STORE to
+"keychain" to require the keychain, or to "file" to skip it.
 
 After the login, qcloud creates a context for every account you granted on the
 consent page (named after the account, prefixed with the environment, e.g.
@@ -89,8 +93,13 @@ qcloud auth login --device`,
 			tok.GrantedScope = claims.GrantedScope
 
 			path := oauth.CredentialsPath(s.Config.ConfigFilePath())
-			if err := oauth.SaveToken(path, tok); err != nil {
+			saved, err := oauth.SaveToken(path, tok)
+			if err != nil {
 				return err
+			}
+
+			if saved.KeychainErr != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "No OS keychain available (%v); the tokens are stored in %s (0600).\n", saved.KeychainErr, path)
 			}
 
 			who := "Logged in"

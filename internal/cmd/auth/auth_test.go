@@ -144,6 +144,12 @@ func TestAuthLogin_StoresToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Logged in; no accounts were granted.")
 
+	// The tokens are in the keychain (in-memory in tests), not in credentials.yaml.
+	creds, err := os.ReadFile(filepath.Join(filepath.Dir(cfg), "credentials.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(creds), "store: keychain")
+	assert.NotContains(t, string(creds), "access-from-login")
+
 	tokenOut, _, err := testutil.Exec(t, env, "auth", "token", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
 	assert.Equal(t, "access-from-login\n", tokenOut)

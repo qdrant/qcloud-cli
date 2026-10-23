@@ -44,7 +44,7 @@ access token.`,
 			}
 
 			path := oauth.CredentialsPath(s.Config.ConfigFilePath())
-			tok, ok, err := oauth.LoadToken(path, s.Config.Endpoint())
+			tok, ok, err := oauth.LoadTokenInfo(path, s.Config.Endpoint())
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ access token.`,
 
 			fmt.Fprintf(out, "Status:    %s\n", status)
 			// The access the user granted on the consent page. The requested scope (what qcloud asked for)
-			// is in credentials.yaml; showing it here next to this only confuses.
+			// is stored too; showing it here next to this only confuses.
 			if tok.GrantedScope != "" {
 				fmt.Fprintf(out, "Access:    %s\n", oauth.ScopeLabel(tok.GrantedScope))
 			}
