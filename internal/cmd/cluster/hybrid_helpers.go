@@ -207,6 +207,41 @@ func auditLogRotationString(r clusterv1.AuditLogRotation) string {
 	}
 }
 
+// Audit log output
+
+const (
+	auditLogOutputFile          = "file"
+	auditLogOutputStdout        = "stdout"
+	auditLogOutputFileAndStdout = "file-and-stdout"
+)
+
+func parseAuditLogOutput(s string) (clusterv1.AuditLogOutput, error) {
+	switch s {
+	case auditLogOutputFile:
+		return clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_FILE, nil
+	case auditLogOutputStdout:
+		return clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_STDOUT, nil
+	case auditLogOutputFileAndStdout:
+		return clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_FILE_AND_STDOUT, nil
+	default:
+		return clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_UNSPECIFIED,
+			fmt.Errorf("invalid audit log output %q: must be one of %s, %s, %s", s, auditLogOutputFile, auditLogOutputStdout, auditLogOutputFileAndStdout)
+	}
+}
+
+func auditLogOutputString(o clusterv1.AuditLogOutput) string {
+	switch o {
+	case clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_FILE:
+		return auditLogOutputFile
+	case clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_STDOUT:
+		return auditLogOutputStdout
+	case clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_FILE_AND_STDOUT:
+		return auditLogOutputFileAndStdout
+	default:
+		return ""
+	}
+}
+
 // Topology spread constraint
 // Format: topologyKey[:maxSkew[:whenUnsatisfiable]]
 

@@ -35,6 +35,7 @@ var auditLoggingFlags = []string{
 	"audit-log-rotation",
 	"audit-log-max-files",
 	"audit-log-trust-forwarded-headers",
+	"audit-log-output",
 }
 
 var storageConfigFlags = []string{

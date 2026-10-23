@@ -169,6 +169,7 @@ remove a constraint.`,
 	_ = cmd.RegisterFlagCompletionFunc("service-type", serviceTypeCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("db-log-level", dbLogLevelCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("audit-log-rotation", auditLogRotationCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("audit-log-output", auditLogOutputCompletion())
 	return cmd
 }
 
@@ -287,6 +288,19 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 			}
 
 			lines = append(lines, fmt.Sprintf("  Audit log trust fwd headers:     %s", output.DiffValue(output.OptionalValue(oldTFH, notSet), output.BoolYesNo(newAudit.GetTrustForwardedHeaders()))))
+		}
+
+		if cmd.Flags().Changed("audit-log-output") {
+			var oldOut string
+			if oldAudit != nil {
+				oldOut = auditLogOutputString(oldAudit.GetOutput())
+			}
+
+			if oldOut == "" {
+				oldOut = notSet
+			}
+
+			lines = append(lines, fmt.Sprintf("  Audit log output:                %s", output.DiffValue(oldOut, auditLogOutputString(newAudit.GetOutput()))))
 		}
 
 		if cmd.Flags().Changed("enable-tls") {

@@ -1142,6 +1142,7 @@ func TestCreateCluster_AuditLogging(t *testing.T) {
 		"--audit-log-rotation", "hourly",
 		"--audit-log-max-files", "14",
 		"--audit-log-trust-forwarded-headers",
+		"--audit-log-output", "file-and-stdout",
 	)
 	require.NoError(t, err)
 
@@ -1152,6 +1153,31 @@ func TestCreateCluster_AuditLogging(t *testing.T) {
 	assert.Equal(t, clusterv1.AuditLogRotation_AUDIT_LOG_ROTATION_HOURLY, al.GetRotation())
 	assert.Equal(t, uint32(14), al.GetMaxLogFiles())
 	assert.True(t, al.GetTrustForwardedHeaders())
+	assert.Equal(t, clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_FILE_AND_STDOUT, al.GetOutput())
+}
+
+func TestCreateCluster_AuditLogOutputUnsetWhenNotGiven(t *testing.T) {
+	// Unset means file on the API side. Sending FILE instead would store a value
+	// the user never chose.
+	env := testutil.NewTestEnv(t)
+
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-audit"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--package", "00000000-0000-0000-0000-000000000001",
+		"--audit-logging",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Nil(t, req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetAuditLogging().Output)
 }
 
 func TestCreateCluster_MiscFlags(t *testing.T) {

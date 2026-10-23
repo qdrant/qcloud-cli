@@ -667,6 +667,7 @@ func TestUpdateCluster_AuditLogging(t *testing.T) {
 		"--audit-log-rotation", "daily",
 		"--audit-log-max-files", "10",
 		"--audit-log-trust-forwarded-headers",
+		"--audit-log-output", "stdout",
 		"--force",
 	)
 	require.NoError(t, err)
@@ -678,6 +679,22 @@ func TestUpdateCluster_AuditLogging(t *testing.T) {
 	assert.Equal(t, clusterv1.AuditLogRotation_AUDIT_LOG_ROTATION_DAILY, audit.GetRotation())
 	assert.Equal(t, uint32(10), audit.GetMaxLogFiles())
 	assert.True(t, audit.GetTrustForwardedHeaders())
+	assert.Equal(t, clusterv1.AuditLogOutput_AUDIT_LOG_OUTPUT_STDOUT, audit.GetOutput())
+}
+
+func TestUpdateCluster_AuditLogOutputInvalid(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupUpdateHandlers(env)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "update", "cluster-abc",
+		"--audit-log-output", "stderr",
+		"--force",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid audit log output")
+	_, called := env.Server.UpdateClusterCalls.Last()
+	assert.False(t, called)
 }
 
 func TestUpdateCluster_TLSAndSecrets(t *testing.T) {

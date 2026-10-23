@@ -279,6 +279,10 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 							if al.TrustForwardedHeaders != nil {
 								fmt.Fprintf(w, "    Trust Forwarded Headers:   %s\n", output.BoolYesNo(al.GetTrustForwardedHeaders()))
 							}
+
+							if al.Output != nil {
+								fmt.Fprintf(w, "    Output:                    %s\n", auditLogOutputString(al.GetOutput()))
+							}
 						}
 					}
 				}
