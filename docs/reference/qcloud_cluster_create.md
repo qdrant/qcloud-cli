@@ -41,7 +41,6 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
       --allowed-ip stringArray                   Allowed client IP CIDR range (e.g. "10.0.0.0/8"); append '-' to remove; max 20
       --annotation stringArray                   (cloud-provider: hybrid) Pod annotation ('key=value'); append '-' to remove, can be specified multiple times
       --api-key-secret string                    (cloud-provider: hybrid) API key Kubernetes secret ('secretName:key')
-      --async-scorer                             Enable async scorer (uses io_uring on Linux)
       --audit-log-max-files uint32               Maximum number of audit log files (1-1000)
       --audit-log-rotation string                Audit log rotation ("daily", "hourly")
       --audit-log-trust-forwarded-headers        Trust forwarded headers in audit logs

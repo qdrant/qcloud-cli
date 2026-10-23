@@ -16,7 +16,6 @@ var collectionFlags = []string{
 }
 
 var performanceFlags = []string{
-	"async-scorer",
 	"optimizer-cpu-budget",
 }
 

@@ -791,29 +791,6 @@ func TestCreateCluster_WithWriteConsistencyFactor(t *testing.T) {
 	assert.Equal(t, int32(2), wcf)
 }
 
-func TestCreateCluster_WithAsyncScorer(t *testing.T) {
-	env := testutil.NewTestEnv(t)
-
-	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
-		Cluster: &clusterv1.Cluster{Id: "cluster-as"},
-	}, nil)
-
-	_, _, err := testutil.Exec(t, env,
-		"cluster", "create",
-		"--name", "my-cluster",
-		"--cloud-provider", "aws",
-		"--cloud-region", "us-east-1",
-		"--package", "00000000-0000-0000-0000-000000000001",
-		"--async-scorer",
-	)
-	require.NoError(t, err)
-
-	req, ok := env.Server.CreateClusterCalls.Last()
-	require.True(t, ok)
-	as := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance().GetAsyncScorer()
-	assert.True(t, as)
-}
-
 func TestCreateCluster_WithOptimizerCPUBudget(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
@@ -852,7 +829,6 @@ func TestCreateCluster_WithAllDBConfigFlags(t *testing.T) {
 		"--package", "00000000-0000-0000-0000-000000000001",
 		"--replication-factor", "3",
 		"--write-consistency-factor", "2",
-		"--async-scorer",
 		"--optimizer-cpu-budget", "-1",
 	)
 	require.NoError(t, err)
@@ -862,7 +838,6 @@ func TestCreateCluster_WithAllDBConfigFlags(t *testing.T) {
 	dbCfg := req.GetCluster().GetConfiguration().GetDatabaseConfiguration()
 	assert.Equal(t, uint32(3), dbCfg.GetCollection().GetReplicationFactor())
 	assert.Equal(t, int32(2), dbCfg.GetCollection().GetWriteConsistencyFactor())
-	assert.True(t, dbCfg.GetStorage().GetPerformance().GetAsyncScorer())
 	assert.Equal(t, int32(-1), dbCfg.GetStorage().GetPerformance().GetOptimizerCpuBudget())
 }
 

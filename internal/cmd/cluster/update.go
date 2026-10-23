@@ -59,7 +59,7 @@ cluster configuration.
 Version upgrades (--version) will trigger a rolling restart of the cluster.
 
 Database configuration changes (--replication-factor, --write-consistency-factor,
---async-scorer, --optimizer-cpu-budget, --vectors-on-disk, --db-log-level,
+--optimizer-cpu-budget, --vectors-on-disk, --db-log-level,
 --audit-logging and related flags, --enable-tls, --api-key-secret,
 --read-only-api-key-secret, --tls-cert-secret, --tls-key-secret) will trigger a
 rolling restart of the cluster. The cluster remains available during the restart,
@@ -230,15 +230,6 @@ func updateRestartPrompt(old, updated *clusterv1.Cluster, cmd *cobra.Command, ve
 			}
 
 			lines = append(lines, fmt.Sprintf("  Vectors on disk:                 %s", output.DiffValue(output.OptionalValue(oldVOD, notSet), output.OptionalValue(newVOD, notSet))))
-		}
-
-		if cmd.Flags().Changed("async-scorer") {
-			var oldAS *bool
-			if oldPerf != nil {
-				oldAS = oldPerf.AsyncScorer
-			}
-
-			lines = append(lines, fmt.Sprintf("  Async scorer:                    %s", output.DiffValue(output.OptionalValue(oldAS, notSet), output.BoolYesNo(newPerf.GetAsyncScorer()))))
 		}
 
 		if cmd.Flags().Changed("optimizer-cpu-budget") {

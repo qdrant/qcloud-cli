@@ -108,7 +108,6 @@ func TestDescribeCluster_DatabaseConfiguration(t *testing.T) {
 					Storage: &clusterv1.DatabaseConfigurationStorage{
 						Performance: &clusterv1.DatabaseConfigurationStoragePerformance{
 							OptimizerCpuBudget: new(int32(4)),
-							AsyncScorer:        new(true),
 						},
 					},
 				},
@@ -130,7 +129,6 @@ func TestDescribeCluster_DatabaseConfiguration(t *testing.T) {
 	assert.Contains(t, stdout, "Advanced Optimizations:")
 	assert.Contains(t, stdout, "Optimizer CPU Budget:")
 	assert.Contains(t, stdout, "4")
-	assert.Contains(t, stdout, "Async Scorer:")
 }
 
 func TestDescribeCluster_DatabaseConfiguration_NotSet(t *testing.T) {

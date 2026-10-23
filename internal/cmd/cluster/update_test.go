@@ -213,24 +213,6 @@ func TestUpdateCluster_WriteConsistencyFactor(t *testing.T) {
 	assert.Equal(t, int32(2), wcf)
 }
 
-func TestUpdateCluster_AsyncScorer(t *testing.T) {
-	env := testutil.NewTestEnv(t)
-	setupUpdateHandlers(env)
-
-	stdout, _, err := testutil.Exec(t, env,
-		"cluster", "update", "cluster-abc",
-		"--async-scorer",
-		"--force",
-	)
-	require.NoError(t, err)
-	assert.Contains(t, stdout, "updated successfully")
-
-	req, ok := env.Server.UpdateClusterCalls.Last()
-	require.True(t, ok)
-	as := req.GetCluster().GetConfiguration().GetDatabaseConfiguration().GetStorage().GetPerformance().GetAsyncScorer()
-	assert.True(t, as)
-}
-
 func TestUpdateCluster_OptimizerCPUBudget(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupUpdateHandlers(env)
@@ -424,7 +406,6 @@ func TestUpdateCluster_MultipleDBConfigFlags(t *testing.T) {
 		"cluster", "update", "cluster-abc",
 		"--replication-factor", "3",
 		"--write-consistency-factor", "2",
-		"--async-scorer",
 		"--optimizer-cpu-budget", "-1",
 		"--force",
 	)
@@ -437,7 +418,6 @@ func TestUpdateCluster_MultipleDBConfigFlags(t *testing.T) {
 	dbCfg := cluster.GetConfiguration().GetDatabaseConfiguration()
 	assert.Equal(t, uint32(3), dbCfg.GetCollection().GetReplicationFactor())
 	assert.Equal(t, int32(2), dbCfg.GetCollection().GetWriteConsistencyFactor())
-	assert.True(t, dbCfg.GetStorage().GetPerformance().GetAsyncScorer())
 	assert.Equal(t, int32(-1), dbCfg.GetStorage().GetPerformance().GetOptimizerCpuBudget())
 }
 
