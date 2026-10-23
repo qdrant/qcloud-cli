@@ -3,11 +3,13 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,22 +55,43 @@ func TestLogin_AuthorizationCode(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
-	tok, disc, err := d.Login(context.Background(), LoginOptions{
-		Endpoint:    "grpc.development-cloud.qdrant.io:443",
-		ClientID:    "cli-client",
-		Scope:       "manage",
-		RedirectURL: "http://127.0.0.1:1/callback",
-		WaitCode: func(context.Context, string, string) (string, error) {
-			return "test-code", nil
-		},
-		OpenURL: func(string) error { return nil },
-		Output:  io.Discard,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, "at-1", tok.AccessToken)
-	assert.Equal(t, "rt-1", tok.RefreshToken)
-	assert.Equal(t, sourceProtectedResource, disc.Source)
+	for _, tc := range []struct {
+		name    string
+		openErr error
+		wantURL bool
+	}{
+		{name: "browser opens: no URL", openErr: nil, wantURL: false},
+		{name: "no browser: the URL, and the login still waits", openErr: errors.New("no display"), wantURL: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var out strings.Builder
+			d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
+			tok, disc, err := d.Login(context.Background(), LoginOptions{
+				Endpoint:    "grpc.development-cloud.qdrant.io:443",
+				ClientID:    "cli-client",
+				Scope:       "manage",
+				RedirectURL: "http://127.0.0.1:1/callback",
+				WaitCode: func(context.Context, string, string) (string, error) {
+					return "test-code", nil
+				},
+				OpenURL: func(string) error { return tc.openErr },
+				Output:  &out,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, "at-1", tok.AccessToken)
+			assert.Equal(t, "rt-1", tok.RefreshToken)
+			assert.Equal(t, sourceProtectedResource, disc.Source)
+
+			if tc.wantURL {
+				assert.Contains(t, out.String(), "https://login.development-cloud.qdrant.io/authorize?")
+				assert.Contains(t, out.String(), "--device")
+			} else {
+				assert.Equal(t, "Opening the browser to log in.\n", out.String())
+			}
+		})
+	}
 }
 
 func TestLogin_RequiresClientID(t *testing.T) {
