@@ -148,14 +148,19 @@ func (d Discoverer) codeLogin(ctx context.Context, opts LoginOptions, disc Disco
 	}
 	authorizeURL := as.AuthorizationEndpoint + "?" + q.Encode()
 
+	openErr := errors.New("no browser opener")
 	if opts.OpenURL != nil {
-		if err := opts.OpenURL(authorizeURL); err != nil {
-			return Token{}, fmt.Errorf("open browser: %w", err)
-		}
+		openErr = opts.OpenURL(authorizeURL)
 	}
 
+	// The URL is only worth printing when the browser did not open: it is long, and the login
+	// waits on the loopback callback either way.
 	if opts.Output != nil {
-		fmt.Fprintf(opts.Output, "Opening the browser to log in. If it does not open, visit:\n%s\n", authorizeURL)
+		if openErr == nil {
+			fmt.Fprintln(opts.Output, "Opening the browser to log in.")
+		} else {
+			fmt.Fprintf(opts.Output, "Could not open a browser (%v). Open this URL to log in, or use \"qcloud auth login --device\":\n%s\n", openErr, authorizeURL)
+		}
 	}
 
 	code, err := wait(ctx, redirectURL, state)
