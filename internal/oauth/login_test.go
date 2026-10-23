@@ -119,18 +119,21 @@ func TestNextDevicePollInterval(t *testing.T) {
 	assert.False(t, again)
 	assert.Equal(t, 5*time.Second, next)
 
-	next, again = nextDevicePollInterval(5*time.Second, errString("token endpoint: authorization_pending"))
+	// Auth0's description does not contain the code; the poll goes by the code.
+	next, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "authorization_pending", Description: "User has yet to authorize device code."})
 	assert.True(t, again)
 	assert.Equal(t, 5*time.Second, next)
 
-	next, again = nextDevicePollInterval(5*time.Second, errString("token endpoint: slow_down"))
+	next, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "slow_down"})
 	assert.True(t, again)
 	assert.Equal(t, 10*time.Second, next)
+
+	_, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "access_denied", Description: "authorization_pending"})
+	assert.False(t, again, "a description that looks like a code does not keep polling")
+
+	_, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "expired_token"})
+	assert.False(t, again)
 }
-
-type errString string
-
-func (e errString) Error() string { return string(e) }
 
 func TestLogin_DeviceUsesAudience(t *testing.T) {
 	t.Parallel()
@@ -180,7 +183,7 @@ func TestLogin_DeviceUsesAudience(t *testing.T) {
 		polls++
 		if polls == 1 {
 			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]any{"error": "authorization_pending", "error_description": "authorization_pending"})
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "authorization_pending", "error_description": "User has yet to authorize device code."})
 			return
 		}
 

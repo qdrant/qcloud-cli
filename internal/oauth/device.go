@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -140,15 +141,21 @@ func (d Discoverer) deviceLogin(ctx context.Context, opts LoginOptions, disc Dis
 	}
 }
 
-// nextDevicePollInterval applies RFC 8628 polling. authorization_pending retries
-// at the same interval. slow_down adds five seconds. Anything else, including
-// access_denied from a declined consent and expired_token, stops the poll.
+// nextDevicePollInterval applies RFC 8628 polling, by the token error's code (its
+// description is free text: Auth0 says "User has yet to authorize device code.").
+// authorization_pending retries at the same interval. slow_down adds five seconds.
+// Anything else, including access_denied from a declined consent and expired_token,
+// stops the poll.
 func nextDevicePollInterval(interval time.Duration, err error) (time.Duration, bool) {
-	msg := err.Error()
-	switch {
-	case strings.Contains(msg, "slow_down"):
+	var tokErr *TokenError
+	if !errors.As(err, &tokErr) {
+		return interval, false
+	}
+
+	switch tokErr.Code {
+	case "slow_down":
 		return interval + 5*time.Second, true
-	case strings.Contains(msg, "authorization_pending"):
+	case "authorization_pending":
 		return interval, true
 	default:
 		return interval, false
