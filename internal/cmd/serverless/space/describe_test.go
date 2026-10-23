@@ -45,9 +45,7 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 			State: &spacev1.SpaceState{
 				Phase: spacev1.SpaceStatePhase_SPACE_STATE_PHASE_READY,
 				Endpoint: &spacev1.SpaceEndpoint{
-					Url:      "https://space-abc.serverless.qdrant.io",
-					RestPort: 443,
-					GrpcPort: 6334,
+					Url: "https://space-abc.serverless.qdrant.io",
 				},
 			},
 		},
@@ -60,7 +58,7 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "READY")
 	assert.Contains(t, stdout, "eu-central-1")
 	assert.Contains(t, stdout, "https://space-abc.serverless.qdrant.io")
-	assert.Contains(t, stdout, "6334")
+	assert.NotContains(t, stdout, "Port")
 	assert.Contains(t, stdout, "team-search")
 	assert.Contains(t, stdout, "env=prod")
 	assert.Contains(t, stdout, "10.0.0.0/8")
