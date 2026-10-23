@@ -6,9 +6,11 @@ Create or update a context
 
 Create or update a named context in the configuration file.
 
-A context stores connection settings (endpoint, account ID) and API key
-credentials under a name, so you can switch between environments with
-"qcloud context use <name>".
+A context stores connection settings (endpoint, account ID) and an API key
+under a name, so you can switch between environments with
+"qcloud context use <name>". Contexts that use your OAuth login instead are
+created by "qcloud auth login", one per account you granted; this command does
+not change those.
 
 There are three ways to provide the API key:
 

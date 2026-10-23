@@ -1,0 +1,80 @@
+## qcloud auth login
+
+Log in with a browser or device code
+
+### Synopsis
+
+Log in and store a refreshable access token for the current endpoint.
+
+The default flow is authorization code + PKCE with a loopback listener on
+127.0.0.1 (RFC 8252), on the first free port of 48271, 48272 and 48273. The
+browser callback checks state and, when Auth0 sends it, iss.
+
+Use --device on SSH or when no browser is available. The CLI only prints the
+verification URL and polls. Sign-in and the Qdrant consent page happen in the
+browser; a declined consent ends the poll with access denied.
+
+The login URL comes from the gateway's unauthenticated protected-resource
+metadata when OAuth is enabled, otherwise from rewriting grpc.cloud.qdrant.io
+to login.cloud.qdrant.io. Override with --login-url only for debugging.
+
+The Qdrant Cloud CLI client id is built in per login URL. --client-id or
+QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
+The access and refresh tokens are stored in the OS keychain (macOS Keychain,
+Windows Credential Manager, or the Secret Service on Linux); the rest of the
+session is in credentials.yaml next to the config file. Without a keychain, the
+tokens go to credentials.yaml (mode 0600) too. Set QDRANT_CLOUD_TOKEN_STORE to
+"keychain" to require the keychain, or to "file" to skip it.
+
+After the login, qcloud creates a context for every account you granted on the
+consent page (named after the account, prefixed with the environment, e.g.
+dev-my-account), marked as OAuth so it needs no API key. Unless you already have
+a current context, the first one becomes current; switch with
+"qcloud context use <name>". A later login updates
+these contexts, and "qcloud auth logout" removes them. Contexts with an API key
+are never changed.
+
+```
+qcloud auth login [flags]
+```
+
+### Examples
+
+```
+# Browser login (default production endpoint)
+qcloud auth login
+
+# Read-only session
+qcloud auth login --scope read-only
+
+# Device code
+qcloud auth login --device
+```
+
+### Options
+
+```
+      --client-id string   Override the built-in OAuth client id (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)
+      --device             Use the device authorization grant instead of a loopback browser flow
+  -h, --help               help for login
+      --login-url string   Override the login issuer URL (defaults to discovery / endpoint inference)
+      --scope string       OAuth scope: read-only or manage (default "manage")
+```
+
+### Options inherited from parent commands
+
+```
+      --account-id string    Qdrant Cloud Account ID (env: QDRANT_CLOUD_ACCOUNT_ID)
+      --api-key string       Management API Key (env: QDRANT_CLOUD_API_KEY)
+  -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
+      --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
+      --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
+      --debug                Enable debug logging to stderr
+      --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
+      --json                 Output as JSON
+```
+
+### SEE ALSO
+
+* [qcloud auth](qcloud_auth.md)	 - Log in to Qdrant Cloud with a browser
+

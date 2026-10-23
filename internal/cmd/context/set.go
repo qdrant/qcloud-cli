@@ -1,7 +1,6 @@
 package context
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -42,9 +41,11 @@ qcloud context set staging --api-key-helper 1password --api-key-ref op://vault/q
 				Short: "Create or update a context",
 				Long: `Create or update a named context in the configuration file.
 
-A context stores connection settings (endpoint, account ID) and API key
-credentials under a name, so you can switch between environments with
-"qcloud context use <name>".
+A context stores connection settings (endpoint, account ID) and an API key
+under a name, so you can switch between environments with
+"qcloud context use <name>". Contexts that use your OAuth login instead are
+created by "qcloud auth login", one per account you granted; this command does
+not change those.
 
 There are three ways to provide the API key:
 
@@ -94,6 +95,9 @@ still take precedence over the command at runtime.`,
 
 			ctx, _ := s.Config.GetContext(name)
 			ctx.Name = name
+			if ctx.IsOAuth() {
+				return fmt.Errorf("context %q is managed by \"qcloud auth login\"; log in again to update it, or log out to remove it", name)
+			}
 
 			if ep, ok := flagChangedWithValue(cmd, "endpoint"); ok {
 				ctx.Endpoint = ep
@@ -122,16 +126,8 @@ still take precedence over the command at runtime.`,
 				ctx.AccountID = s.Config.AccountID()
 			}
 
-			if ctx.Endpoint == "" {
-				return errors.New("cannot set a context with an empty endpoint")
-			}
-
-			if ctx.APIKey == "" && ctx.APIKeyCommand == "" {
-				return errors.New("cannot set a context with an empty API key (use --api-key, --api-key-command, or --api-key-helper)")
-			}
-
-			if ctx.AccountID == "" {
-				return errors.New("cannot set a context with an empty account id")
+			if err := ctx.Validate(); err != nil {
+				return err
 			}
 
 			s.Config.UpsertContext(ctx)
