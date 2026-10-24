@@ -38,6 +38,10 @@ func (m *Millicores) Set(s string) error {
 		return err
 	}
 
+	if v < 0 {
+		return fmt.Errorf("%q must not be negative", s)
+	}
+
 	*m = v
 	return nil
 }

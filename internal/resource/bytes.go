@@ -84,6 +84,10 @@ func (b *ByteQuantity) Set(s string) error {
 		return err
 	}
 
+	if v < 0 {
+		return fmt.Errorf("%q must not be negative", s)
+	}
+
 	*b = v
 	return nil
 }

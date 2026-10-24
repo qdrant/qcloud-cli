@@ -178,6 +178,7 @@ confirmation but not the warning.`,
 					GPU:           gpu,
 					RAM:           ram,
 					MultiAz:       multiAz,
+					Current:       currentPkg.GetPackage(),
 				})
 				if err != nil {
 					return nil, err
@@ -376,12 +377,12 @@ func scaleConfirmPrompt(
 		"Cluster %s (%s) will be scaled to:\n  Nodes:   %s\n  CPU:     %s\n  RAM:     %s\n  Disk:    %s",
 		cluster.GetId(), cluster.GetName(),
 		output.DiffValue(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
-		output.DiffValue(output.Cores(oldRC.GetCpu()), output.Cores(newRC.GetCpu())),
-		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
+		output.DiffValue(output.PackageCPU(oldRC), output.PackageCPU(newRC)),
+		output.DiffValue(output.PackageRAM(oldRC), output.PackageRAM(newRC)),
 		diskLine,
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
-		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(output.Cores(oldRC.GetGpu()), output.Cores(newRC.GetGpu())))
+		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(output.PackageGPU(oldRC), output.PackageGPU(newRC)))
 	}
 
 	if oldStorageTier != "" || newStorageTier != "" {

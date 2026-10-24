@@ -67,6 +67,8 @@ func TestByteQuantity_Set(t *testing.T) {
 		{"8GiB", 8 * GiB, false},
 		{"512MiB", 512 * MiB, false},
 		{"1PiB", 1 * PiB, false},
+		{"-8GiB", 0, true},
+		{"-1", 0, true},
 		{"bad", 0, true},
 	}
 	for _, tt := range tests {

@@ -99,6 +99,24 @@ func TestPackageCompletion(t *testing.T) {
 	assert.Contains(t, stdout, "business-8")
 }
 
+func TestPackageCompletion_CanonicalResources(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{
+				Id:                    "pkg-uuid-1",
+				Name:                  "startup-4",
+				ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "4000m", Ram: "16Gi", Disk: "64Gi"},
+			},
+		},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cloud-region", "us-east-1", "--package", "")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "16GiB RAM / 4 CPU / 64GiB disk")
+}
+
 func TestPackageCompletion_NoProvider(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
