@@ -4,6 +4,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -150,8 +151,8 @@ func drawAreas(chart *timeserieslinechart.Model, fills []ChartSeries, since, unt
 
 	bottom := chart.Origin().Y - 1
 	columnDuration := until.Sub(since) / time.Duration(width)
-	for i := len(fills) - 1; i >= 0; i-- {
-		style := barStyle(fills[i].Color, true)
+	for i, fill := range slices.Backward(fills) {
+		style := barStyle(fill.Color, true)
 		if i+1 < len(fills) {
 			// A partially filled top cell shows the series above behind it.
 			style = style.Background(barStyle(fills[i+1].Color, true).GetForeground())
@@ -159,7 +160,7 @@ func drawAreas(chart *timeserieslinechart.Model, fills []ChartSeries, since, unt
 
 		for col := range width {
 			from := since.Add(time.Duration(col) * columnDuration)
-			v, ok := columnValue(fills[i].Points, from, from.Add(columnDuration))
+			v, ok := columnValue(fill.Points, from, from.Add(columnDuration))
 			if !ok {
 				continue
 			}
