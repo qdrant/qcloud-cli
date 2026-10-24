@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -117,21 +118,29 @@ qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --js
 func printClusterMetricsHistory(w io.Writer, h *clusterMetricsHistory, width int, color bool) {
 	fmt.Fprintf(w, "Cluster %s  %s - %s\n", h.ClusterID, output.FullDateTime(h.Since), output.FullDateTime(h.Until))
 
+	// The API fills the request series with zeros where there were no
+	// requests, so all zeros means there is nothing to draw. The latency of
+	// no requests is no measurement either.
+	requests, latency, empty := h.RequestsPerSecond, h.LatencyMs, ""
+	if !slices.ContainsFunc(requests, func(p historyPoint) bool { return p.Value != 0 }) {
+		requests, latency, empty = nil, nil, "no requests in this time range"
+	}
+
 	charts := []metricsChart{
 		{
 			title:  "Requests",
-			base:   h.RequestsPerSecond,
-			series: []output.ChartSeries{{Name: "requests per second", Color: output.ChartColorRequests, Points: stack(h.RequestsPerSecond, 0)}},
-			yLabel: output.Rate,
+			base:   requests,
+			empty:  empty,
+			series: []output.ChartSeries{{Name: "requests per second", Color: output.ChartColorRequests, Points: stack(requests, 0)}},
+			yLabel: func(v float64) string { return output.Significant(v, 3) + "/s" },
 		},
 		{
 			title:  "Latency",
-			base:   h.LatencyMs,
-			series: []output.ChartSeries{{Name: "latency", Color: output.ChartColorLatency, Points: stack(h.LatencyMs, 0)}},
-			yLabel: output.Milliseconds,
+			base:   latency,
+			empty:  empty,
+			series: []output.ChartSeries{{Name: "latency", Color: output.ChartColorLatency, Points: stack(latency, 0)}},
+			yLabel: func(v float64) string { return output.Significant(v, 3) + "ms" },
 		},
 	}
-	for _, c := range charts {
-		printMetricsChart(w, c, h.Since, h.Until, width, color)
-	}
+	printMetricsCharts(w, charts, h.Since, h.Until, width, color)
 }

@@ -186,3 +186,61 @@ func TestTimeChart_FillWithoutColorDrawsLines(t *testing.T) {
 	assert.NotContains(t, chart, "█")
 	assert.Regexp(t, "[⠁-⣿]", chart)
 }
+
+func TestTimeChart_LeavesOutPointsOutsideRange(t *testing.T) {
+	since := time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC)
+	inside := chartPoints(since, 1, 2, 1.5)
+	outside := append([]output.TimePoint{{Time: since.Add(-time.Hour), Value: 1}}, inside...)
+	outside = append(outside, output.TimePoint{Time: since.Add(5 * time.Hour), Value: 1})
+
+	for _, fill := range []bool{false, true} {
+		opts := chartOpts(since, 2, 2)
+		opts.Color = true
+
+		want := output.TimeChart([]output.ChartSeries{{Name: "a", Points: inside, Fill: fill}}, opts)
+		got := output.TimeChart([]output.ChartSeries{{Name: "a", Points: outside, Fill: fill}}, opts)
+
+		assert.Equal(t, want, got)
+		assert.Contains(t, stripANSI(got), "00:00", "the time axis starts at since")
+	}
+}
+
+func TestTimeChart_NarrowWidth(t *testing.T) {
+	since := time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC)
+	for _, color := range []bool{false, true} {
+		opts := chartOpts(since, 2, 2)
+		opts.Width, opts.Color = 1, color
+
+		assert.NotPanics(t, func() {
+			output.TimeChart([]output.ChartSeries{{Name: "a", Points: chartPoints(since, 1, 2), Fill: true}}, opts)
+		})
+	}
+}
+
+func TestTimeChart_YTop(t *testing.T) {
+	since := time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC)
+	opts := chartOpts(since, 2, 0)
+	opts.YTop = 100
+
+	// The axis ends at YTop without room above it.
+	chart := output.TimeChart([]output.ChartSeries{{Name: "a", Points: chartPoints(since, 40, 80)}}, opts)
+	assert.True(t, strings.HasPrefix(chart, "100│"), chart)
+
+	// Values close to YTop still get room above them.
+	chart = output.TimeChart([]output.ChartSeries{{Name: "a", Points: chartPoints(since, 40, 99)}}, opts)
+	assert.True(t, strings.HasPrefix(chart, "120│"), chart)
+}
+
+func TestTimeChartYLabelWidth(t *testing.T) {
+	since := time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC)
+	series := []output.ChartSeries{{Name: "a", Points: chartPoints(since, 1, 2)}}
+	opts := chartOpts(since, 2, 2)
+
+	// The labels are 0, 0.6, 1.2, 1.8 and 2.4.
+	assert.Equal(t, 3, output.TimeChartYLabelWidth(series, opts))
+
+	opts.YLabelWidth = 6
+	chart := output.TimeChart(series, opts)
+	assert.True(t, strings.HasPrefix(chart, "   2.4│"), chart)
+	assert.Contains(t, chart, "     0└")
+}

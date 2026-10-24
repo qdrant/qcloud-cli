@@ -18,6 +18,9 @@ const (
 	BarColorFree   = "8" // gray
 )
 
+// minUsageBarWidth is the narrowest a usage bar is drawn.
+const minUsageBarWidth = 3
+
 // BarSegment is one stacked part of a usage bar.
 type BarSegment struct {
 	Value float64
@@ -35,6 +38,8 @@ func ColorEnabled(w io.Writer) bool {
 // and the remaining capacity is drawn as a gray track. Without color, the used
 // part is drawn inside brackets, since uncolored segments look the same.
 func UsageBar(segments []BarSegment, total float64, width int, color bool) string {
+	// Leave room for at least one cell between the brackets of an uncolored bar.
+	width = max(width, minUsageBarWidth)
 	if !color {
 		width -= 2
 	}

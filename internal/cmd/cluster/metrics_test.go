@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,7 +89,9 @@ func TestClusterMetrics_TextOutput(t *testing.T) {
 
 	// CPU: 0.2 reserved + 0.5 used of 2 vCPU.
 	assert.Contains(t, stdout, " 35.0%  0.7 of 2 vCPU")
-	assert.Contains(t, stdout, "system 0.2  usage 0.5  available 1.3")
+	assert.Contains(t, stdout, "\n        system 0.2  usage 0.5  available 1.3\n")
+	// Small usage keeps two significant digits instead of rounding to 0.
+	assert.Contains(t, stdout, "\n        system 0.2  usage 0.3  available 1.5\n")
 	// RAM: 0.5 GB (477 MiB) reserved + 1.5 GiB cache + 2 GiB data of 8 GiB.
 	assert.Contains(t, stdout, " 49.6%  4.0 GiB of 8.0 GiB")
 	assert.Contains(t, stdout, "system 477 MiB  cache 1.5 GiB  data 2.0 GiB  available 4.0 GiB")
@@ -98,6 +101,17 @@ func TestClusterMetrics_TextOutput(t *testing.T) {
 	// Bars are bracketed without color.
 	assert.Contains(t, stdout, "CPU   [")
 	assert.NotContains(t, stdout, "\x1b[")
+}
+
+func TestClusterMetrics_SmallCPUUsage(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupMetrics(env, "aws", nodeMetrics("0", 0.0044613, 2*gib, 3*gib, 1.5*gib, 8*gib))
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "  usage 0.0045  ")
+	assert.Contains(t, stdout, "0.2 of 2 vCPU")
 }
 
 func TestClusterMetrics_HybridUsesNodeRSS(t *testing.T) {
@@ -270,4 +284,23 @@ func TestClusterMetrics_MissingArg(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env, "cluster", "metrics")
 	require.Error(t, err)
+}
+
+func TestClusterMetrics_FitsIn80Columns(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	node := nodeMetrics("0", 1.25, 12*gib, 12*gib, 9*gib, 100*gib)
+	node.Cpu = overview(1.25, 16, "vcpu")
+	node.RamCache = overview(9*gib, 128*gib, "bytes")
+	node.RamQdrantRss = overview(12*gib, 128*gib, "bytes")
+	node.Disk = overview(100*gib, 1024*gib, "bytes")
+	setupMetrics(env, "aws", node)
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	require.NoError(t, err)
+
+	for line := range strings.SplitSeq(stdout, "\n") {
+		assert.LessOrEqual(t, utf8.RuneCountInString(line), 80, line)
+	}
+
+	assert.Contains(t, stdout, "\n        system 477 MiB  cache 9.0 GiB  data 12 GiB  available 107 GiB\n")
 }

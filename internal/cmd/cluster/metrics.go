@@ -157,8 +157,8 @@ func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.Clust
 			nm.CPU.UsedPercent = percent(cpuUsed+reservedVCPUs, cpuTotal)
 		}
 
-		// Hybrid Cloud clusters do not report the RSS of the database process
-		// separately, so use the RSS of the whole node there.
+		// Like the Qdrant Cloud console, use the RSS of the database process,
+		// or of the whole node on Hybrid Cloud.
 		ramMetric := n.GetRamQdrantRss()
 		if isHybrid {
 			ramMetric = n.GetRamRss()
@@ -205,8 +205,9 @@ func compareNodes(a, b string) int {
 	return cmp.Compare(a, b)
 }
 
-// metricOverview returns the most recent average and the total capacity of a
-// metric. Both are 0 when the node has not reported the metric yet.
+// metricOverview returns the first interval average and the total capacity of
+// a metric, like the Qdrant Cloud console. Both are 0 when the node has not
+// reported the metric yet.
 func metricOverview(m *monitoringv1.ClusterMetricOverview) (float64, float64) {
 	if len(m.GetAvg()) == 0 || m.GetTotal().GetValue() == 0 {
 		return 0, 0
@@ -243,15 +244,6 @@ func printClusterMetrics(w io.Writer, m *clusterMetrics, color bool) {
 		return
 	}
 
-	rowsPerNode := make([][]metricsRow, len(m.Nodes))
-	amountWidth := 0
-	for i, n := range m.Nodes {
-		rowsPerNode[i] = metricsRows(n, color)
-		for _, r := range rowsPerNode[i] {
-			amountWidth = max(amountWidth, len(r.amount))
-		}
-	}
-
 	for i, n := range m.Nodes {
 		if i > 0 {
 			fmt.Fprintln(w)
@@ -266,18 +258,16 @@ func printClusterMetrics(w io.Writer, m *clusterMetrics, color bool) {
 
 		fmt.Fprintln(w, strings.Join(header, "  "))
 
-		for _, r := range rowsPerNode[i] {
+		for _, r := range metricsRows(n, color) {
 			if r.total == 0 {
 				fmt.Fprintf(w, "  %-4s  no data\n", r.label)
 				continue
 			}
 
-			line := fmt.Sprintf("  %-4s  %s  %5.1f%%  %-*s", r.label, output.UsageBar(r.segments, r.total, metricsBarWidth, color), r.percent, amountWidth, r.amount)
-			if len(r.details) > 0 {
-				line += "  " + strings.Join(r.details, "  ")
-			}
-
-			fmt.Fprintln(w, strings.TrimRight(line, " "))
+			// The breakdown goes on its own line, indented to the bar, so the
+			// rows fit into a terminal of 80 columns.
+			fmt.Fprintf(w, "  %-4s  %s  %5.1f%%  %s\n", r.label, output.UsageBar(r.segments, r.total, metricsBarWidth, color), r.percent, r.amount)
+			fmt.Fprintf(w, "        %s\n", strings.Join(r.details, "  "))
 		}
 	}
 }
@@ -333,7 +323,13 @@ func metricsRows(n nodeMetrics, color bool) []metricsRow {
 	}
 }
 
+// formatVCPUs formats a number of vCPUs with two decimals, or two significant
+// digits below 0.1, so the small usage of an idle node does not show as 0.
 func formatVCPUs(v float64) string {
+	if math.Abs(v) < 0.1 {
+		return output.Significant(v, 2)
+	}
+
 	return strconv.FormatFloat(math.Round(v*100)/100, 'f', -1, 64)
 }
 

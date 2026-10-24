@@ -3,7 +3,9 @@ package cluster
 import (
 	"fmt"
 	"io"
+	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +34,9 @@ type nodeMetricsHistory struct {
 	CPU       cpuHistory  `json:"cpu"`
 	RAM       ramHistory  `json:"ram"`
 	Disk      diskHistory `json:"disk"`
+	// GPU and GPURAM are only set for a cluster with GPUs.
+	GPU    *gpuHistory    `json:"gpu,omitempty"`
+	GPURAM *gpuRAMHistory `json:"gpuRam,omitempty"`
 }
 
 type cpuHistory struct {
@@ -52,6 +57,15 @@ type diskHistory struct {
 	Used       []historyPoint `json:"used"`
 }
 
+type gpuHistory struct {
+	// UsagePercent is the GPU usage in percent.
+	UsagePercent []historyPoint `json:"usagePercent"`
+}
+
+type gpuRAMHistory struct {
+	UsedBytes []historyPoint `json:"usedBytes"`
+}
+
 func newNodeMetricsHistoryCommand(s *state.State) *cobra.Command {
 	cmd := base.DescribeCmd[*nodeMetricsHistory]{
 		Use:   "node-metrics-history <cluster-id> <node>",
@@ -63,7 +77,8 @@ or by its full node ID. Each resource is drawn as a stacked area chart, with a
 red line marking the capacity of the node: CPU shows the resources reserved for
 the system with the usage of the database on top, and RAM shows the reserved
 memory, then the page cache, then the memory used by the database. Without
-color, the areas are drawn as stacked lines instead.
+color, the areas are drawn as stacked lines instead. For a cluster with GPUs,
+the GPU usage in percent and the GPU RAM in use are shown as well.
 
 By default, the usage over the last 7 days is shown. --since and --until accept
 an RFC3339 timestamp, a YYYY-MM-DD date in UTC, or a duration ago such as 6h or
@@ -165,8 +180,8 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 	resources := cluster.GetState().GetResources()
 	cache := historyPoints(usage.GetRamCache())
 
-	// Hybrid Cloud clusters do not report the RSS of the database process
-	// separately, so use the RSS of the whole node there.
+	// Like the Qdrant Cloud console, use the RSS of the database process, or
+	// of the whole node on Hybrid Cloud.
 	ramMetric := usage.GetRamQdrantRss()
 	if cluster.GetCloudProviderId() == qcloudapi.HybridCloudProviderID {
 		ramMetric = usage.GetRamRss()
@@ -176,13 +191,12 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 	if len(data) == 0 {
 		// Without an RSS series, derive the data from the RAM including the
 		// cache, like the Qdrant Cloud console does.
-		cacheAt := pointsByTime(cache)
 		for _, p := range historyPoints(usage.GetRam()) {
-			data = append(data, historyPoint{Timestamp: p.Timestamp, Value: max(p.Value-cacheAt[p.Timestamp.Unix()], 0)})
+			data = append(data, historyPoint{Timestamp: p.Timestamp, Value: max(p.Value-valueAt(cache, p.Timestamp), 0)})
 		}
 	}
 
-	return &nodeMetricsHistory{
+	history := &nodeMetricsHistory{
 		ClusterID: cluster.GetId(),
 		Node:      nodeNumber(cluster.GetId(), usage.GetNodeId()),
 		NodeID:    usage.GetNodeId(),
@@ -203,7 +217,14 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 			TotalBytes: resourceTotal(resources.GetDisk()) * bytesPerGiB,
 			Used:       historyPoints(usage.GetDisk()),
 		},
-	}, nil
+	}
+
+	if resources.GetGpu() != nil || len(usage.GetGpu()) > 0 || len(usage.GetGpuRam()) > 0 {
+		history.GPU = &gpuHistory{UsagePercent: historyPoints(usage.GetGpu())}
+		history.GPURAM = &gpuRAMHistory{UsedBytes: historyPoints(usage.GetGpuRam())}
+	}
+
+	return history, nil
 }
 
 // clusterNodeCompletion completes a cluster ID, then the numbers of its nodes.
@@ -253,9 +274,7 @@ func resourceTotal(r *clusterv1.ClusterNodeResources) float64 {
 func printNodeMetricsHistory(w io.Writer, h *nodeMetricsHistory, width int, color bool) {
 	fmt.Fprintf(w, "Node %s  %s - %s\n", h.Node, output.FullDateTime(h.Since), output.FullDateTime(h.Until))
 
-	for _, c := range nodeMetricsHistoryCharts(*h) {
-		printMetricsChart(w, c, h.Since, h.Until, width, color)
-	}
+	printMetricsCharts(w, nodeMetricsHistoryCharts(*h), h.Since, h.Until, width, color)
 }
 
 func nodeMetricsHistoryCharts(n nodeMetricsHistory) []metricsChart {
@@ -285,7 +304,7 @@ func nodeMetricsHistoryCharts(n nodeMetricsHistory) []metricsChart {
 		output.ChartSeries{Name: "+ data", Color: output.BarColorData, Points: stack(ram.Data, ram.ReservedBytes, ram.Cache), Fill: true},
 	)
 
-	return []metricsChart{
+	charts := []metricsChart{
 		{title: "CPU", base: cpu.Usage, total: cpu.TotalVCPUs, series: cpuSeries, yLabel: vcpus},
 		{title: "RAM", base: ram.Data, total: ram.TotalBytes, series: ramSeries, yLabel: formatBytes, yUnit: bytesPerGiB},
 		{
@@ -297,4 +316,32 @@ func nodeMetricsHistoryCharts(n nodeMetricsHistory) []metricsChart {
 			yUnit:  bytesPerGiB,
 		},
 	}
+
+	// The GPU charts have no capacity line, like in the Qdrant Cloud console:
+	// the usage can exceed 100% on a node with several GPUs.
+	if n.GPU != nil {
+		charts = append(charts, metricsChart{
+			title:  "GPU",
+			base:   n.GPU.UsagePercent,
+			series: []output.ChartSeries{{Name: "usage", Color: output.BarColorData, Points: stack(n.GPU.UsagePercent, 0), Fill: true}},
+			yTop:   100,
+			yLabel: formatPercent,
+		})
+	}
+
+	if n.GPURAM != nil {
+		charts = append(charts, metricsChart{
+			title:  "GPU RAM",
+			base:   n.GPURAM.UsedBytes,
+			series: []output.ChartSeries{{Name: "used", Color: output.BarColorData, Points: stack(n.GPURAM.UsedBytes, 0), Fill: true}},
+			yLabel: formatBytes,
+			yUnit:  bytesPerGiB,
+		})
+	}
+
+	return charts
+}
+
+func formatPercent(v float64) string {
+	return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) + "%"
 }

@@ -1,6 +1,7 @@
 package output
 
 import (
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -15,8 +16,13 @@ import (
 	"github.com/charmbracelet/x/term"
 )
 
-// chartYStep is the number of rows between two labels on the Y axis.
-const chartYStep = 3
+const (
+	// chartYStep is the number of rows between two labels on the Y axis.
+	chartYStep = 3
+	// minTimeChartWidth is the narrowest a time chart is drawn, so it keeps
+	// room for its labels and plot.
+	minTimeChartWidth = 20
+)
 
 // Colors of the lines in a time chart.
 const (
@@ -47,8 +53,12 @@ type ChartSeries struct {
 type TimeChartOptions struct {
 	Since, Until time.Time
 	// YMax is the highest value the Y axis must show. It is raised to fit
-	// every value, then rounded up to a value that gives even labels.
+	// every value, then rounded up to a value that gives even labels, with
+	// some room above it.
 	YMax float64
+	// YTop is the least top of the Y axis, such as 100 for a percentage.
+	// Unlike YMax, it gets no room above it.
+	YTop float64
 	// YUnit is the unit labels are rounded to, such as 1 GiB for bytes.
 	// It defaults to 1.
 	YUnit  float64
@@ -56,43 +66,26 @@ type TimeChartOptions struct {
 	Height int
 	// YLabel formats the values on the Y axis.
 	YLabel func(float64) string
-	Color  bool
+	// YLabelWidth pads the labels on the Y axis to at least this width, so
+	// charts printed below each other line up. See TimeChartYLabelWidth.
+	YLabelWidth int
+	Color       bool
 }
 
-// TimeChart renders series as braille line charts over the time range in opts,
-// drawn in order, so a later series is drawn over an earlier one where they
-// meet. Series without points are skipped.
+// TimeChart renders series over the time range in opts. Line series are drawn
+// as braille lines in order, so a later one is drawn over an earlier one where
+// they meet, and filled series as stacked areas on top of them. Points outside
+// the time range and series without points are left out.
 func TimeChart(series []ChartSeries, opts TimeChartOptions) string {
-	yMax := opts.YMax
-	for _, s := range series {
-		for _, p := range s.Points {
-			yMax = max(yMax, p.Value)
-		}
-	}
-
-	if yMax <= 0 {
-		yMax = 1
-	}
-
-	yUnit := opts.YUnit
-	if yUnit <= 0 {
-		yUnit = 1
-	}
-
-	// The plot area is the height less the X axis and its labels. Labels sit
-	// on every chartYStep-th row, so a plot area of a multiple of chartYStep
-	// rows has labels at even fractions of the range.
-	plotHeight := max((opts.Height-2)/chartYStep*chartYStep, chartYStep)
-	// Leave some room above the highest value, so a line at the top, such as
-	// the capacity, does not merge with the edge of the chart.
-	yRange := niceAxisMax(yMax*1.05, yUnit, plotHeight/chartYStep)
+	series = clipToRange(series, opts.Since, opts.Until)
+	plotHeight, yRange := timeChartYAxis(series, opts)
 
 	timeFormat := "01/02 15:04"
 	if opts.Until.Sub(opts.Since) <= 24*time.Hour {
 		timeFormat = "15:04"
 	}
 
-	chart := timeserieslinechart.New(opts.Width, plotHeight+2,
+	chart := timeserieslinechart.New(max(opts.Width, minTimeChartWidth), plotHeight+2,
 		timeserieslinechart.WithTimeRange(opts.Since, opts.Until),
 		timeserieslinechart.WithYRange(0, yRange),
 		timeserieslinechart.WithXYSteps(4, chartYStep),
@@ -100,7 +93,7 @@ func TimeChart(series []ChartSeries, opts TimeChartOptions) string {
 			return time.UnixMilli(int64(v * 1e3)).UTC().Format(timeFormat)
 		}),
 		timeserieslinechart.WithYLabelFormatter(func(_ int, v float64) string {
-			return opts.YLabel(v)
+			return fmt.Sprintf("%*s", opts.YLabelWidth, opts.YLabel(v))
 		}),
 	)
 
@@ -133,6 +126,67 @@ func TimeChart(series []ChartSeries, opts TimeChartOptions) string {
 	drawAreas(&chart, fills, opts.Since, opts.Until, yRange)
 
 	return chart.View()
+}
+
+// TimeChartYLabelWidth returns the width of the widest label on the Y axis of
+// the chart TimeChart draws for series and opts.
+func TimeChartYLabelWidth(series []ChartSeries, opts TimeChartOptions) int {
+	plotHeight, yRange := timeChartYAxis(clipToRange(series, opts.Since, opts.Until), opts)
+
+	width := 0
+	for row := 0; row <= plotHeight; row += chartYStep {
+		width = max(width, len(opts.YLabel(yRange*float64(row)/float64(plotHeight))))
+	}
+
+	return width
+}
+
+// timeChartYAxis returns the height of the plot area and the top of the Y
+// axis of a chart.
+func timeChartYAxis(series []ChartSeries, opts TimeChartOptions) (int, float64) {
+	yMax := opts.YMax
+	for _, s := range series {
+		for _, p := range s.Points {
+			yMax = max(yMax, p.Value)
+		}
+	}
+
+	if yMax <= 0 {
+		yMax = 1
+	}
+
+	yUnit := opts.YUnit
+	if yUnit <= 0 {
+		yUnit = 1
+	}
+
+	// The plot area is the height less the X axis and its labels. Labels sit
+	// on every chartYStep-th row, so a plot area of a multiple of chartYStep
+	// rows has labels at even fractions of the range.
+	plotHeight := max((opts.Height-2)/chartYStep*chartYStep, chartYStep)
+	// Leave some room above the highest value, so a line at the top, such as
+	// the capacity, does not merge with the edge of the chart.
+	yRange := niceAxisMax(yMax*1.05, yUnit, plotHeight/chartYStep)
+	if opts.YTop > 0 {
+		yRange = max(yRange, niceAxisMax(opts.YTop, yUnit, plotHeight/chartYStep))
+	}
+
+	return plotHeight, yRange
+}
+
+// clipToRange returns series with only the points within [since, until]. The
+// chart widens its time range to fit every point, which would move it away
+// from the range the areas are drawn in.
+func clipToRange(series []ChartSeries, since, until time.Time) []ChartSeries {
+	clipped := make([]ChartSeries, len(series))
+	for i, s := range series {
+		clipped[i] = s
+		clipped[i].Points = slices.DeleteFunc(slices.Clone(s.Points), func(p TimePoint) bool {
+			return p.Time.Before(since) || p.Time.After(until)
+		})
+	}
+
+	return clipped
 }
 
 // drawAreas fills the area below each series as columns of block runes, one

@@ -44,8 +44,8 @@ func TestClusterMetricsHistory_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "\nLatency\nlatency\n")
 	assert.Less(t, strings.Index(stdout, "Requests"), strings.Index(stdout, "Latency"))
 	// 35/s and 18ms with 5% headroom round up to 4 steps of 10/s and 5ms.
-	assert.Contains(t, stdout, "40.00/s│")
-	assert.Contains(t, stdout, "20.0ms│")
+	assert.Contains(t, stdout, "40/s│")
+	assert.Contains(t, stdout, "20ms│")
 	assert.NotContains(t, stdout, "capacity")
 	assert.NotContains(t, stdout, "\x1b[")
 }
@@ -169,4 +169,55 @@ func TestClusterMetricsHistory_MissingArg(t *testing.T) {
 
 	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history")
 	require.Error(t, err)
+}
+
+func TestClusterMetricsHistory_LowRateLabels(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupClusterHistory(env, "aws", &monitoringv1.GetClusterUsageMetricsResponse{
+		Rps:     series(0, 0.0016, 0),
+		Latency: series(0, 0.04, 0),
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "0.002/s│")
+	assert.Contains(t, stdout, "0.001/s│")
+	assert.Contains(t, stdout, "0.06ms│")
+	assert.Contains(t, stdout, "0.015ms│")
+	assert.NotContains(t, stdout, "0.00/s")
+}
+
+func TestClusterMetricsHistory_NoRequests(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	// The API fills the request series with zeros where there are none.
+	setupClusterHistory(env, "aws", &monitoringv1.GetClusterUsageMetricsResponse{
+		Rps:     series(0, 0, 0),
+		Latency: series(0, 0, 0),
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "\nRequests\nno requests in this time range\n")
+	assert.Contains(t, stdout, "\nLatency\nno requests in this time range\n")
+}
+
+func TestClusterMetricsHistory_FutureRange(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupClusterHistory(env, "aws", requestMetrics())
+
+	before := time.Now()
+	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID,
+		"--since", "24h", "--until", before.Add(48*time.Hour).UTC().Format(time.RFC3339))
+	require.NoError(t, err)
+
+	req, ok := env.MonitoringServer.GetClusterUsageMetricsCalls.Last()
+	require.True(t, ok)
+	assert.False(t, req.GetUntil().AsTime().After(time.Now()), "--until is cut to now")
+
+	_, _, err = testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID,
+		"--since", before.Add(time.Hour).UTC().Format(time.RFC3339))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--since must be in the past")
 }
