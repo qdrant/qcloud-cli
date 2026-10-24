@@ -143,3 +143,23 @@ func TestBytes(t *testing.T) {
 	assert.Equal(t, "0 B", output.Bytes(0))
 	assert.Equal(t, "1.5 GiB", output.Bytes(3<<29))
 }
+
+func TestSignificant(t *testing.T) {
+	for _, tc := range []struct {
+		v      float64
+		digits int
+		want   string
+	}{
+		{0, 3, "0"},
+		{0.0015855, 2, "0.0016"},
+		{0.0015855, 3, "0.00159"},
+		{0.0005, 3, "0.0005"},
+		{0.46, 2, "0.46"},
+		{1.25, 3, "1.25"},
+		{14.55, 3, "14.6"},
+		{1300, 2, "1300"},
+		{-0.0042, 2, "-0.0042"},
+	} {
+		assert.Equal(t, tc.want, output.Significant(tc.v, tc.digits), "%v with %d digits", tc.v, tc.digits)
+	}
+}

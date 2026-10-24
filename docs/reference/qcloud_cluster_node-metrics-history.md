@@ -11,7 +11,8 @@ or by its full node ID. Each resource is drawn as a stacked area chart, with a
 red line marking the capacity of the node: CPU shows the resources reserved for
 the system with the usage of the database on top, and RAM shows the reserved
 memory, then the page cache, then the memory used by the database. Without
-color, the areas are drawn as stacked lines instead.
+color, the areas are drawn as stacked lines instead. For a cluster with GPUs,
+the GPU usage in percent and the GPU RAM in use are shown as well.
 
 By default, the usage over the last 7 days is shown. --since and --until accept
 an RFC3339 timestamp, a YYYY-MM-DD date in UTC, or a duration ago such as 6h or

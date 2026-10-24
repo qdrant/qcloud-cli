@@ -3,9 +3,12 @@ package cluster_test
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -244,6 +247,38 @@ func TestNodeMetricsHistory_DataFallsBackToRAMWithoutCache(t *testing.T) {
 	assert.InDelta(t, 3*gib, result.RAM.Data[1].Value, 1, "RAM 4.5 GiB less cache 1.5 GiB")
 }
 
+func TestNodeMetricsHistory_FallbackMatchesNearestCachePoint(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	node := usageNode("0")
+	node.RamQdrantRss = nil
+	// The cache is sampled 30 seconds after the RAM.
+	for _, m := range node.RamCache {
+		m.Timestamp = timestamppb.New(m.GetTimestamp().AsTime().Add(30 * time.Second))
+	}
+
+	setupHistory(env, "aws", node)
+
+	result := execHistoryJSON(t, env, "0")
+
+	require.Len(t, result.RAM.Data, 3)
+	assert.InDelta(t, 3*gib, result.RAM.Data[0].Value, 1, "RAM 4 GiB less cache 1 GiB")
+	assert.InDelta(t, 3*gib, result.RAM.Data[1].Value, 1, "RAM 4.5 GiB less cache 1.5 GiB")
+	assert.InDelta(t, 3*gib, result.RAM.Data[2].Value, 1, "RAM 5 GiB less cache 2 GiB")
+}
+
+func TestNodeMetricsHistory_PointsAreSorted(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	node := usageNode("0")
+	slices.Reverse(node.Cpu)
+	setupHistory(env, "aws", node)
+
+	result := execHistoryJSON(t, env, "0")
+
+	require.Len(t, result.CPU.Usage, 3)
+	assert.True(t, result.CPU.Usage[0].Timestamp.Equal(historyStart))
+	assert.InDelta(t, 0.4, result.CPU.Usage[0].Value, 1e-9)
+}
+
 func TestNodeMetricsHistory_NodeByNumberOrID(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws", usageNode("0"), usageNode("1"), usageNode("2"))
@@ -345,4 +380,136 @@ func TestNodeMetricsHistory_MissingArgs(t *testing.T) {
 	_, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID)
 	require.Error(t, err)
 	assert.Equal(t, 0, env.MonitoringServer.GetClusterUsageMetricsCalls.Count())
+}
+
+func gpuCluster() *clusterv1.Cluster {
+	cluster := historyCluster("aws")
+	cluster.State.Resources.Gpu = &clusterv1.ClusterNodeResources{Base: 1000}
+	return cluster
+}
+
+func TestNodeMetricsHistory_GPU(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	node := usageNode("0")
+	node.Gpu = series(40, 80, 60)
+	node.GpuRam = series(10*gib, 12*gib, 11*gib)
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: gpuCluster()}, nil)
+	env.MonitoringServer.GetClusterUsageMetricsCalls.Returns(&monitoringv1.GetClusterUsageMetricsResponse{
+		Nodes: []*monitoringv1.ClusterNodeUsageMetrics{node},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	require.NoError(t, err)
+
+	assert.Regexp(t, "\nGPU\nusage\n *100%│", stdout, "the GPU axis ends at 100% without a capacity line")
+	assert.Regexp(t, "\nGPU RAM\nused\n *16 GiB│", stdout)
+	assert.Less(t, strings.Index(stdout, "\nDisk\n"), strings.Index(stdout, "\nGPU\n"))
+
+	stdout, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--json")
+	require.NoError(t, err)
+
+	var result struct {
+		GPU struct {
+			UsagePercent []struct {
+				Value float64 `json:"value"`
+			} `json:"usagePercent"`
+		} `json:"gpu"`
+		GPURAM struct {
+			UsedBytes []struct {
+				Value float64 `json:"value"`
+			} `json:"usedBytes"`
+		} `json:"gpuRam"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	require.Len(t, result.GPU.UsagePercent, 3)
+	assert.InDelta(t, 80, result.GPU.UsagePercent[1].Value, 1e-9)
+	require.Len(t, result.GPURAM.UsedBytes, 3)
+	assert.InDelta(t, 12*gib, result.GPURAM.UsedBytes[1].Value, 1)
+}
+
+func TestNodeMetricsHistory_GPUClusterWithoutData(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: gpuCluster()}, nil)
+	env.MonitoringServer.GetClusterUsageMetricsCalls.Returns(&monitoringv1.GetClusterUsageMetricsResponse{
+		Nodes: []*monitoringv1.ClusterNodeUsageMetrics{usageNode("0")},
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "\nGPU\nno data\n")
+	assert.Contains(t, stdout, "\nGPU RAM\nno data\n")
+
+	stdout, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--json")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, `"usagePercent": []`)
+	assert.Contains(t, stdout, `"usedBytes": []`)
+}
+
+func TestNodeMetricsHistory_GPUDataWithoutGPUResources(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	node := usageNode("0")
+	node.Gpu = series(40, 80, 60)
+	setupHistory(env, qcloudapi.HybridCloudProviderID, node)
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "\nGPU\nusage\n")
+	assert.Contains(t, stdout, "\nGPU RAM\nno data\n")
+}
+
+func TestNodeMetricsHistory_NoGPU(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupHistory(env, "aws", usageNode("0"))
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "GPU")
+
+	stdout, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--json")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "gpu")
+}
+
+func TestNodeMetricsHistory_CapacitySpansRange(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	// The node only has data in the last hour of the default 7 days.
+	recent := func(v float64) []*monitoringv1.Metric {
+		return []*monitoringv1.Metric{{Timestamp: timestamppb.New(time.Now().Add(-30 * time.Minute)), Value: v}}
+	}
+	setupHistory(env, "aws", &monitoringv1.ClusterNodeUsageMetrics{
+		NodeId: fmt.Sprintf("qdrant-%s-0", metricsClusterID),
+		Cpu:    recent(0.5),
+		Disk:   recent(8 * gib),
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	require.NoError(t, err)
+
+	notBraille := regexp.MustCompile("[^\u2801-\u28ff]")
+	disk := stdout[strings.Index(stdout, "\nDisk\n"):]
+	widest := 0
+	for line := range strings.SplitSeq(disk, "\n") {
+		widest = max(widest, utf8.RuneCountInString(notBraille.ReplaceAllString(line, "")))
+	}
+
+	assert.Greater(t, widest, 80, "the capacity line runs across the chart")
+}
+
+func TestNodeMetricsHistory_ChartsLineUp(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupHistory(env, "aws", usageNode("0"))
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--since", "2026-10-20")
+	require.NoError(t, err)
+
+	columns := map[int]bool{}
+	for line := range strings.SplitSeq(stdout, "\n") {
+		if i := strings.IndexAny(line, "│└"); i >= 0 {
+			columns[utf8.RuneCountInString(line[:i])] = true
+		}
+	}
+
+	assert.Len(t, columns, 1, "the Y axes of all charts are in the same column")
 }

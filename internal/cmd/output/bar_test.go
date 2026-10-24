@@ -66,3 +66,10 @@ func stripANSI(s string) string {
 
 	return b.String()
 }
+
+func TestUsageBar_NarrowWidth(t *testing.T) {
+	for _, width := range []int{-1, 0, 1, 2} {
+		assert.Equal(t, "[█]", output.UsageBar([]output.BarSegment{{Value: 5}}, 5, width, false))
+		assert.NotPanics(t, func() { output.UsageBar([]output.BarSegment{{Value: 5}}, 5, width, true) })
+	}
+}
