@@ -11,14 +11,28 @@ import (
 type FakeMonitoringService struct {
 	monitoringv1.UnimplementedMonitoringServiceServer
 
-	GetClusterLogsCalls    MethodSpy[*monitoringv1.GetClusterLogsRequest, *monitoringv1.GetClusterLogsResponse]
-	ListClusterAlertsCalls MethodSpy[*monitoringv1.ListClusterAlertsRequest, *monitoringv1.ListClusterAlertsResponse]
+	GetClusterLogsCalls           MethodSpy[*monitoringv1.GetClusterLogsRequest, *monitoringv1.GetClusterLogsResponse]
+	GetClusterUsageMetricsCalls   MethodSpy[*monitoringv1.GetClusterUsageMetricsRequest, *monitoringv1.GetClusterUsageMetricsResponse]
+	GetClusterSummaryMetricsCalls MethodSpy[*monitoringv1.GetClusterSummaryMetricsRequest, *monitoringv1.GetClusterSummaryMetricsResponse]
+	ListClusterAlertsCalls        MethodSpy[*monitoringv1.ListClusterAlertsRequest, *monitoringv1.ListClusterAlertsResponse]
 }
 
 // GetClusterLogs records the call and dispatches via GetClusterLogsCalls.
 func (f *FakeMonitoringService) GetClusterLogs(ctx context.Context, req *monitoringv1.GetClusterLogsRequest) (*monitoringv1.GetClusterLogsResponse, error) {
 	f.GetClusterLogsCalls.record(req)
 	return f.GetClusterLogsCalls.dispatch(ctx, req, f.UnimplementedMonitoringServiceServer.GetClusterLogs)
+}
+
+// GetClusterSummaryMetrics records the call and dispatches via GetClusterSummaryMetricsCalls.
+func (f *FakeMonitoringService) GetClusterSummaryMetrics(ctx context.Context, req *monitoringv1.GetClusterSummaryMetricsRequest) (*monitoringv1.GetClusterSummaryMetricsResponse, error) {
+	f.GetClusterSummaryMetricsCalls.record(req)
+	return f.GetClusterSummaryMetricsCalls.dispatch(ctx, req, f.UnimplementedMonitoringServiceServer.GetClusterSummaryMetrics)
+}
+
+// GetClusterUsageMetrics records the call and dispatches via GetClusterUsageMetricsCalls.
+func (f *FakeMonitoringService) GetClusterUsageMetrics(ctx context.Context, req *monitoringv1.GetClusterUsageMetricsRequest) (*monitoringv1.GetClusterUsageMetricsResponse, error) {
+	f.GetClusterUsageMetricsCalls.record(req)
+	return f.GetClusterUsageMetricsCalls.dispatch(ctx, req, f.UnimplementedMonitoringServiceServer.GetClusterUsageMetrics)
 }
 
 // ListClusterAlerts records the call and dispatches via ListClusterAlertsCalls.
