@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -42,6 +43,21 @@ func Bytes(v uint64) string {
 // Rate formats a per-second rate with two decimals (e.g. "1.25/s").
 func Rate(v float64) string {
 	return strconv.FormatFloat(v, 'f', 2, 64) + "/s"
+}
+
+// Significant formats v rounded to the given number of significant digits,
+// without trailing zeros or an exponent (e.g. 0.0016, 1.25, 1300).
+func Significant(v float64, digits int) string {
+	if v == 0 || math.IsNaN(v) || math.IsInf(v, 0) {
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	}
+
+	// Rounding to digits significant digits keeps that many digits after the
+	// first non-zero one.
+	decimals := max(digits-1-int(math.Floor(math.Log10(math.Abs(v)))), 0)
+	scale := math.Pow(10, float64(decimals))
+
+	return strconv.FormatFloat(math.Round(v*scale)/scale, 'f', -1, 64)
 }
 
 // Milliseconds formats a value in milliseconds with one decimal (e.g. "12.3ms").
