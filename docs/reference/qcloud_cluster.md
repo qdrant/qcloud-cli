@@ -25,6 +25,7 @@ Manage Qdrant Cloud clusters
 
 * [qcloud](qcloud.md)	 - Qdrant Cloud CLI
 * [qcloud cluster alert](qcloud_cluster_alert.md)	 - Show alerts of clusters
+* [qcloud cluster cluster-metrics-history](qcloud_cluster_cluster-metrics-history.md)	 - Show the request rate and latency of a cluster over time
 * [qcloud cluster create](qcloud_cluster_create.md)	 - Create a new cluster
 * [qcloud cluster create-from-backup](qcloud_cluster_create-from-backup.md)	 - Create a new cluster from a backup
 * [qcloud cluster dashboard](qcloud_cluster_dashboard.md)	 - Open a cluster's dashboard in your browser
@@ -33,6 +34,8 @@ Manage Qdrant Cloud clusters
 * [qcloud cluster key](qcloud_cluster_key.md)	 - Manage API keys for a cluster
 * [qcloud cluster list](qcloud_cluster_list.md)	 - List all clusters
 * [qcloud cluster logs](qcloud_cluster_logs.md)	 - Retrieve logs for a cluster
+* [qcloud cluster metrics](qcloud_cluster_metrics.md)	 - Show the current CPU, RAM and disk usage of each cluster node
+* [qcloud cluster node-metrics-history](qcloud_cluster_node-metrics-history.md)	 - Show the CPU, RAM and disk usage of a cluster node over time
 * [qcloud cluster restart](qcloud_cluster_restart.md)	 - Restart a cluster
 * [qcloud cluster scale](qcloud_cluster_scale.md)	 - Scales the resources of a cluster
 * [qcloud cluster suspend](qcloud_cluster_suspend.md)	 - Suspend a cluster
