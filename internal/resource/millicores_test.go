@@ -79,27 +79,27 @@ func TestMillicores_String(t *testing.T) {
 		{0, ""},
 		{1000, "1"},
 		{2000, "2"},
-		{500, "500m"},
-		{250, "250m"},
-		{1500, "1500m"},
+		{500, "0.5"},
+		{250, "0.25"},
+		{1500, "1.5"},
+		{1, "0.001"},
 	}
 	for _, tt := range tests {
 		assert.Equal(t, tt.want, tt.input.String())
 	}
 }
 
-func TestFormatMillicores(t *testing.T) {
+func TestMillicores_Cores(t *testing.T) {
 	tests := []struct {
-		m    Millicores
-		unit string
-		want string
+		input Millicores
+		want  string
 	}{
-		{1000, "m", "1000m"},
-		{500, "m", "500m"},
-		{1000, "", "1"},
-		{2000, "", "2"},
+		{0, "0"},
+		{1000, "1"},
+		{500, "0.5"},
+		{1500, "1.5"},
 	}
 	for _, tt := range tests {
-		assert.Equal(t, tt.want, FormatMillicores(tt.m, tt.unit))
+		assert.Equal(t, tt.want, tt.input.Cores())
 	}
 }

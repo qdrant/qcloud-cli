@@ -86,7 +86,7 @@ qcloud package list --cloud-provider hybrid`,
 			})
 			t.AddField("CPU", func(p *bookingv1.Package) string {
 				if rc := p.GetResourceConfiguration(); rc != nil {
-					return rc.GetCpu()
+					return output.Cores(rc.GetCpu())
 				}
 
 				return ""
@@ -101,7 +101,7 @@ qcloud package list --cloud-provider hybrid`,
 			t.AddField("GPU", func(p *bookingv1.Package) string {
 				if rc := p.GetResourceConfiguration(); rc != nil {
 					if v := rc.GetGpu(); v != "" {
-						return v
+						return output.Cores(v)
 					}
 				}
 

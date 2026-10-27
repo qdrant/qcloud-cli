@@ -43,32 +43,21 @@ func (m *Millicores) Set(s string) error {
 }
 
 // String implements pflag.Value.
-// Auto-picks the best decimal SI unit: 1000 → "1", 500 → "500m". Returns "" for zero.
+// Formats as (fractional) cores: 1000 → "1", 500 → "0.5". Returns "" for zero.
 func (m Millicores) String() string {
 	if m == 0 {
 		return ""
 	}
 
-	if int64(m)%1000 == 0 {
-		return strconv.FormatInt(int64(m)/1000, 10)
-	}
+	return m.Cores()
+}
 
-	return fmt.Sprintf("%dm", int64(m))
+// Cores formats m as a (fractional) number of cores: 1000 → "1", 1500 → "1.5", 0 → "0".
+func (m Millicores) Cores() string {
+	return strconv.FormatFloat(float64(m)/1000, 'f', -1, 64)
 }
 
 // Type implements pflag.Value.
 func (m *Millicores) Type() string {
-	return "millicores"
-}
-
-// FormatMillicores formats m in the given decimal SI unit prefix.
-// unit: "m" (millicores), "" (whole cores).
-// Example: FormatMillicores(1000, "m") → "1000m", FormatMillicores(1000, "") → "1".
-func FormatMillicores(m Millicores, unit string) string {
-	switch unit {
-	case "m":
-		return fmt.Sprintf("%dm", int64(m))
-	default:
-		return strconv.FormatInt(int64(m)/1000, 10)
-	}
+	return "cores"
 }

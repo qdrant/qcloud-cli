@@ -91,10 +91,6 @@ func formatGiB(v float64) string {
 	return fmt.Sprintf("%.2f GiB", v)
 }
 
-func formatMillicores(v float64) string {
-	return fmt.Sprintf("%.0fm", v)
-}
-
 const (
 	diskPerfBalanced      = "balanced"
 	diskPerfCostOptimised = "cost-optimised"

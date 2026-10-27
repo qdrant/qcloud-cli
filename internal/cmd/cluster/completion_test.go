@@ -144,8 +144,9 @@ func TestCPUCompletion(t *testing.T) {
 
 	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "create", "--cloud-provider", "aws", "--cpu", "")
 	require.NoError(t, err)
-	// 500m stays as "500m" (not divisible by 1000); 1000m auto-picks "1" (whole core).
-	assert.Contains(t, stdout, "500m")
+	// Completions are shown in cores: 500m → "0.5", 1000m → "1".
+	assert.Contains(t, stdout, "0.5\n")
+	assert.NotContains(t, stdout, "500m")
 	// Deduplication: 1 core appears twice in packages but once in completions.
 	lines := strings.Split(stdout, "\n")
 	count := 0
