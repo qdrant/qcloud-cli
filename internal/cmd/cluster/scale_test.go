@@ -442,6 +442,28 @@ func TestScale_PackageNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "no package found")
 }
 
+func TestScale_PackageNotFoundSuggestsClosest(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
+	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: currentPkg}, nil)
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{
+		newPkg("pkg-big", "4000m", "16GiB", "100GiB"),
+		newPkg("pkg-near", "2000m", "8GiB", "80GiB"),
+	}}, nil)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "3", "--force")
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="3" ram="4GiB"
+next biggest package: pkg-big (cpu=4 ram=16GiB)
+closest available packages:
+  NAME      CPU  RAM    DISK
+  pkg-big   4    16GiB  100GiB
+  pkg-near  2    8GiB   80GiB
+use 'package list' to see all available packages`, err.Error())
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
 func TestScale_AmbiguousPackageMatch(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")

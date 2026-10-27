@@ -1,9 +1,14 @@
 package clusterutil
 
 import (
+	"cmp"
 	"context"
+	"errors"
 	"fmt"
+	"math"
+	"slices"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -228,7 +233,12 @@ func ResolvePackageByResources(
 	case 1:
 		return matches[0], nil
 	case 0:
-		return nil, fmt.Errorf("no package found matching %s; use 'package list' to see available packages", desc)
+		suggestions := closestPackages(q, resp.GetItems(), maxPackageSuggestions)
+		if len(suggestions) == 0 {
+			return nil, fmt.Errorf("no package found matching %s; use 'package list' to see available packages", desc)
+		}
+
+		return nil, noPackageFoundError(desc, suggestions, q.GPU != 0)
 	default:
 		names := make([]string, len(matches))
 		for i, p := range matches {
@@ -237,6 +247,136 @@ func ResolvePackageByResources(
 
 		return nil, fmt.Errorf("multiple packages match %s: %s; use 'package list' to see available packages", desc, strings.Join(names, ", "))
 	}
+}
+
+// maxPackageSuggestions is how many packages a "no package found" error suggests.
+const maxPackageSuggestions = 5
+
+// packageSuggestion is a package together with its parsed resources and its
+// distance from the requested resources.
+type packageSuggestion struct {
+	pkg      *bookingv1.Package
+	cpu      resource.Millicores
+	ram      resource.ByteQuantity
+	gpu      resource.Millicores
+	distance float64
+	// fits is true if the package has at least the requested amount of every resource.
+	fits bool
+}
+
+// closestPackages returns up to limit packages ordered by how far their
+// resources are from the requested ones. The distance sums, over every
+// requested dimension, the absolute log2 ratio between package and request, so
+// doubling or halving a dimension counts the same and a package that matches
+// one dimension exactly ranks above one that is off in all of them.
+// The next biggest package, the closest one that has at least the requested
+// amount of every resource, always comes first.
+func closestPackages(q PackageResourceQuery, pkgs []*bookingv1.Package, limit int) []packageSuggestion {
+	var suggestions []packageSuggestion
+	for _, p := range pkgs {
+		rc := p.GetResourceConfiguration()
+		cpu, _ := resource.ParseMillicores(rc.GetCpu())
+		ram, _ := resource.ParseByteQuantity(rc.GetRam())
+		gpu, _ := resource.ParseMillicores(rc.GetGpu())
+
+		var distance float64
+		missing := false
+		fits := true
+		for _, d := range []struct{ want, have int64 }{
+			{int64(q.CPU), int64(cpu)},
+			{int64(q.RAM), int64(ram)},
+			{int64(q.GPU), int64(gpu)},
+		} {
+			if d.want == 0 {
+				continue
+			}
+
+			if d.have <= 0 {
+				missing = true
+				break
+			}
+
+			distance += math.Abs(math.Log2(float64(d.have) / float64(d.want)))
+			if d.have < d.want {
+				fits = false
+			}
+		}
+
+		if missing {
+			continue
+		}
+
+		suggestions = append(suggestions, packageSuggestion{pkg: p, cpu: cpu, ram: ram, gpu: gpu, distance: distance, fits: fits})
+	}
+
+	slices.SortStableFunc(suggestions, func(a, b packageSuggestion) int {
+		return cmp.Or(
+			cmp.Compare(a.distance, b.distance),
+			cmp.Compare(a.cpu, b.cpu),
+			cmp.Compare(a.ram, b.ram),
+			cmp.Compare(a.gpu, b.gpu),
+		)
+	})
+
+	if i := slices.IndexFunc(suggestions, func(sg packageSuggestion) bool { return sg.fits }); i > 0 {
+		next := suggestions[i]
+		copy(suggestions[1:i+1], suggestions[:i])
+		suggestions[0] = next
+	}
+
+	if len(suggestions) > limit {
+		suggestions = suggestions[:limit]
+	}
+
+	return suggestions
+}
+
+// noPackageFoundError builds the error for a resource request that no package
+// matches. It names the next biggest package, if there is one, and lists the
+// suggestions as an indented table, one package per line.
+func noPackageFoundError(desc string, suggestions []packageSuggestion, includeGPU bool) error {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "no package found matching %s\n", desc)
+
+	if next := suggestions[0]; next.fits {
+		fmt.Fprintf(&sb, "next biggest package: %s (cpu=%s ram=%s", next.pkg.GetName(), next.cpu.String(), next.ram.String())
+		if includeGPU {
+			fmt.Fprintf(&sb, " gpu=%s", next.gpu.String())
+		}
+
+		sb.WriteString(")\n")
+	}
+
+	sb.WriteString("closest available packages:\n")
+
+	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+
+	header := "  NAME\tCPU\tRAM"
+	if includeGPU {
+		header += "\tGPU"
+	}
+
+	fmt.Fprintln(w, header+"\tDISK")
+
+	for _, sg := range suggestions {
+		line := fmt.Sprintf("  %s\t%s\t%s", sg.pkg.GetName(), sg.cpu.String(), sg.ram.String())
+		if includeGPU {
+			line += "\t" + sg.gpu.String()
+		}
+
+		disk := sg.pkg.GetResourceConfiguration().GetDisk()
+		if parsed, err := resource.ParseByteQuantity(disk); err == nil {
+			disk = parsed.String()
+		}
+
+		fmt.Fprintln(w, line+"\t"+disk)
+	}
+
+	_ = w.Flush()
+
+	sb.WriteString("use 'package list' to see all available packages")
+
+	return errors.New(sb.String())
 }
 
 // CalculateAdditionalDisk returns the additional disk (in GiB) needed beyond

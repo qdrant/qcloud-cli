@@ -3,6 +3,7 @@ package cluster_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -435,6 +436,202 @@ func TestCreateCluster_PackageByResourcesNoMatch(t *testing.T) {
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no package found")
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchSuggestsClosest(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram, disk string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:   "pkg-" + name,
+			Name: name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{
+				Cpu:  cpu,
+				Ram:  ram,
+				Disk: disk,
+			},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("large", "4000m", "16GiB", "128Gi"),
+			pkg("tiny", "500m", "1GiB", "8GiB"),
+			pkg("medium", "2000m", "8GiB", "64GiB"),
+			pkg("small", "1000m", "4GiB", "32GiB"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "2",
+		"--ram", "4GiB",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="2" ram="4GiB"
+next biggest package: medium (cpu=2 ram=8GiB)
+closest available packages:
+  NAME    CPU   RAM    DISK
+  medium  2     8GiB   64GiB
+  small   1     4GiB   32GiB
+  large   4     16GiB  128GiB
+  tiny    500m  1GiB   8GiB
+use 'package list' to see all available packages`, err.Error())
+	assert.Equal(t, 0, env.Server.CreateClusterCalls.Count())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchSuggestsNextBiggestFirst(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Disk: "16Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("gpx1", "500m", "2Gi"),
+			pkg("mx1", "500m", "4Gi"),
+			pkg("mx2", "1000m", "8Gi"),
+			pkg("mx3", "2000m", "16Gi"),
+			pkg("gpx4", "4000m", "16Gi"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "eu-central-1",
+		"--cpu", "0.5",
+		"--ram", "12Gi",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="500m" ram="12GiB"
+next biggest package: mx3 (cpu=2 ram=16GiB)
+closest available packages:
+  NAME  CPU   RAM    DISK
+  mx3   2     16GiB  16GiB
+  mx1   500m  4GiB   16GiB
+  mx2   1     8GiB   16GiB
+  gpx1  500m  2GiB   16GiB
+  gpx4  4     16GiB  16GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchNothingBigEnough(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Disk: "32Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("small", "1000m", "4Gi"),
+			pkg("large", "4000m", "16Gi"),
+			pkg("medium", "2000m", "8Gi"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "8",
+		"--ram", "64Gi",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="8" ram="64GiB"
+closest available packages:
+  NAME    CPU  RAM    DISK
+  large   4    16GiB  32GiB
+  medium  2    8GiB   32GiB
+  small   1    4GiB   32GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchWithGPU(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram, gpu string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Gpu: &gpu, Disk: "128Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("ax4", "4000m", "16Gi", "1000m"),
+			pkg("ax5", "8000m", "32Gi", "1000m"),
+			pkg("ax-big", "8000m", "64Gi", "2000m"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "4",
+		"--ram", "32Gi",
+		"--gpu", "2",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="4" ram="32GiB" gpu="2"
+next biggest package: ax-big (cpu=8 ram=64GiB gpu=2)
+closest available packages:
+  NAME    CPU  RAM    GPU  DISK
+  ax-big  8    64GiB  2    128GiB
+  ax4     4    16GiB  1    128GiB
+  ax5     8    32GiB  1    128GiB
+use 'package list' to see all available packages`, err.Error())
+
+	req, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	assert.True(t, req.GetGpu())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchLimitsSuggestions(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	var items []*bookingv1.Package
+	for i := 1; i <= 8; i++ {
+		items = append(items, &bookingv1.Package{
+			Id:                    fmt.Sprintf("pkg-%d", i),
+			Name:                  fmt.Sprintf("pkg-%d", i),
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: fmt.Sprintf("%d", i), Ram: fmt.Sprintf("%dGiB", 4*i)},
+		})
+	}
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: items}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "3",
+		"--ram", "4GiB",
+	)
+	require.Error(t, err)
+	msg := err.Error()
+	for _, name := range []string{"pkg-1 ", "pkg-2 ", "pkg-3 ", "pkg-4 ", "pkg-5 "} {
+		assert.Contains(t, msg, name)
+	}
+
+	for _, name := range []string{"pkg-6 ", "pkg-7 ", "pkg-8 "} {
+		assert.NotContains(t, msg, name)
+	}
 }
 
 func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
