@@ -250,9 +250,8 @@ func TestDescribeCluster_Resources(t *testing.T) {
 	assert.Contains(t, stdout, "performance")
 	assert.Contains(t, stdout, "8.00 GiB")
 	assert.Contains(t, stdout, "6.40 GiB")
-	assert.Contains(t, stdout, "4000m")
-	assert.Contains(t, stdout, "3200m")
-	assert.Contains(t, stdout, "1000m")
+	assert.Contains(t, stdout, "CPU:   4 base, 0.8 reserved, 3.2 available")
+	assert.Contains(t, stdout, "GPU:   1 base, 0 reserved, 1 available")
 }
 
 func TestDescribeCluster_Nodes(t *testing.T) {

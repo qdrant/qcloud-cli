@@ -124,6 +124,21 @@ func TestScale_CPU(t *testing.T) {
 	assert.Equal(t, 1, env.BookingServer.ListPackagesCalls.Count())
 }
 
+func TestScale_PromptShowsCPUInCores(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: newPkg(pkgID1, "500m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgID2, "1500m", "4GiB", "50GiB"),
+	})
+
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "1.5")
+	require.NoError(t, err)
+
+	assert.Contains(t, stderr, "CPU:     0.5 => 1.5")
+	assert.NotContains(t, stderr, "500m")
+}
+
 func TestScale_RAM(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{

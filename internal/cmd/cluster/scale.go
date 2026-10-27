@@ -376,12 +376,12 @@ func scaleConfirmPrompt(
 		"Cluster %s (%s) will be scaled to:\n  Nodes:   %s\n  CPU:     %s\n  RAM:     %s\n  Disk:    %s",
 		cluster.GetId(), cluster.GetName(),
 		output.DiffValue(fmt.Sprintf("%d", oldNodes), fmt.Sprintf("%d", cluster.Configuration.NumberOfNodes)),
-		output.DiffValue(oldRC.GetCpu(), newRC.GetCpu()),
+		output.DiffValue(output.Cores(oldRC.GetCpu()), output.Cores(newRC.GetCpu())),
 		output.DiffValue(oldRC.GetRam(), newRC.GetRam()),
 		diskLine,
 	)
 	if oldRC.GetGpu() != "" || newRC.GetGpu() != "" {
-		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(oldRC.GetGpu(), newRC.GetGpu()))
+		prompt += fmt.Sprintf("\n  GPU:     %s", output.DiffValue(output.Cores(oldRC.GetGpu()), output.Cores(newRC.GetGpu())))
 	}
 
 	if oldStorageTier != "" || newStorageTier != "" {
