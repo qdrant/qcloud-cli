@@ -28,6 +28,9 @@ func NewCommand(s *state.State) *cobra.Command {
 		newKeyCommand(s),
 		newScaleCommand(s),
 		newLogsCommand(s),
+		newMetricsCommand(s),
+		newNodeMetricsHistoryCommand(s),
+		newClusterMetricsHistoryCommand(s),
 		newDashboardCommand(s),
 		newAlertCommand(s),
 	)
