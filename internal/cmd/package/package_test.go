@@ -22,7 +22,7 @@ func TestListPackages_TableOutput(t *testing.T) {
 				Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD,
 				ResourceConfiguration: &bookingv1.ResourceConfiguration{
 					Ram:  "1GiB",
-					Cpu:  "0.5",
+					Cpu:  "500m",
 					Disk: "10GiB",
 					Gpu:  new("1000m"),
 				},
@@ -47,7 +47,9 @@ func TestListPackages_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "starter")
 	assert.Contains(t, stdout, "STANDARD")
 	assert.Contains(t, stdout, "1GiB")
-	assert.Contains(t, stdout, "1000m")
+	assert.Contains(t, stdout, "0.5")
+	assert.NotContains(t, stdout, "500m")
+	assert.NotContains(t, stdout, "1000m")
 	assert.Contains(t, stdout, "yes")
 	assert.Contains(t, stdout, "0.0500 USD")
 }

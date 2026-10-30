@@ -57,11 +57,11 @@ qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 100Gi --allow-d
 
 ```
       --allow-disk-decrease       Allow --disk to lower the disk below the current total; this deletes the local snapshots of the cluster
-      --cpu millicores            CPU per node (e.g. "1", "0.5", or "1000m")
+      --cpu cores                 CPU per node (e.g. "1", "0.5", or "1000m")
       --disk bytes                Total disk size per node (e.g. "200GiB"); if larger than the node's included disk, the difference is provisioned as additional storage
       --disk-performance string   Disk performance tier ("balanced", "cost-optimised", "performance")
   -f, --force                     Skip confirmation prompts
-      --gpu millicores            Number of GPUs per node (e.g. "1", "2", or "1000m")
+      --gpu cores                 Number of GPUs per node (e.g. "1", "2", or "1000m")
   -h, --help                      help for scale
       --nodes uint32              Number of nodes
       --ram bytes                 RAM per node (e.g. "8", "8G", "8Gi", or "8GiB")

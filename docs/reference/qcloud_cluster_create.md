@@ -49,13 +49,13 @@ qcloud cluster create --cloud-provider hybrid --cloud-region my-env --cpu 4 --ra
       --cloud-provider string                    Cloud provider ID (required, see 'cloud-provider list)
       --cloud-region string                      Cloud provider region ID (required, see 'cloud-region list --cloud-provider <provider_id>)
       --cost-allocation-label string             Label for billing reports
-      --cpu millicores                           CPU to select a package (e.g. "1", "0.5", or "1000m")
+      --cpu cores                                CPU to select a package (e.g. "1", "0.5", or "1000m")
       --database-storage-class string            (cloud-provider: hybrid) Kubernetes storage class for database volumes
       --db-log-level string                      Database log level ("trace", "debug", "info", "warn", "error", "off")
       --disk bytes                               Total disk size (e.g. "200GiB"); if larger than the package's included disk, the difference is provisioned as additional storage
       --disk-performance string                  Disk performance tier ("balanced", "cost-optimised", "performance")
       --enable-tls                               (cloud-provider: hybrid) Enable TLS for the database service
-      --gpu millicores                           Number of GPUs to select a package (e.g. "1", "2", or "1000m")
+      --gpu cores                                Number of GPUs to select a package (e.g. "1", "2", or "1000m")
   -h, --help                                     help for create
       --label stringArray                        Label ('key=value') to add/overwrite; append '-' to remove ('key-'), can be specified multiple times
       --multi-az                                 Require a multi-AZ package

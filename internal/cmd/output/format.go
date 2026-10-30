@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/hako/durafmt"
+
+	"github.com/qdrant/qcloud-cli/internal/resource"
 )
 
 // Duration formats d as a human-readable duration with days as the largest
@@ -47,6 +50,24 @@ func Rate(v float64) string {
 // Milliseconds formats a value in milliseconds with one decimal (e.g. "12.3ms").
 func Milliseconds(v float64) string {
 	return strconv.FormatFloat(v, 'f', 1, 64) + "ms"
+}
+
+// Cores formats a CPU or GPU quantity from the API (e.g. "500m", "2") as a
+// (fractional) number of cores (e.g. "0.5", "2"). Values that cannot be parsed
+// are returned unchanged.
+func Cores(s string) string {
+	m, err := resource.ParseMillicores(s)
+	if err != nil {
+		return s
+	}
+
+	return m.Cores()
+}
+
+// MillicoresAsCores formats a measured millicore value as a (fractional)
+// number of cores (e.g. 1500 → "1.5").
+func MillicoresAsCores(v float64) string {
+	return resource.Millicores(math.Round(v)).Cores()
 }
 
 // UnlimitedIfZero returns "unlimited" when v is 0 and formatted otherwise. It is

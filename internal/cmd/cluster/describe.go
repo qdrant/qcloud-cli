@@ -344,12 +344,12 @@ qcloud cluster describe 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 
 					if cpu := res.GetCpu(); cpu != nil {
 						fmt.Fprintf(w, "  CPU:   %s base, %s reserved, %s available\n",
-							formatMillicores(cpu.GetBase()), formatMillicores(cpu.GetReserved()), formatMillicores(cpu.GetAvailable()))
+							output.MillicoresAsCores(cpu.GetBase()), output.MillicoresAsCores(cpu.GetReserved()), output.MillicoresAsCores(cpu.GetAvailable()))
 					}
 
 					if gpu := res.GetGpu(); gpu != nil {
 						fmt.Fprintf(w, "  GPU:   %s base, %s reserved, %s available\n",
-							formatMillicores(gpu.GetBase()), formatMillicores(gpu.GetReserved()), formatMillicores(gpu.GetAvailable()))
+							output.MillicoresAsCores(gpu.GetBase()), output.MillicoresAsCores(gpu.GetReserved()), output.MillicoresAsCores(gpu.GetAvailable()))
 					}
 				}
 
