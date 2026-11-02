@@ -47,6 +47,56 @@ func TestDiscover_UsesProtectedResourceMetadata(t *testing.T) {
 	assert.Equal(t, []string{"read-only", "manage"}, disc.Scopes)
 }
 
+func TestDiscover_IgnoresMetadataForAnotherResource(t *testing.T) {
+	t.Parallel()
+
+	for name, resource := range map[string]any{
+		"other resource":   "https://api.cloud.qdrant.io",
+		"missing resource": nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"resource":              resource,
+					"authorization_servers": []string{"https://login.cloud.qdrant.io/"},
+					"scopes_supported":      []string{"manage"},
+				})
+			}))
+			t.Cleanup(srv.Close)
+
+			d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
+			disc, err := d.Discover(context.Background(), "grpc.example.com:443")
+			require.NoError(t, err)
+			assert.Equal(t, "https://login.example.com/", disc.Issuer)
+			assert.Equal(t, "https://api.example.com", disc.Resource)
+			assert.Equal(t, []string{"read-only", "manage"}, disc.Scopes)
+			assert.Equal(t, sourceEndpointInference, disc.Source)
+			assert.Contains(t, disc.MetadataError, "does not match")
+		})
+	}
+}
+
+func TestDiscover_AcceptsResourceWithTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"resource":              "https://api.development-cloud.qdrant.io/",
+			"authorization_servers": []string{"https://login.development-cloud.qdrant.io"},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
+	disc, err := d.Discover(context.Background(), "grpc.development-cloud.qdrant.io:443")
+	require.NoError(t, err)
+	assert.Equal(t, "https://login.development-cloud.qdrant.io/", disc.Issuer)
+	assert.Equal(t, "https://api.development-cloud.qdrant.io", disc.Resource)
+	assert.Equal(t, sourceProtectedResource, disc.Source)
+}
+
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {

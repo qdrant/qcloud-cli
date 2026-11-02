@@ -64,13 +64,17 @@ func (d Discoverer) Discover(ctx context.Context, endpoint string) (Discovery, e
 		return out, nil //nolint:nilerr // the inferred values are the fallback; the reason is in MetadataError
 	}
 
+	// RFC 9728 §3.3: a document for another resource must not be used, or an endpoint
+	// could point the login at a real issuer and have the token sent back to it.
+	if got := strings.TrimRight(prm.Resource, "/"); got != out.Resource {
+		out.MetadataError = fmt.Sprintf("protected-resource metadata: resource %q does not match %q", prm.Resource, out.Resource)
+
+		return out, nil
+	}
+
 	if len(prm.AuthorizationServers) > 0 && prm.AuthorizationServers[0] != "" {
 		out.Issuer = canonicalizeIssuer(prm.AuthorizationServers[0])
 		out.Source = sourceProtectedResource
-	}
-
-	if prm.Resource != "" {
-		out.Resource = strings.TrimRight(prm.Resource, "/")
 	}
 
 	if len(prm.ScopesSupported) > 0 {
