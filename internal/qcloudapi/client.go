@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 	authv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/auth/v1"
@@ -56,10 +59,12 @@ func New(ctx context.Context, endpoint, apiKey, version string) (*Client, error)
 	)
 }
 
-// NewWithBearer creates a client that sends Authorization: Bearer <token>.
-func NewWithBearer(ctx context.Context, endpoint, accessToken, version string) (*Client, error) {
-	return newWithAuthorization(endpoint, "Bearer "+accessToken,
+// NewWithTokenSource creates a client that sends Authorization: Bearer <token> with a token from ts on
+// every call, so a token that expires during a long command (such as --wait) is refreshed.
+func NewWithTokenSource(ctx context.Context, endpoint string, ts oauth2.TokenSource, version string) (*Client, error) {
+	return newWithAuthorization(endpoint, "",
 		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		grpc.WithPerRPCCredentials(bearerCredentials{ts: ts}),
 		grpc.WithUserAgent("qcloud-cli/"+version),
 	)
 }
@@ -190,6 +195,26 @@ func (c *Client) ServerlessMonitoring() serverlessmonitoringv1.MonitoringService
 // Close closes the underlying gRPC connection.
 func (c *Client) Close() error {
 	return c.conn.Close()
+}
+
+// bearerCredentials sends the access token from ts on every call. It is what grpc's
+// credentials/oauth.TokenSource does, without its dependency on the Google Cloud packages, and a token
+// that cannot be had (an ended login) fails the call as Unauthenticated instead of Unavailable.
+type bearerCredentials struct {
+	ts oauth2.TokenSource
+}
+
+func (b bearerCredentials) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	tok, err := b.ts.Token()
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	return map[string]string{"authorization": tok.Type() + " " + tok.AccessToken}, nil
+}
+
+func (bearerCredentials) RequireTransportSecurity() bool {
+	return true
 }
 
 const traceIDTrailer = "qc-trace-id"

@@ -9,7 +9,7 @@ import (
 func TestDefaultClientID(t *testing.T) {
 	t.Parallel()
 
-	id, ok := DefaultClientID("https://login.development-cloud.qdrant.io")
+	id, ok := defaultClientID("https://login.development-cloud.qdrant.io")
 	assert.True(t, ok)
 	assert.Equal(t, "CjeXCZKv1plzIF9h3vZBGAhM6MLE68fI", id)
 
@@ -18,7 +18,7 @@ func TestDefaultClientID(t *testing.T) {
 		"https://login.staging-cloud.qdrant.io/", // TBD
 		"https://login.example.com/",             // unknown
 	} {
-		_, ok := DefaultClientID(issuer)
+		_, ok := defaultClientID(issuer)
 		assert.False(t, ok, issuer)
 	}
 }

@@ -4,13 +4,14 @@ Show the OAuth login URL inferred from the API endpoint
 
 ### Synopsis
 
-Print the OAuth API resource and authorization-server issuer for the current endpoint.
+Show the OAuth API resource and login server for the current endpoint.
 
-The gRPC endpoint (default grpc.cloud.qdrant.io:443) is turned into
-https://api.cloud.qdrant.io. The CLI then GETs
-/.well-known/oauth-protected-resource with no credentials. If the gateway
-returns authorization_servers, that issuer is used; otherwise
-login.cloud.qdrant.io is inferred. No client id is required.
+The gRPC endpoint (default grpc.cloud.qdrant.io:443) is turned into the API URL
+https://api.cloud.qdrant.io, whose protected-resource metadata
+(/.well-known/oauth-protected-resource) is read without credentials. When it
+names a login server, that one is used; otherwise login.cloud.qdrant.io is
+inferred from the endpoint, and the output says why the metadata was not used.
+Nothing is stored and no login is needed.
 
 ```
 qcloud auth discover [flags]
@@ -19,7 +20,14 @@ qcloud auth discover [flags]
 ### Examples
 
 ```
+# Show the login server of the current endpoint
 qcloud auth discover
+
+# Show it for another endpoint
+qcloud auth discover --endpoint grpc.cloud.qdrant.io:443
+
+# Read the login server from a script
+qcloud auth discover --json | jq -r .issuer
 ```
 
 ### Options

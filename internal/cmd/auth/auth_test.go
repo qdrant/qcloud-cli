@@ -1,16 +1,12 @@
 package auth_test
 
 import (
-	"context"
-	"encoding/base64"
 	"encoding/json"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,128 +16,76 @@ import (
 	accountv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/account/v1"
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 
-	"github.com/qdrant/qcloud-cli/internal/state"
+	"github.com/qdrant/qcloud-cli/internal/oauth"
 	"github.com/qdrant/qcloud-cli/internal/testutil"
 )
-
-func newEnv(t *testing.T) *testutil.TestEnv {
-	t.Helper()
-	return &testutil.TestEnv{
-		State:   state.New("test"),
-		Cleanup: func() {},
-	}
-}
-
-func TestAuthDiscover_InfersLoginFromEndpoint(t *testing.T) {
-	env := newEnv(t)
-	env.State.SetHTTPClient(&http.Client{Transport: errRoundTrip{}})
-
-	stdout, _, err := testutil.Exec(t, env,
-		"auth", "discover",
-		"--endpoint", "grpc.development-cloud.qdrant.io:443",
-	)
-	require.NoError(t, err)
-	assert.Contains(t, stdout, "grpc.development-cloud.qdrant.io:443")
-	assert.Contains(t, stdout, "https://api.development-cloud.qdrant.io")
-	assert.Contains(t, stdout, "https://login.development-cloud.qdrant.io/")
-	assert.Contains(t, stdout, "inferred from endpoint")
-}
-
-func TestAuthDiscover_UsesGatewayMetadata(t *testing.T) {
-	env := newEnv(t)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/.well-known/oauth-protected-resource", r.URL.Path)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"resource":              "https://api.staging-cloud.qdrant.io",
-			"authorization_servers": []string{"https://login.staging-cloud.qdrant.io/"},
-			"scopes_supported":      []string{"read-only", "manage"},
-		})
-	}))
-	t.Cleanup(srv.Close)
-	env.State.SetHTTPClient(rewriteClient(t, srv.URL))
-
-	stdout, _, err := testutil.Exec(t, env,
-		"auth", "discover",
-		"--endpoint", "grpc.staging-cloud.qdrant.io:443",
-	)
-	require.NoError(t, err)
-	assert.Contains(t, stdout, "https://login.staging-cloud.qdrant.io/")
-	assert.Contains(t, stdout, "protected-resource metadata")
-}
-
-// prepareLogin points env at a fake authorization server that completes a browser login.
-func prepareLogin(t *testing.T, env *testutil.TestEnv) {
-	t.Helper()
-	prepareLoginWithToken(t, env, "access-from-login")
-}
-
-// prepareLoginWithToken is prepareLogin with the access token the server issues.
-func prepareLoginWithToken(t *testing.T, env *testutil.TestEnv, accessToken string) {
-	t.Helper()
-	t.Setenv("HOME", t.TempDir())
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/.well-known/oauth-protected-resource", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"resource":              "https://api.development-cloud.qdrant.io",
-			"authorization_servers": []string{"https://login.development-cloud.qdrant.io/"},
-		})
-	})
-	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"issuer":                 "https://login.development-cloud.qdrant.io/",
-			"authorization_endpoint": "https://login.development-cloud.qdrant.io/authorize",
-			"token_endpoint":         "https://login.development-cloud.qdrant.io/oauth/token",
-		})
-	})
-	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		assert.Equal(t, "test-code", r.Form.Get("code"))
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"access_token":  accessToken,
-			"refresh_token": "refresh-from-login",
-			"token_type":    "Bearer",
-			"expires_in":    3600,
-			"scope":         "manage",
-		})
-	})
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-
-	env.State.SetHTTPClient(rewriteClient(t, srv.URL))
-	env.State.SetBrowserOpener(func(string) error { return nil })
-	env.State.SetWaitAuthCode(func(context.Context, string, string) (string, error) {
-		return "test-code", nil
-	}, "http://127.0.0.1:1/callback")
-}
 
 const devEndpoint = "grpc.development-cloud.qdrant.io:443"
 
 // tempConfig writes a config file for the test and returns its path; credentials.yaml goes next to it.
-func tempConfig(t *testing.T, content string) string {
+func tempConfig(t *testing.T, contexts map[string]map[string]string, current string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "config.yaml")
-	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
-
-	return path
+	return testutil.WriteContextConfigFile(t, t.TempDir(), current, contexts)
 }
 
 func grantAccounts(env *testutil.TestEnv, accounts ...*accountv1.Account) {
 	env.AccountServer.ListAccountsCalls.Returns(&accountv1.ListAccountsResponse{Items: accounts}, nil)
 }
 
-func TestAuthLogin_StoresToken(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
-	grantAccounts(env)
-	cfg := tempConfig(t, "")
-
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
+// login runs "auth login" against the development endpoint with cfg.
+func login(t *testing.T, env *testutil.TestEnv, cfg string, args ...string) (string, string) {
+	t.Helper()
+	stdout, stderr, err := testutil.Exec(t, env, append([]string{"auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app"}, args...)...)
 	require.NoError(t, err)
+
+	return stdout, stderr
+}
+
+func TestAuthDiscover_InfersLoginFromEndpoint(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "discover", "--endpoint", devEndpoint)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Endpoint:     grpc.development-cloud.qdrant.io:443")
+	assert.Contains(t, stdout, "API resource: https://api.development-cloud.qdrant.io")
+	assert.Contains(t, stdout, "Login URL:    https://login.development-cloud.qdrant.io/")
+	assert.Contains(t, stdout, "Source:       inferred from endpoint")
+	assert.Contains(t, stdout, "Metadata:     not used")
+}
+
+func TestAuthDiscover_UsesGatewayMetadata(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	server.Cluster = "staging-cloud"
+	env := testutil.NewTestEnv(t, testutil.WithOAuthServer(server))
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "discover", "--endpoint", "grpc.staging-cloud.qdrant.io:443")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "Login URL:    https://login.staging-cloud.qdrant.io/")
+	assert.Contains(t, stdout, "Source:       protected-resource metadata")
+	assert.Contains(t, stdout, "Scopes:       read-only, manage")
+}
+
+func TestAuthDiscover_JSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "discover", "--endpoint", devEndpoint, "--json")
+	require.NoError(t, err)
+
+	var got oauth.Discovery
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, devEndpoint, got.Endpoint)
+	assert.Equal(t, "https://api.development-cloud.qdrant.io", got.Resource)
+	assert.Equal(t, "https://login.development-cloud.qdrant.io/", got.Issuer)
+	assert.Equal(t, "inferred from endpoint", got.Source)
+	assert.NotEmpty(t, got.MetadataError)
+}
+
+func TestAuthLogin_StoresToken(t *testing.T) {
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
+	grantAccounts(env)
+	cfg := tempConfig(t, nil, "")
+
+	stdout, _ := login(t, env, cfg)
 	assert.Contains(t, stdout, "Logged in; no accounts were granted.")
 
 	// The tokens are in the keychain (in-memory in tests), not in credentials.yaml.
@@ -156,29 +100,85 @@ func TestAuthLogin_StoresToken(t *testing.T) {
 
 	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
-	assert.Contains(t, statusOut, "logged in")
+	assert.Contains(t, statusOut, "Status:    logged in")
 
 	_, _, err = testutil.Exec(t, env, "auth", "logout", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
 
 	_, _, err = testutil.Exec(t, env, "auth", "token", "--config", cfg, "--endpoint", devEndpoint)
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not logged in")
+}
+
+func TestAuthLogin_Device(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
+	grantAccounts(env)
+	cfg := tempConfig(t, nil, "")
+
+	_, stderr := login(t, env, cfg, "--device", "--scope", "read-only")
+	assert.Contains(t, stderr, "confirm the code ABCD-EFGH")
+
+	forms := server.DeviceForms()
+	require.Len(t, forms, 1)
+	assert.Equal(t, "https://api.development-cloud.qdrant.io", forms[0].Get("audience"))
+	assert.Equal(t, "read-only openid email offline_access", forms[0].Get("scope"))
+}
+
+func TestAuthLogin_JSON(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	server.AccessToken = testutil.FakeJWT(t, map[string]any{
+		"user_email":                            "ada@example.com",
+		"https://cloud.qdrant.io/granted_scope": "manage",
+	})
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
+	grantAccounts(env,
+		&accountv1.Account{Id: "a1", Name: "First"},
+		&accountv1.Account{Id: "a2", Name: "Second"},
+	)
+	cfg := tempConfig(t, nil, "")
+
+	stdout, stderr := login(t, env, cfg, "--json")
+	assert.Contains(t, stderr, "Opening the browser to log in.", "the prompts go to stderr")
+
+	var got struct {
+		Endpoint        string `json:"endpoint"`
+		Email           string `json:"email"`
+		GrantedScope    string `json:"granted_scope"`
+		CurrentContext  string `json:"current_context"`
+		SelectedContext string `json:"selected_context"`
+		AccountsListed  bool   `json:"accounts_listed"`
+		Contexts        []struct {
+			Name        string `json:"name"`
+			AccountID   string `json:"account_id"`
+			AccountName string `json:"account_name"`
+		} `json:"contexts"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, devEndpoint, got.Endpoint)
+	assert.Equal(t, "ada@example.com", got.Email)
+	assert.Equal(t, "manage", got.GrantedScope)
+	assert.True(t, got.AccountsListed)
+	assert.Equal(t, "dev-first", got.CurrentContext)
+	assert.Equal(t, "dev-first", got.SelectedContext)
+	require.Len(t, got.Contexts, 2)
+	assert.Equal(t, "dev-second", got.Contexts[1].Name)
+	assert.Equal(t, "a2", got.Contexts[1].AccountID)
+	assert.Equal(t, "Second", got.Contexts[1].AccountName)
 }
 
 func TestAuthLogin_CreatesAndSelectsTheContextOfTheOnlyAccount(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
 	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
 	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
-	cfg := tempConfig(t, "")
+	cfg := tempConfig(t, nil, "")
 
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
-	require.NoError(t, err)
+	stdout, _ := login(t, env, cfg)
 	assert.Contains(t, stdout, "Logged in, account Only Account (context dev-only-account).")
 	assert.NotContains(t, stdout, "Switch to it")
 
 	// The context is current: no --endpoint, no --account-id.
-	_, _, err = testutil.Exec(t, env, "cluster", "list", "--config", cfg)
+	_, _, err := testutil.Exec(t, env, "cluster", "list", "--config", cfg)
 	require.NoError(t, err)
 	req, ok := env.Server.ListClustersCalls.Last()
 	require.True(t, ok)
@@ -195,42 +195,45 @@ func TestAuthLogin_CreatesAndSelectsTheContextOfTheOnlyAccount(t *testing.T) {
 }
 
 func TestAuthLogin_ShowsTheGrantedScope(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	claims := base64.RawURLEncoding.EncodeToString([]byte(
-		`{"user_email":"ada@example.com","https://cloud.qdrant.io/granted_scope":"read-only"}`))
-	prepareLoginWithToken(t, env, "h."+claims+".s")
+	server := testutil.NewFakeOAuthServer()
+	server.AccessToken = testutil.FakeJWT(t, map[string]any{
+		"user_email":                            "ada@example.com",
+		"https://cloud.qdrant.io/granted_scope": "read-only",
+		"https://cloud.qdrant.io/grant_id":      "8f6a1c2e-3b4d-4e5f-9a0b-1c2d3e4f5a6b",
+		"iss":                                   "https://login.development-cloud.qdrant.io/",
+		"aud":                                   []string{"https://api.development-cloud.qdrant.io"},
+		"scope":                                 "openid email manage offline_access",
+	})
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
 	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
-	cfg := tempConfig(t, "")
+	cfg := tempConfig(t, nil, "")
 
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
-	require.NoError(t, err)
+	stdout, _ := login(t, env, cfg)
 	assert.Contains(t, stdout, "Logged in as ada@example.com, account Only Account, read only (context dev-only-account).")
 
 	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg)
 	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Status:    logged in as ada@example.com")
 	assert.Contains(t, statusOut, "Access:    read only")
-	assert.NotContains(t, statusOut, "Requested")
 }
 
 func TestAuthLogin_SeveralAccountsGetAContextEachAndTheFirstIsSelected(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
 	grantAccounts(env,
 		&accountv1.Account{Id: "a1", Name: "Jane Doe - Base Account"},
-		&accountv1.Account{Id: "a2", Name: "Andrey Vasnetsov - Base Account"},
+		&accountv1.Account{Id: "a2", Name: "John Roe - Base Account"},
 	)
-	cfg := tempConfig(t, "")
+	cfg := tempConfig(t, nil, "")
 
-	stdout, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
-	require.NoError(t, err)
+	stdout, _ := login(t, env, cfg)
 	assert.Contains(t, stdout, "Contexts for your 2 accounts:")
 	assert.Contains(t, stdout, "  * dev-jane-doe-base-account  (Jane Doe - Base Account)")
-	assert.Contains(t, stdout, "    dev-andrey-vasnetsov-base-account  (Andrey Vasnetsov - Base Account)")
+	assert.Contains(t, stdout, "    dev-john-roe-base-account  (John Roe - Base Account)")
 	assert.Contains(t, stdout, "Switch with: qcloud context use <name>")
 
 	// The first account's context is current.
 	env.Server.ListClustersCalls.Returns(&clusterv1.ListClustersResponse{}, nil)
-	_, _, err = testutil.Exec(t, env, "cluster", "list", "--config", cfg)
+	_, _, err := testutil.Exec(t, env, "cluster", "list", "--config", cfg)
 	require.NoError(t, err)
 	req, ok := env.Server.ListClustersCalls.Last()
 	require.True(t, ok)
@@ -238,29 +241,19 @@ func TestAuthLogin_SeveralAccountsGetAContextEachAndTheFirstIsSelected(t *testin
 }
 
 func TestAuthLogin_UpdatesOnlyItsOwnContexts(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
-	// An API key context with the name the login would pick, current; and an OAuth context of an
-	// account that is no longer granted.
-	cfg := tempConfig(t, `current_context: dev-only-account
-contexts:
-  - name: dev-only-account
-    endpoint: `+devEndpoint+`
-    api_key: secret
-    account_id: key-acc
-  - name: dev-old-account
-    endpoint: `+devEndpoint+`
-    account_id: old-acc
-    auth: oauth
-`)
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
+	// A current API key context with the name the login would pick, and an OAuth context of an account
+	// that is no longer granted.
+	cfg := tempConfig(t, map[string]map[string]string{
+		"dev-only-account": {"endpoint": devEndpoint, "api_key": "secret", "account_id": "key-acc"},
+		"dev-old-account":  {"endpoint": devEndpoint, "account_id": "old-acc", "auth": "oauth"},
+	}, "dev-only-account")
 	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
 
-	// --context picks the OAuth context for this run: with the API key context active, the login would use
-	// the key and look nothing up.
-	stdout, stderr, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint,
-		"--client-id", "cli-app", "--context", "dev-old-account")
-	require.NoError(t, err)
-	assert.NotContains(t, stderr, "Could not list your accounts")
+	// The API key of the current context does not stop the login from creating its contexts.
+	stdout, stderr := login(t, env, cfg)
+	assert.NotContains(t, stderr, "could not list your accounts")
+	assert.NotContains(t, stderr, "API key is set")
 	assert.Contains(t, stdout, "account Only Account (context dev-only-account-2).")
 	assert.Contains(t, stdout, "Switch to it with: qcloud context use dev-only-account-2")
 
@@ -271,32 +264,119 @@ contexts:
 	assert.NotContains(t, listOut, "dev-old-account", "the context of an account no longer granted is removed")
 }
 
-func TestAuthLogout_RemovesTheOAuthContexts(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
+func TestAuthLogin_WarnsAboutAnAPIKeyFromTheEnvironment(t *testing.T) {
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
 	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
-	cfg := tempConfig(t, "")
+	cfg := tempConfig(t, nil, "")
+	t.Setenv("QDRANT_CLOUD_API_KEY", "env-key")
 
-	_, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
+	stdout, stderr := login(t, env, cfg)
+	assert.Contains(t, stderr, "Warning: an API key is set with --api-key or QDRANT_CLOUD_API_KEY")
+	assert.Contains(t, stdout, "(context dev-only-account)", "the contexts are created anyway")
+}
+
+func TestAuthLogin_AccountLookupFailureDoesNotFailLogin(t *testing.T) {
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
+	env.AccountServer.ListAccountsCalls.Returns(nil, status.Error(codes.Unavailable, "down"))
+	cfg := tempConfig(t, nil, "")
+
+	stdout, stderr := login(t, env, cfg)
+	assert.Contains(t, stdout, "Logged in.")
+	assert.Contains(t, stderr, "Warning: could not list your accounts")
+}
+
+func TestAuthLogin_MissingClientID(t *testing.T) {
+	env := testutil.NewTestEnv(t, testutil.WithAPIKey(""), testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
+	t.Setenv("QDRANT_CLOUD_OAUTH_CLIENT_ID", "")
+
+	_, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", "grpc.cloud.qdrant.io:443")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "client id")
+}
+
+func TestAuthLogin_ClientIDFromTheEnvironment(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
+	grantAccounts(env)
+	cfg := tempConfig(t, nil, "")
+	t.Setenv("QDRANT_CLOUD_OAUTH_CLIENT_ID", "env-client")
+
+	_, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
 
-	stdout, _, err := testutil.Exec(t, env, "auth", "logout", "--config", cfg, "--endpoint", devEndpoint)
+	forms := server.TokenForms()
+	require.Len(t, forms, 1)
+	assert.Equal(t, "env-client", forms[0].Get("client_id"))
+}
+
+func TestAuthLogout_RevokesAndRemovesTheOAuthContexts(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+	cfg := tempConfig(t, nil, "")
+	login(t, env, cfg)
+
+	stdout, stderr, err := testutil.Exec(t, env, "auth", "logout", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
+	assert.Empty(t, stderr)
 	assert.Contains(t, stdout, "Logged out; removed contexts dev-only-account.")
+	assert.Equal(t, []string{"refresh-from-login"}, server.Revoked())
 
 	listOut, _, err := testutil.Exec(t, env, "context", "list", "--config", cfg)
 	require.NoError(t, err)
 	assert.NotContains(t, listOut, "dev-only-account")
 }
 
-func TestAuthStatus_ShowsWhereTheAccountComesFrom(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
-	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
-	cfg := tempConfig(t, "")
+// brokenKeychain stores the tokens of the login, then fails, as a keychain that was locked or reset.
+type brokenKeychain struct {
+	*oauth.MemorySecrets
+	broken bool
+}
 
-	_, _, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
+var errKeychain = errors.New("keychain is locked")
+
+func (k *brokenKeychain) Get(service, user string) (string, error) {
+	if k.broken {
+		return "", errKeychain
+	}
+
+	return k.MemorySecrets.Get(service, user)
+}
+
+func (k *brokenKeychain) Delete(service, user string) error {
+	if k.broken {
+		return errKeychain
+	}
+
+	return k.MemorySecrets.Delete(service, user)
+}
+
+func TestAuthLogout_WorksWhenTheKeychainFails(t *testing.T) {
+	keychain := &brokenKeychain{MemorySecrets: oauth.NewMemorySecrets()}
+	server := testutil.NewFakeOAuthServer()
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server), testutil.WithSecretStore(keychain))
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+	cfg := tempConfig(t, nil, "")
+	login(t, env, cfg)
+
+	keychain.broken = true
+	stdout, stderr, err := testutil.Exec(t, env, "auth", "logout", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
+	assert.Contains(t, stderr, "Warning: could not read the refresh token, so it was not revoked")
+	assert.Contains(t, stderr, "Warning: could not remove the OAuth tokens from the OS keychain")
+	assert.Contains(t, stdout, "Logged out; removed contexts dev-only-account.")
+	assert.Empty(t, server.Revoked())
+
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg, "--endpoint", devEndpoint)
+	require.NoError(t, err)
+	assert.Contains(t, statusOut, "Status:    logged out")
+}
+
+func TestAuthStatus_ShowsWhereTheAccountComesFrom(t *testing.T) {
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+	cfg := tempConfig(t, nil, "")
+	login(t, env, cfg)
 
 	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg, "--account-id", "flag-acc")
 	require.NoError(t, err)
@@ -308,53 +388,97 @@ func TestAuthStatus_ShowsWhereTheAccountComesFrom(t *testing.T) {
 	assert.Contains(t, statusOut, "Account:   env-acc (from QDRANT_CLOUD_ACCOUNT_ID)")
 }
 
-func TestAuthLogin_AccountLookupFailureDoesNotFailLogin(t *testing.T) {
-	env := testutil.NewBareTestEnv(t)
-	prepareLogin(t, env)
-	env.AccountServer.ListAccountsCalls.Returns(nil, status.Error(codes.Unavailable, "down"))
-	cfg := tempConfig(t, "")
+func TestAuthStatus_JSON(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	server.AccessToken = testutil.FakeJWT(t, map[string]any{
+		"user_email":                            "ada@example.com",
+		"https://cloud.qdrant.io/granted_scope": "read-only",
+	})
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
+	grantAccounts(env, &accountv1.Account{Id: "acc-only", Name: "Only Account"})
+	cfg := tempConfig(t, nil, "")
+	login(t, env, cfg)
 
-	stdout, stderr, err := testutil.Exec(t, env, "auth", "login", "--config", cfg, "--endpoint", devEndpoint, "--client-id", "cli-app")
+	stdout, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg, "--json")
 	require.NoError(t, err)
-	assert.Contains(t, stdout, "Logged in")
-	assert.Contains(t, stderr, "Could not list your accounts")
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, "dev-only-account", got["context"])
+	assert.Equal(t, devEndpoint, got["endpoint"])
+	assert.Equal(t, "https://login.development-cloud.qdrant.io/", got["login_url"])
+	assert.Equal(t, true, got["logged_in"])
+	assert.Equal(t, false, got["expired"])
+	assert.Equal(t, "ada@example.com", got["email"])
+	assert.Equal(t, "read-only", got["granted_scope"])
+	assert.Equal(t, "acc-only", got["account_id"])
+	assert.Equal(t, "context dev-only-account", got["account_source"])
+	assert.Equal(t, false, got["api_key_set"])
+	expiry, err := time.Parse(time.RFC3339, got["expiry"].(string))
+	require.NoError(t, err)
+	assert.WithinDuration(t, time.Now().Add(time.Hour), expiry, time.Minute)
 }
 
-func TestAuthLogin_MissingClientID(t *testing.T) {
-	env := newEnv(t)
-	t.Setenv("QDRANT_CLOUD_OAUTH_CLIENT_ID", "")
-	env.State.SetHTTPClient(&http.Client{Transport: errRoundTrip{}})
+func TestAuthStatus_LoggedOutJSON(t *testing.T) {
+	env := testutil.NewTestEnv(t, testutil.WithAPIKey(""))
 
-	_, _, err := testutil.Exec(t, env,
-		"auth", "login",
-		"--endpoint", "grpc.cloud.qdrant.io:443",
-		"--client-id", "",
-	)
+	stdout, _, err := testutil.Exec(t, env, "auth", "status", "--endpoint", devEndpoint, "--json")
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, false, got["logged_in"])
+	assert.NotContains(t, got, "expiry")
+}
+
+func TestAuthToken_JSON(t *testing.T) {
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
+	grantAccounts(env)
+	cfg := tempConfig(t, nil, "")
+	login(t, env, cfg, "--scope", "read-only")
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "token", "--config", cfg, "--endpoint", devEndpoint, "--json")
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &got))
+	assert.Equal(t, "access-from-login", got["access_token"])
+	assert.Equal(t, "Bearer", got["token_type"])
+	assert.Equal(t, "read-only", got["scope"])
+	assert.NotEmpty(t, got["expiry"])
+}
+
+func TestAuthToken_RefreshesAnExpiredToken(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	server.ExpiresIn = 10 // within the refresh margin
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
+	grantAccounts(env)
+	cfg := tempConfig(t, nil, "")
+	login(t, env, cfg)
+
+	stdout, _, err := testutil.Exec(t, env, "auth", "token", "--config", cfg, "--endpoint", devEndpoint)
+	require.NoError(t, err)
+	assert.Equal(t, "access-from-refresh\n", stdout)
+
+	forms := server.TokenForms()
+	require.Len(t, forms, 2)
+	assert.Equal(t, "refresh_token", forms[1].Get("grant_type"))
+}
+
+func TestAuthToken_AnEndedLoginAsksToLogInAgain(t *testing.T) {
+	server := testutil.NewFakeOAuthServer()
+	server.ExpiresIn = 10
+	server.RefreshError = "invalid_grant"
+	env := testutil.NewBareTestEnv(t, testutil.WithOAuthServer(server))
+	grantAccounts(env)
+	cfg := tempConfig(t, nil, "")
+	login(t, env, cfg)
+
+	_, _, err := testutil.Exec(t, env, "auth", "token", "--config", cfg, "--endpoint", devEndpoint)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "client id")
-}
+	assert.Contains(t, err.Error(), "qcloud auth login")
 
-type errRoundTrip struct{}
-
-func (errRoundTrip) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, io.ErrUnexpectedEOF
-}
-
-func rewriteClient(t *testing.T, target string) *http.Client {
-	t.Helper()
-	u, err := url.Parse(target)
+	statusOut, _, err := testutil.Exec(t, env, "auth", "status", "--config", cfg, "--endpoint", devEndpoint)
 	require.NoError(t, err)
-	return &http.Client{Transport: rewriteTransport{target: u}}
-}
-
-type rewriteTransport struct {
-	target *url.URL
-}
-
-func (r rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	clone := req.Clone(req.Context())
-	clone.URL.Scheme = r.target.Scheme
-	clone.URL.Host = r.target.Host
-	clone.Host = r.target.Host
-	return http.DefaultTransport.RoundTrip(clone)
+	assert.Contains(t, statusOut, "Status:    logged out")
 }

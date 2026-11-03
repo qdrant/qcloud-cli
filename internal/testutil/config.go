@@ -37,6 +37,8 @@ func WriteYAMLConfigFile(t *testing.T, dir string, content map[string]any) strin
 
 // WriteContextConfigFile writes a context-format YAML config file to dir/config.yaml.
 // Contexts are written as a YAML slice (- name: ...) sorted by name for deterministic output.
+// Each context's values are keyed by their YAML names: endpoint, api_key, api_key_command, account_id,
+// and auth ("oauth" for a context that uses the OAuth login).
 // Returns the full path for use with --config or QDRANT_CLOUD_CONFIG.
 func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts map[string]map[string]string) string {
 	t.Helper()
@@ -58,6 +60,7 @@ func WriteContextConfigFile(t *testing.T, dir, currentContext string, contexts m
 			APIKey:        vals["api_key"],
 			APIKeyCommand: vals["api_key_command"],
 			AccountID:     vals["account_id"],
+			Auth:          vals["auth"],
 		})
 	}
 

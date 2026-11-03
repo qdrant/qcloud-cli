@@ -7,18 +7,23 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
-	"github.com/qdrant/qcloud-cli/internal/oauth"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
 func newLogoutCommand(s *state.State) *cobra.Command {
 	return base.Cmd{
-		Long: `Remove the stored OAuth token for the current endpoint.
+		Long: `Log out of the current endpoint: remove its stored session and the contexts that use it.
 
-If the authorization server advertises a revocation endpoint, the refresh
-token is revoked first. Management API keys in the config file are not
-changed.`,
-		Example: `qcloud auth logout`,
+The refresh token is revoked at the login server first. Logging out still
+succeeds when that is not possible (the keychain entry is gone, or the login
+server cannot be reached); qcloud then warns and removes the session anyway.
+The access you granted stays listed under "Connected apps" in the console, where
+you revoke it. Contexts with an API key are not changed.`,
+		Example: `# Log out of the current endpoint
+qcloud auth logout
+
+# Log out of another endpoint
+qcloud auth logout --endpoint grpc.cloud.qdrant.io:443`,
 		BaseCobraCommand: func() *cobra.Command {
 			return &cobra.Command{
 				Use:   "logout",
@@ -26,21 +31,14 @@ changed.`,
 				Args:  cobra.NoArgs,
 			}
 		},
-		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
-			path := oauth.CredentialsPath(s.Config.ConfigFilePath())
+		Run: func(s *state.State, cmd *cobra.Command, _ []string) error {
 			endpoint := s.Config.Endpoint()
-			tok, ok, err := oauth.LoadToken(path, endpoint)
+			warnings, err := s.OAuth().Logout(cmd.Context(), endpoint)
+			for _, w := range warnings {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %v\n", w)
+			}
+
 			if err != nil {
-				return err
-			}
-
-			if ok {
-				if err := s.OAuthDiscoverer().RevokeRefreshToken(cmd.Context(), tok); err != nil {
-					fmt.Fprintf(cmd.ErrOrStderr(), "warning: could not revoke refresh token: %v\n", err)
-				}
-			}
-
-			if err := oauth.DeleteToken(path, endpoint); err != nil {
 				return err
 			}
 

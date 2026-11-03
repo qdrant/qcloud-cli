@@ -2,14 +2,17 @@ package oauth
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,152 +20,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLogin_AuthorizationCode(t *testing.T) {
-	t.Parallel()
+const devEndpoint = "grpc.development-cloud.qdrant.io:443"
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(wellKnownPRM, func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"resource":              "https://api.development-cloud.qdrant.io",
-			"authorization_servers": []string{"https://login.development-cloud.qdrant.io/"},
-		})
-	})
-	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"issuer":                 "https://login.development-cloud.qdrant.io/",
-			"authorization_endpoint": "https://login.development-cloud.qdrant.io/authorize",
-			"token_endpoint":         "https://login.development-cloud.qdrant.io/oauth/token",
-		})
-	})
-	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		assert.Equal(t, "authorization_code", r.Form.Get("grant_type"))
-		assert.Equal(t, "test-code", r.Form.Get("code"))
-		assert.Equal(t, "cli-client", r.Form.Get("client_id"))
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"access_token":  "at-1",
-			"refresh_token": "rt-1",
-			"token_type":    "Bearer",
-			"expires_in":    3600,
-			"scope":         "manage offline_access",
-		})
-	})
-
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-
-	for _, tc := range []struct {
-		name    string
-		openErr error
-		wantURL bool
-	}{
-		{name: "browser opens: no URL", openErr: nil, wantURL: false},
-		{name: "no browser: the URL, and the login still waits", openErr: errors.New("no display"), wantURL: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			var out strings.Builder
-			d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
-			tok, disc, err := d.Login(context.Background(), LoginOptions{
-				Endpoint:    "grpc.development-cloud.qdrant.io:443",
-				ClientID:    "cli-client",
-				Scope:       "manage",
-				RedirectURL: "http://127.0.0.1:1/callback",
-				WaitCode: func(context.Context, string, string) (string, error) {
-					return "test-code", nil
-				},
-				OpenURL: func(string) error { return tc.openErr },
-				Output:  &out,
-			})
-			require.NoError(t, err)
-			assert.Equal(t, "at-1", tok.AccessToken)
-			assert.Equal(t, "rt-1", tok.RefreshToken)
-			assert.Equal(t, sourceProtectedResource, disc.Source)
-
-			if tc.wantURL {
-				assert.Contains(t, out.String(), "https://login.development-cloud.qdrant.io/authorize?")
-				assert.Contains(t, out.String(), "--device")
-			} else {
-				assert.Equal(t, "Opening the browser to log in.\n", out.String())
-			}
-		})
-	}
+// fakeLoginServer is the development environment's protected-resource metadata and login server.
+// token answers the token endpoint.
+type fakeLoginServer struct {
+	mu         sync.Mutex
+	tokenForms []url.Values
+	deviceForm url.Values
+	token      func(form url.Values) (int, map[string]any)
 }
 
-func TestLogin_RequiresClientID(t *testing.T) {
-	t.Parallel()
-
-	d := Discoverer{HTTPClient: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return nil, assert.AnError
-	})}}
-	_, _, err := d.Login(context.Background(), LoginOptions{
-		Endpoint: "grpc.cloud.qdrant.io:443",
-	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "client id")
+func (f *fakeLoginServer) forms() []url.Values {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]url.Values(nil), f.tokenForms...)
 }
 
-func TestAuthorizationCallback(t *testing.T) {
-	t.Parallel()
-
-	code, err := authorizationCallback(url.Values{
-		"code":  {"abc"},
-		"state": {"s"},
-		"iss":   {"https://login.cloud.qdrant.io/"},
-	}, "s", "https://login.cloud.qdrant.io/")
-	require.NoError(t, err)
-	assert.Equal(t, "abc", code)
-
-	_, err = authorizationCallback(url.Values{"code": {"abc"}, "state": {"other"}}, "s", "https://login.cloud.qdrant.io/")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "state mismatch")
-
-	_, err = authorizationCallback(url.Values{
-		"code":  {"abc"},
-		"state": {"s"},
-		"iss":   {"https://evil.example/"},
-	}, "s", "https://login.cloud.qdrant.io/")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "issuer mismatch")
-
-	_, err = authorizationCallback(url.Values{"error": {"access_denied"}}, "s", "https://login.cloud.qdrant.io/")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "access_denied")
-}
-
-func TestNextDevicePollInterval(t *testing.T) {
-	t.Parallel()
-
-	next, again := nextDevicePollInterval(5*time.Second, assert.AnError)
-	assert.False(t, again)
-	assert.Equal(t, 5*time.Second, next)
-
-	// Auth0's description does not contain the code; the poll goes by the code.
-	next, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "authorization_pending", Description: "User has yet to authorize device code."})
-	assert.True(t, again)
-	assert.Equal(t, 5*time.Second, next)
-
-	next, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "slow_down"})
-	assert.True(t, again)
-	assert.Equal(t, 10*time.Second, next)
-
-	_, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "access_denied", Description: "authorization_pending"})
-	assert.False(t, again, "a description that looks like a code does not keep polling")
-
-	_, again = nextDevicePollInterval(5*time.Second, &TokenError{Code: "expired_token"})
-	assert.False(t, again)
-}
-
-func TestLogin_DeviceUsesAudience(t *testing.T) {
-	t.Parallel()
-
-	var deviceForm, tokenForm url.Values
-	polls := 0
+func (f *fakeLoginServer) start(t *testing.T) *http.Client {
+	t.Helper()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(wellKnownPRM, func(w http.ResponseWriter, _ *http.Request) {
@@ -180,13 +56,10 @@ func TestLogin_DeviceUsesAudience(t *testing.T) {
 		})
 	})
 	mux.HandleFunc("/oauth/device/code", func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-
-			return
-		}
-
-		deviceForm = r.Form
+		_ = r.ParseForm()
+		f.mu.Lock()
+		f.deviceForm = r.PostForm
+		f.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"device_code":               "dev-1",
 			"user_code":                 "ABCD-EFGH",
@@ -196,46 +69,296 @@ func TestLogin_DeviceUsesAudience(t *testing.T) {
 		})
 	})
 	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-
-			return
-		}
-
-		tokenForm = r.Form
-		polls++
-		if polls == 1 {
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]any{"error": "authorization_pending", "error_description": "User has yet to authorize device code."})
-			return
-		}
-
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"access_token":  "at-1",
-			"refresh_token": "rt-1",
-			"token_type":    "Bearer",
-			"expires_in":    3600,
-		})
+		_ = r.ParseForm()
+		f.mu.Lock()
+		f.tokenForms = append(f.tokenForms, r.PostForm)
+		f.mu.Unlock()
+		status, body := f.token(r.PostForm)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(body)
 	})
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
-	tok, _, err := d.Login(context.Background(), LoginOptions{
-		Endpoint: "grpc.development-cloud.qdrant.io:443",
+	return rewriteClient(t, srv.URL)
+}
+
+// newTestClient is a Client for httpClient, with an in-memory keychain in a new config directory and
+// a browser login that gets the code "test-code".
+func newTestClient(t *testing.T, httpClient *http.Client) *Client {
+	t.Helper()
+	dir := t.TempDir()
+
+	return NewClient(Options{
+		ConfigDir:   func() string { return dir },
+		Secrets:     NewMemorySecrets(),
+		HTTPClient:  httpClient,
+		RedirectURL: "http://127.0.0.1:48271/callback",
+		WaitCode: func(context.Context, string, string) (string, error) {
+			return "test-code", nil
+		},
+	})
+}
+
+func jwt(claims string) string {
+	enc := base64.RawURLEncoding.EncodeToString
+	return enc([]byte(`{"alg":"RS256"}`)) + "." + enc([]byte(claims)) + ".s"
+}
+
+func TestLogin_AuthorizationCode(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name    string
+		openErr error
+		wantURL bool
+	}{
+		{name: "browser opens: no URL", openErr: nil, wantURL: false},
+		{name: "no browser: the URL, and the login still waits", openErr: errors.New("no display"), wantURL: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := &fakeLoginServer{token: func(url.Values) (int, map[string]any) {
+				return http.StatusOK, map[string]any{
+					"access_token":  jwt(`{"user_email":"ada@example.com","https://cloud.qdrant.io/granted_scope":"read-only"}`),
+					"refresh_token": "rt-1",
+					"token_type":    "Bearer",
+					"expires_in":    3600,
+					"scope":         "manage offline_access",
+				}
+			}}
+			c := newTestClient(t, server.start(t))
+
+			var out strings.Builder
+			var opened string
+			res, err := c.Login(context.Background(), LoginOptions{
+				Endpoint: devEndpoint,
+				ClientID: "cli-client",
+				Scope:    "manage",
+				OpenURL: func(u string) error {
+					opened = u
+					return tc.openErr
+				},
+				Output: &out,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, sourceProtectedResource, res.Discovery.Source)
+			assert.Equal(t, "rt-1", res.Token.RefreshToken)
+			assert.Equal(t, "manage", res.Token.Scope, "the requested scope, not the scope of the response")
+			assert.Equal(t, "read-only", res.Token.GrantedScope)
+			assert.Equal(t, "ada@example.com", res.Token.Email)
+
+			authorize, err := url.Parse(opened)
+			require.NoError(t, err)
+			q := authorize.Query()
+			assert.Equal(t, "cli-client", q.Get("client_id"))
+			assert.Equal(t, "https://api.development-cloud.qdrant.io", q.Get("resource"))
+			assert.Equal(t, "S256", q.Get("code_challenge_method"))
+			assert.Equal(t, "manage openid email offline_access", q.Get("scope"))
+
+			forms := server.forms()
+			require.Len(t, forms, 1)
+			assert.Equal(t, "authorization_code", forms[0].Get("grant_type"))
+			assert.Equal(t, "test-code", forms[0].Get("code"))
+			assert.Equal(t, "cli-client", forms[0].Get("client_id"))
+			assert.Equal(t, "https://api.development-cloud.qdrant.io", forms[0].Get("resource"))
+			assert.NotEmpty(t, forms[0].Get("code_verifier"))
+
+			stored, ok, err := c.store.load(devEndpoint)
+			require.NoError(t, err)
+			require.True(t, ok)
+			assert.Equal(t, res.Token.AccessToken, stored.AccessToken)
+
+			if tc.wantURL {
+				assert.Contains(t, out.String(), "https://login.development-cloud.qdrant.io/authorize?")
+				assert.Contains(t, out.String(), "--device")
+			} else {
+				assert.Equal(t, "Opening the browser to log in.\n", out.String())
+			}
+		})
+	}
+}
+
+func TestLogin_RequiresClientID(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, assert.AnError
+	})})
+	_, err := c.Login(context.Background(), LoginOptions{Endpoint: "grpc.cloud.qdrant.io:443"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "client id")
+}
+
+func TestLogin_DeviceUsesAudience(t *testing.T) {
+	t.Parallel()
+
+	polls := 0
+	server := &fakeLoginServer{token: func(url.Values) (int, map[string]any) {
+		polls++
+		if polls == 1 {
+			return http.StatusForbidden, map[string]any{"error": "authorization_pending", "error_description": "User has yet to authorize device code."}
+		}
+
+		return http.StatusOK, map[string]any{"access_token": "at-1", "refresh_token": "rt-1", "token_type": "Bearer", "expires_in": 3600}
+	}}
+	c := newTestClient(t, server.start(t))
+
+	var out strings.Builder
+	res, err := c.Login(context.Background(), LoginOptions{
+		Endpoint: devEndpoint,
 		ClientID: "cli-client",
 		Device:   true,
-		Now:      time.Now,
-		Output:   io.Discard,
+		Output:   &out,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "at-1", tok.AccessToken)
+	assert.Equal(t, "at-1", res.Token.AccessToken)
+	assert.Contains(t, out.String(), "confirm the code ABCD-EFGH")
+
+	server.mu.Lock()
+	deviceForm := server.deviceForm
+	server.mu.Unlock()
 	assert.Equal(t, "https://api.development-cloud.qdrant.io", deviceForm.Get("audience"))
 	assert.Empty(t, deviceForm.Get("resource"))
-	assert.Equal(t, "dev-1", tokenForm.Get("device_code"))
-	assert.Empty(t, tokenForm.Get("resource"))
-	assert.Empty(t, tokenForm.Get("audience"))
+
+	forms := server.forms()
+	require.Len(t, forms, 2, "authorization_pending keeps polling")
+	assert.Equal(t, "dev-1", forms[1].Get("device_code"))
+	assert.Empty(t, forms[1].Get("resource"))
+	assert.Empty(t, forms[1].Get("audience"))
+}
+
+func TestLogin_DeviceStopsWhenTheConsentIsDeclined(t *testing.T) {
+	t.Parallel()
+
+	server := &fakeLoginServer{token: func(url.Values) (int, map[string]any) {
+		return http.StatusForbidden, map[string]any{"error": "access_denied", "error_description": "The user declined the consent."}
+	}}
+	c := newTestClient(t, server.start(t))
+
+	_, err := c.Login(context.Background(), LoginOptions{Endpoint: devEndpoint, ClientID: "cli-client", Device: true})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "The user declined the consent.")
+	assert.Len(t, server.forms(), 1)
+}
+
+func TestTokenSource_RefreshesAndStoresTheToken(t *testing.T) {
+	t.Parallel()
+
+	server := &fakeLoginServer{token: func(form url.Values) (int, map[string]any) {
+		if form.Get("grant_type") == "refresh_token" {
+			return http.StatusOK, map[string]any{"access_token": "at-2", "refresh_token": "rt-2", "token_type": "Bearer", "expires_in": 3600}
+		}
+
+		// Expires within the refresh margin.
+		return http.StatusOK, map[string]any{"access_token": "at-1", "refresh_token": "rt-1", "token_type": "Bearer", "expires_in": 10}
+	}}
+	c := newTestClient(t, server.start(t))
+	_, err := c.Login(context.Background(), LoginOptions{Endpoint: devEndpoint, ClientID: "cli-client"})
+	require.NoError(t, err)
+
+	ts, err := c.TokenSource(context.Background(), devEndpoint)
+	require.NoError(t, err)
+	tok, err := ts.Token()
+	require.NoError(t, err)
+	assert.Equal(t, "at-2", tok.AccessToken)
+
+	forms := server.forms()
+	require.Len(t, forms, 2)
+	assert.Equal(t, "refresh_token", forms[1].Get("grant_type"))
+	assert.Equal(t, "rt-1", forms[1].Get("refresh_token"))
+	assert.Equal(t, "cli-client", forms[1].Get("client_id"))
+
+	// The next call reuses the refreshed token, and the store has it.
+	tok, err = ts.Token()
+	require.NoError(t, err)
+	assert.Equal(t, "at-2", tok.AccessToken)
+	assert.Len(t, server.forms(), 2)
+
+	stored, _, err := c.store.load(devEndpoint)
+	require.NoError(t, err)
+	assert.Equal(t, "at-2", stored.AccessToken)
+	assert.Equal(t, "rt-2", stored.RefreshToken)
+}
+
+func TestTokenSource_UsesTheTokenExpiryWithoutExpiresIn(t *testing.T) {
+	t.Parallel()
+
+	expired := jwt(fmt.Sprintf(`{"exp":%d}`, time.Now().Add(-time.Minute).Unix()))
+	server := &fakeLoginServer{token: func(form url.Values) (int, map[string]any) {
+		if form.Get("grant_type") == "refresh_token" {
+			return http.StatusOK, map[string]any{"access_token": "at-2", "token_type": "Bearer"}
+		}
+
+		return http.StatusOK, map[string]any{"access_token": expired, "refresh_token": "rt-1", "token_type": "Bearer"}
+	}}
+	c := newTestClient(t, server.start(t))
+	res, err := c.Login(context.Background(), LoginOptions{Endpoint: devEndpoint, ClientID: "cli-client"})
+	require.NoError(t, err)
+	assert.False(t, res.Token.Expiry.IsZero(), "the expiry comes from the exp claim")
+
+	ts, err := c.TokenSource(context.Background(), devEndpoint)
+	require.NoError(t, err)
+	tok, err := ts.Token()
+	require.NoError(t, err)
+	assert.Equal(t, "at-2", tok.AccessToken)
+
+	stored, _, err := c.store.load(devEndpoint)
+	require.NoError(t, err)
+	assert.Equal(t, "rt-1", stored.RefreshToken, "a refresh without a new refresh token keeps the old one")
+}
+
+func TestTokenSource_InvalidGrantEndsTheSession(t *testing.T) {
+	t.Parallel()
+
+	server := &fakeLoginServer{token: func(form url.Values) (int, map[string]any) {
+		if form.Get("grant_type") == "refresh_token" {
+			return http.StatusForbidden, map[string]any{"error": "invalid_grant", "error_description": "Unknown or invalid refresh token."}
+		}
+
+		return http.StatusOK, map[string]any{"access_token": "at-1", "refresh_token": "rt-1", "token_type": "Bearer", "expires_in": 10}
+	}}
+	c := newTestClient(t, server.start(t))
+	_, err := c.Login(context.Background(), LoginOptions{Endpoint: devEndpoint, ClientID: "cli-client"})
+	require.NoError(t, err)
+
+	ts, err := c.TokenSource(context.Background(), devEndpoint)
+	require.NoError(t, err)
+	_, err = ts.Token()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "qcloud auth login")
+
+	_, ok, err := c.Session(devEndpoint)
+	require.NoError(t, err)
+	assert.False(t, ok, "the session is removed, so the next command does not try again")
+
+	_, err = c.TokenSource(context.Background(), devEndpoint)
+	require.ErrorIs(t, err, ErrNotLoggedIn)
+}
+
+func TestAuthorizationCallback(t *testing.T) {
+	t.Parallel()
+
+	code, err := authorizationCallback(url.Values{
+		"code": {"abc"},
+		"iss":  {"https://login.cloud.qdrant.io/"},
+	}, "https://login.cloud.qdrant.io/")
+	require.NoError(t, err)
+	assert.Equal(t, "abc", code)
+
+	_, err = authorizationCallback(url.Values{
+		"code": {"abc"},
+		"iss":  {"https://evil.example/"},
+	}, "https://login.cloud.qdrant.io/")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "issuer mismatch")
+
+	_, err = authorizationCallback(url.Values{"error": {"access_denied"}}, "https://login.cloud.qdrant.io/")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "access_denied")
 }
 
 func TestListenFirstFree_SkipsBusyPort(t *testing.T) {
@@ -269,6 +392,19 @@ func TestListenFirstFree_AllBusy(t *testing.T) {
 	assert.Contains(t, err.Error(), "--device")
 }
 
+// callback sends the browser redirect to the loopback listener and returns the status and the page.
+func callback(t *testing.T, ln net.Listener, query string) (int, string) {
+	t.Helper()
+
+	resp, err := http.Get("http://" + ln.Addr().String() + "/callback?" + query)
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, resp.Body.Close())
+	require.NoError(t, err)
+
+	return resp.StatusCode, string(body)
+}
+
 func TestLoopbackWaiter_Pages(t *testing.T) {
 	t.Parallel()
 
@@ -292,24 +428,51 @@ func TestLoopbackWaiter_Pages(t *testing.T) {
 				_, _ = wait(context.Background(), "", "s")
 			}()
 
-			resp, err := http.Get("http://" + ln.Addr().String() + "/callback?" + tc.query)
-			require.NoError(t, err)
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, resp.Body.Close())
-			require.NoError(t, err)
+			status, body := callback(t, ln, tc.query)
 			<-done
 
-			assert.Equal(t, tc.status, resp.StatusCode)
-			assert.Equal(t, "text/html; charset=utf-8", resp.Header.Get("Content-Type"))
-			assert.Contains(t, string(body), tc.want)
-			assert.NotContains(t, string(body), "<b>not connected</b>")
+			assert.Equal(t, tc.status, status)
+			assert.Contains(t, body, tc.want)
+			assert.NotContains(t, body, "<b>not connected</b>")
 		})
 	}
+}
+
+func TestLoopbackWaiter_KeepsWaitingAfterAnotherState(t *testing.T) {
+	t.Parallel()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	wait := loopbackWaiter(ln, "https://login.cloud.qdrant.io/")
+	type result struct {
+		code string
+		err  error
+	}
+	results := make(chan result, 1)
+	go func() {
+		code, err := wait(context.Background(), "", "s")
+		results <- result{code, err}
+	}()
+
+	// A prefetch, or the callback of an old tab, then the real one.
+	status, body := callback(t, ln, "code=old&state=other")
+	assert.Equal(t, http.StatusBadRequest, status)
+	assert.Contains(t, body, "not from the current login")
+	status, _ = callback(t, ln, "error=access_denied")
+	assert.Equal(t, http.StatusBadRequest, status, "an error without the login's state does not end it either")
+
+	status, _ = callback(t, ln, "code=abc&state=s")
+	assert.Equal(t, http.StatusOK, status)
+
+	r := <-results
+	require.NoError(t, r.err)
+	assert.Equal(t, "abc", r.code)
 }
 
 func TestJoinScopes(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "manage openid email offline_access", joinScopes("manage"))
-	assert.Equal(t, "read-only openid email offline_access", joinScopes("read-only openid"))
+	assert.Equal(t, []string{"manage", "openid", "email", "offline_access"}, joinScopes("manage"))
+	assert.Equal(t, []string{"read-only", "openid", "email", "offline_access"}, joinScopes("read-only openid"))
 }

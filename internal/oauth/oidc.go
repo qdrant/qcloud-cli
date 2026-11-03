@@ -10,47 +10,46 @@ import (
 	"strings"
 )
 
-// ASMetadata is the subset of OIDC / OAuth AS metadata the CLI needs.
-type ASMetadata struct {
-	Issuer                        string   `json:"issuer"`
-	AuthorizationEndpoint         string   `json:"authorization_endpoint"`
-	TokenEndpoint                 string   `json:"token_endpoint"`
-	DeviceAuthorizationEndpoint   string   `json:"device_authorization_endpoint"`
-	RevocationEndpoint            string   `json:"revocation_endpoint"`
-	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
+// asMetadata is the subset of the login server's OpenID Connect metadata the CLI needs.
+type asMetadata struct {
+	Issuer                      string `json:"issuer"`
+	AuthorizationEndpoint       string `json:"authorization_endpoint"`
+	TokenEndpoint               string `json:"token_endpoint"`
+	DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint"`
+	RevocationEndpoint          string `json:"revocation_endpoint"`
 }
 
-func (d Discoverer) fetchASMetadata(ctx context.Context, issuer string) (ASMetadata, error) {
+func (c *Client) fetchASMetadata(ctx context.Context, issuer string) (asMetadata, error) {
 	metaURL, err := url.JoinPath(strings.TrimRight(issuer, "/")+"/", ".well-known/openid-configuration")
 	if err != nil {
-		return ASMetadata{}, err
+		return asMetadata{}, err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metaURL, nil)
 	if err != nil {
-		return ASMetadata{}, err
+		return asMetadata{}, err
 	}
 
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := d.client().Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
-		return ASMetadata{}, err
+		return asMetadata{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return ASMetadata{}, fmt.Errorf("authorization server metadata: HTTP %s", resp.Status)
+		return asMetadata{}, fmt.Errorf("authorization server metadata: HTTP %s", resp.Status)
 	}
 
-	var meta ASMetadata
+	var meta asMetadata
 	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
-		return ASMetadata{}, fmt.Errorf("decode authorization server metadata: %w", err)
+		return asMetadata{}, fmt.Errorf("decode authorization server metadata: %w", err)
 	}
 
 	if meta.AuthorizationEndpoint == "" || meta.TokenEndpoint == "" {
-		return ASMetadata{}, fmt.Errorf("authorization server metadata missing authorization or token endpoint")
+		return asMetadata{}, fmt.Errorf("authorization server metadata missing authorization or token endpoint")
 	}
 
 	return meta, nil

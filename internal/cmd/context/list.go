@@ -10,6 +10,8 @@ import (
 type listOutput struct {
 	Contexts []string `json:"contexts"`
 	Current  string   `json:"current"`
+	// Auth is the credential of each context: "oauth" or "api key".
+	Auth map[string]string `json:"auth"`
 }
 
 func newListCommand(s *state.State) *cobra.Command {
@@ -23,8 +25,21 @@ qcloud context list`,
 			names := s.Config.ContextNames()
 			current := s.Config.CurrentContext()
 
+			credential := func(name string) string {
+				if ctx, ok := s.Config.GetContext(name); ok && ctx.IsOAuth() {
+					return "oauth"
+				}
+
+				return "api key"
+			}
+
 			if s.Config.JSONOutput() {
-				return output.PrintJSON(cmd.OutOrStdout(), listOutput{Contexts: names, Current: current})
+				auth := make(map[string]string, len(names))
+				for _, name := range names {
+					auth[name] = credential(name)
+				}
+
+				return output.PrintJSON(cmd.OutOrStdout(), listOutput{Contexts: names, Current: current, Auth: auth})
 			}
 
 			t := output.NewTable[string](cmd.OutOrStdout())
@@ -38,13 +53,7 @@ qcloud context list`,
 			t.AddField("NAME", func(name string) string {
 				return name
 			})
-			t.AddField("CREDENTIAL", func(name string) string {
-				if ctx, ok := s.Config.GetContext(name); ok && ctx.IsOAuth() {
-					return "oauth"
-				}
-
-				return "api key"
-			})
+			t.AddField("CREDENTIAL", credential)
 			t.Write(names)
 			return nil
 		},

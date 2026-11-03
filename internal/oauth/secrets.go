@@ -5,21 +5,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
-	"testing"
 
 	"github.com/zalando/go-keyring"
 )
 
-// TokenStoreEnv selects where the access and refresh tokens are kept:
-//   - "" or "auto": the OS keychain, or credentials.yaml (0600) when no keychain is available;
-//   - "keychain": the OS keychain only; saving fails when it is not available;
-//   - "file": credentials.yaml only.
-const TokenStoreEnv = "QDRANT_CLOUD_TOKEN_STORE"
-
-// Token store modes and the value of Token.Store.
+// Token store modes (config token_store, env QDRANT_CLOUD_TOKEN_STORE), and the value of Token.Store:
+//   - "" or StoreAuto: the OS keychain, or credentials.yaml (0600) when no keychain is available;
+//   - StoreKeychain: the OS keychain only; saving fails when it is not available;
+//   - StoreFile: credentials.yaml only.
 const (
 	StoreAuto     = "auto"
 	StoreKeychain = "keychain"
@@ -29,41 +24,43 @@ const (
 // keychainService is the service name of qcloud's entries in the OS keychain.
 const keychainService = "qcloud"
 
-// secretStore is the OS keychain: macOS Keychain, Windows Credential Manager, or the Secret Service
-// (GNOME Keyring, KWallet) on Linux.
-type secretStore interface {
+// SecretStore keeps the access and refresh tokens: the OS keychain (macOS Keychain, Windows Credential
+// Manager, or the Secret Service on Linux), or MemorySecrets in tests.
+type SecretStore interface {
 	Set(service, user, secret string) error
 	Get(service, user string) (string, error)
 	Delete(service, user string) error
 }
 
-type osKeychain struct{}
+// ErrSecretNotFound is the error a SecretStore returns for an entry that does not exist.
+var ErrSecretNotFound = keyring.ErrNotFound
 
-func (osKeychain) Set(service, user, secret string) error   { return keyring.Set(service, user, secret) }
-func (osKeychain) Get(service, user string) (string, error) { return keyring.Get(service, user) }
-func (osKeychain) Delete(service, user string) error        { return keyring.Delete(service, user) }
+// OSKeychain is the SecretStore of the operating system.
+type OSKeychain struct{}
 
-// defaultSecrets is the OS keychain, except in test binaries: tests must never read or write the
-// keychain of the machine they run on.
-var defaultSecrets = func() secretStore {
-	if testing.Testing() {
-		return newMemorySecrets()
-	}
+// Set stores secret in the keychain.
+func (OSKeychain) Set(service, user, secret string) error { return keyring.Set(service, user, secret) }
 
-	return osKeychain{}
-}()
+// Get reads a secret from the keychain, or returns ErrSecretNotFound.
+func (OSKeychain) Get(service, user string) (string, error) { return keyring.Get(service, user) }
 
-// memorySecrets is an in-memory secretStore for tests.
-type memorySecrets struct {
+// Delete removes a secret from the keychain, or returns ErrSecretNotFound.
+func (OSKeychain) Delete(service, user string) error { return keyring.Delete(service, user) }
+
+// MemorySecrets is an in-memory SecretStore, so that tests never read or write the keychain of the
+// machine they run on.
+type MemorySecrets struct {
 	mu      sync.Mutex
 	secrets map[string]string
 }
 
-func newMemorySecrets() *memorySecrets {
-	return &memorySecrets{secrets: map[string]string{}}
+// NewMemorySecrets returns an empty MemorySecrets.
+func NewMemorySecrets() *MemorySecrets {
+	return &MemorySecrets{secrets: map[string]string{}}
 }
 
-func (m *memorySecrets) Set(service, user, secret string) error {
+// Set stores secret.
+func (m *MemorySecrets) Set(service, user, secret string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.secrets[service+"\x00"+user] = secret
@@ -71,23 +68,25 @@ func (m *memorySecrets) Set(service, user, secret string) error {
 	return nil
 }
 
-func (m *memorySecrets) Get(service, user string) (string, error) {
+// Get returns a secret, or ErrSecretNotFound.
+func (m *MemorySecrets) Get(service, user string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	secret, ok := m.secrets[service+"\x00"+user]
 	if !ok {
-		return "", keyring.ErrNotFound
+		return "", ErrSecretNotFound
 	}
 
 	return secret, nil
 }
 
-func (m *memorySecrets) Delete(service, user string) error {
+// Delete removes a secret, or returns ErrSecretNotFound.
+func (m *MemorySecrets) Delete(service, user string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := service + "\x00" + user
 	if _, ok := m.secrets[key]; !ok {
-		return keyring.ErrNotFound
+		return ErrSecretNotFound
 	}
 
 	delete(m.secrets, key)
@@ -95,15 +94,15 @@ func (m *memorySecrets) Delete(service, user string) error {
 	return nil
 }
 
-// storeMode reads TokenStoreEnv.
-func storeMode() (string, error) {
-	switch mode := os.Getenv(TokenStoreEnv); mode {
+// parseStoreMode validates the configured token store mode.
+func parseStoreMode(mode string) (string, error) {
+	switch mode {
 	case "", StoreAuto:
 		return StoreAuto, nil
 	case StoreKeychain, StoreFile:
 		return mode, nil
 	default:
-		return "", fmt.Errorf("%s=%q: use auto, keychain, or file", TokenStoreEnv, mode)
+		return "", fmt.Errorf("token store %q: use auto, keychain, or file (QDRANT_CLOUD_TOKEN_STORE)", mode)
 	}
 }
 
@@ -122,7 +121,7 @@ func keychainUser(path, endpoint, kind string) string {
 
 // setSecrets stores the access and refresh tokens in the keychain, as two entries: Windows limits an
 // entry to 2.5 KB, which a JWT and a refresh token together can exceed.
-func setSecrets(secrets secretStore, path string, tok Token) error {
+func setSecrets(secrets SecretStore, path string, tok Token) error {
 	if err := secrets.Set(keychainService, keychainUser(path, tok.Endpoint, "access"), tok.AccessToken); err != nil {
 		return err
 	}
@@ -135,14 +134,14 @@ func setSecrets(secrets secretStore, path string, tok Token) error {
 }
 
 // getSecrets fills in the access and refresh tokens of a token kept in the keychain.
-func getSecrets(secrets secretStore, path string, tok Token) (Token, error) {
+func getSecrets(secrets SecretStore, path string, tok Token) (Token, error) {
 	access, err := secrets.Get(keychainService, keychainUser(path, tok.Endpoint, "access"))
 	if err != nil {
 		return Token{}, keychainReadError(tok.Endpoint, err)
 	}
 
 	refresh, err := secrets.Get(keychainService, keychainUser(path, tok.Endpoint, "refresh"))
-	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+	if err != nil && !errors.Is(err, ErrSecretNotFound) {
 		return Token{}, keychainReadError(tok.Endpoint, err)
 	}
 
@@ -153,7 +152,7 @@ func getSecrets(secrets secretStore, path string, tok Token) (Token, error) {
 }
 
 func keychainReadError(endpoint string, err error) error {
-	if errors.Is(err, keyring.ErrNotFound) {
+	if errors.Is(err, ErrSecretNotFound) {
 		return fmt.Errorf("the OAuth tokens for %s are missing from the OS keychain (run \"qcloud auth login\")", endpoint)
 	}
 
@@ -161,16 +160,16 @@ func keychainReadError(endpoint string, err error) error {
 }
 
 // deleteSecrets removes both keychain entries of endpoint; entries that do not exist are fine.
-func deleteSecrets(secrets secretStore, path, endpoint string) error {
+func deleteSecrets(secrets SecretStore, path, endpoint string) error {
 	return errors.Join(
 		deleteSecret(secrets, path, endpoint, "access"),
 		deleteSecret(secrets, path, endpoint, "refresh"),
 	)
 }
 
-func deleteSecret(secrets secretStore, path, endpoint, kind string) error {
+func deleteSecret(secrets SecretStore, path, endpoint, kind string) error {
 	err := secrets.Delete(keychainService, keychainUser(path, endpoint, kind))
-	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+	if err != nil && !errors.Is(err, ErrSecretNotFound) {
 		return err
 	}
 

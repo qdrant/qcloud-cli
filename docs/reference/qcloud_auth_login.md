@@ -4,35 +4,25 @@ Log in with a browser or device code
 
 ### Synopsis
 
-Log in and store a refreshable access token for the current endpoint.
+Log in to Qdrant Cloud and store a session that refreshes itself, for the current endpoint.
 
-The default flow is authorization code + PKCE with a loopback listener on
-127.0.0.1 (RFC 8252), on the first free port of 48271, 48272 and 48273. The
-browser callback checks state and, when Auth0 sends it, iss.
+By default the login opens a browser and waits for it on 127.0.0.1; use
+--device on a machine without a browser (over SSH, for example). Either way the
+login ends on the Qdrant Cloud consent page, where you choose the accounts and
+the access (read only or manage) the CLI gets.
 
-Use --device on SSH or when no browser is available. The CLI only prints the
-verification URL and polls. Sign-in and the Qdrant consent page happen in the
-browser; a declined consent ends the poll with access denied.
+After the login, qcloud creates a context for every account you granted, named
+after the account and prefixed with the environment (dev-my-account on
+development), that uses this login instead of an API key. Unless a context is
+already current, the first one becomes current. A later login updates these
+contexts, and "qcloud auth logout" removes them. Contexts with an API key are
+never changed.
 
-The login URL comes from the gateway's unauthenticated protected-resource
-metadata when OAuth is enabled, otherwise from rewriting grpc.cloud.qdrant.io
-to login.cloud.qdrant.io. Override with --login-url only for debugging.
-
-The Qdrant Cloud CLI client id is built in per login URL. --client-id or
-QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
-The access and refresh tokens are stored in the OS keychain (macOS Keychain,
-Windows Credential Manager, or the Secret Service on Linux); the rest of the
-session is in credentials.yaml next to the config file. Without a keychain, the
-tokens go to credentials.yaml (mode 0600) too. Set QDRANT_CLOUD_TOKEN_STORE to
-"keychain" to require the keychain, or to "file" to skip it.
-
-After the login, qcloud creates a context for every account you granted on the
-consent page (named after the account, prefixed with the environment, e.g.
-dev-my-account), marked as OAuth so it needs no API key. Unless you already have
-a current context, the first one becomes current; switch with
-"qcloud context use <name>". A later login updates
-these contexts, and "qcloud auth logout" removes them. Contexts with an API key
-are never changed.
+The access and refresh tokens are kept in the OS keychain (macOS Keychain,
+Windows Credential Manager, or the Secret Service on Linux), and the rest of the
+session in credentials.yaml next to the config file. Without a keychain, the
+tokens go to credentials.yaml (mode 0600) too; QDRANT_CLOUD_TOKEN_STORE=keychain
+makes that an error, and QDRANT_CLOUD_TOKEN_STORE=file skips the keychain.
 
 ```
 qcloud auth login [flags]
@@ -41,24 +31,27 @@ qcloud auth login [flags]
 ### Examples
 
 ```
-# Browser login (default production endpoint)
+# Log in with the browser
 qcloud auth login
 
-# Read-only session
+# Log in with read-only access
 qcloud auth login --scope read-only
 
-# Device code
+# Log in on a machine without a browser
 qcloud auth login --device
+
+# Log in from a script and use the context it selected
+qcloud auth login --json | jq -r .current_context
 ```
 
 ### Options
 
 ```
-      --client-id string   Override the built-in OAuth client id (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)
-      --device             Use the device authorization grant instead of a loopback browser flow
+      --client-id string   OAuth client id, for a login server without a built-in one (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)
+      --device             Log in with a device code (prints a code to confirm in any browser) instead of opening a browser here
   -h, --help               help for login
-      --login-url string   Override the login issuer URL (defaults to discovery / endpoint inference)
-      --scope string       OAuth scope: read-only or manage (default "manage")
+      --login-url string   Login server URL, instead of the one discovered from the endpoint (for debugging)
+      --scope string       Access to ask for: read-only or manage (the consent page can narrow it) (default "manage")
 ```
 
 ### Options inherited from parent commands

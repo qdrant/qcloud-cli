@@ -2,102 +2,123 @@ package auth
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/oauth"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
+// statusOutput is the login of the current endpoint, and the account and credential commands use.
+type statusOutput struct {
+	Context  string `json:"context,omitempty"`
+	Endpoint string `json:"endpoint"`
+	LoginURL string `json:"login_url"`
+	LoggedIn bool   `json:"logged_in"`
+	// Expired means the access token has expired; the next command refreshes it.
+	Expired      bool       `json:"expired"`
+	Email        string     `json:"email,omitempty"`
+	GrantedScope string     `json:"granted_scope,omitempty"`
+	Expiry       *time.Time `json:"expiry,omitempty"`
+	AccountID    string     `json:"account_id,omitempty"`
+	// AccountSource is where AccountID comes from: --account-id, QDRANT_CLOUD_ACCOUNT_ID, a context, or
+	// the config file.
+	AccountSource string `json:"account_source,omitempty"`
+	// APIKeySet means an API key is configured, which commands use instead of the login.
+	APIKeySet bool `json:"api_key_set"`
+}
+
 func newStatusCommand(s *state.State) *cobra.Command {
-	return base.Cmd{
-		Long: `Show whether an OAuth session exists for the current endpoint.
+	return base.DescribeCmd[*statusOutput]{
+		Use:   "status",
+		Short: "Show OAuth login status for the current endpoint",
+		Long: `Show whether you are logged in to the current endpoint, as whom, and with what access.
 
-Prints the inferred login URL, token expiry, and scope. Does not print the
-access token.`,
-		Example: `qcloud auth status`,
-		BaseCobraCommand: func() *cobra.Command {
-			return &cobra.Command{
-				Use:   "status",
-				Short: "Show OAuth login status for the current endpoint",
-				Args:  cobra.NoArgs,
+It also shows the account commands use and where it comes from, and the access
+token's expiry. An expired access token is refreshed by the next command. The
+token itself is never printed; use "qcloud auth token" for that.`,
+		Example: `# Show the login of the current endpoint
+qcloud auth status
+
+# Check from a script whether you are logged in
+qcloud auth status --json | jq .logged_in`,
+		Args: cobra.NoArgs,
+		Fetch: func(s *state.State, cmd *cobra.Command, _ []string) (*statusOutput, error) {
+			disc, err := s.OAuth().Discover(cmd.Context(), s.Config.Endpoint())
+			if err != nil {
+				return nil, err
 			}
+
+			out := &statusOutput{
+				Context:   s.Config.ActiveContext(),
+				Endpoint:  disc.Endpoint,
+				LoginURL:  disc.Issuer,
+				APIKeySet: s.Config.APIKey() != "",
+			}
+			out.AccountID, out.AccountSource = s.Config.AccountIDSource()
+
+			tok, ok, err := s.OAuth().Session(s.Config.Endpoint())
+			if err != nil {
+				return nil, err
+			}
+
+			if ok {
+				out.LoggedIn = true
+				out.Expired = tok.Expired(time.Now())
+				out.Email = tok.Email
+				out.GrantedScope = tok.GrantedScope
+				if !tok.Expiry.IsZero() {
+					out.Expiry = &tok.Expiry
+				}
+			}
+
+			return out, nil
 		},
-		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
-			disc, err := s.OAuthDiscoverer().Discover(cmd.Context(), s.Config.Endpoint())
-			if err != nil {
-				return err
+		PrintText: func(_ *cobra.Command, w io.Writer, st *statusOutput) error {
+			fmt.Fprintf(w, "Endpoint:  %s\n", st.Endpoint)
+			if st.Context != "" {
+				fmt.Fprintf(w, "Context:   %s\n", st.Context)
 			}
 
-			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "Endpoint:  %s\n", disc.Hosts.GRPCEndpoint)
-			if name := s.Config.ActiveContext(); name != "" {
-				fmt.Fprintf(out, "Context:   %s\n", name)
+			fmt.Fprintf(w, "Login URL: %s\n", st.LoginURL)
+			if st.APIKeySet {
+				fmt.Fprintln(w, "Note:      an API key is set; commands use it instead of this login")
 			}
 
-			fmt.Fprintf(out, "Login URL: %s (%s)\n", disc.Issuer, disc.Source)
-			if s.Config.APIKey() != "" {
-				fmt.Fprintln(out, "Note:      an API key is set; commands use it instead of this login")
-			}
-
-			path := oauth.CredentialsPath(s.Config.ConfigFilePath())
-			tok, ok, err := oauth.LoadTokenInfo(path, s.Config.Endpoint())
-			if err != nil {
-				return err
-			}
-
-			if !ok {
-				fmt.Fprintln(out, "Status:    logged out")
+			if !st.LoggedIn {
+				fmt.Fprintln(w, "Status:    logged out")
 				return nil
 			}
 
 			status := "logged in"
-			if tok.Expired(time.Now()) {
-				status = "expired (will refresh on next API call)"
+			if st.Email != "" {
+				status += " as " + st.Email
 			}
 
-			fmt.Fprintf(out, "Status:    %s\n", status)
-			// The access the user granted on the consent page. The requested scope (what qcloud asked for)
-			// is stored too; showing it here next to this only confuses.
-			if tok.GrantedScope != "" {
-				fmt.Fprintf(out, "Access:    %s\n", oauth.ScopeLabel(tok.GrantedScope))
+			if st.Expired {
+				status += " (access token expired; the next command refreshes it)"
 			}
 
-			if id, source := accountSource(cmd, s); id != "" {
-				fmt.Fprintf(out, "Account:   %s (from %s)\n", id, source)
+			fmt.Fprintf(w, "Status:    %s\n", status)
+			if st.GrantedScope != "" {
+				fmt.Fprintf(w, "Access:    %s\n", oauth.ScopeLabel(st.GrantedScope))
+			}
+
+			if st.AccountID != "" {
+				fmt.Fprintf(w, "Account:   %s (from %s)\n", st.AccountID, st.AccountSource)
 			} else {
-				fmt.Fprintln(out, "Account:   none; select a context with \"qcloud context use <name>\" or pass --account-id")
+				fmt.Fprintln(w, "Account:   none; select a context with \"qcloud context use <name>\" or pass --account-id")
 			}
 
-			if !tok.Expiry.IsZero() {
-				fmt.Fprintf(out, "Expiry:    %s\n", tok.Expiry.UTC().Format(time.RFC3339))
+			if st.Expiry != nil {
+				fmt.Fprintf(w, "Expiry:    %s  (%s)\n", output.HumanTime(*st.Expiry), output.FullDateTime(*st.Expiry))
 			}
 
 			return nil
 		},
 	}.CobraCommand(s)
-}
-
-// accountSource returns the account commands will use, and where it comes from, in the order the
-// config resolves it: the --account-id flag, QDRANT_CLOUD_ACCOUNT_ID, then the active context (which
-// auth login creates for each granted account).
-func accountSource(cmd *cobra.Command, s *state.State) (string, string) {
-	if f := cmd.Flag("account-id"); f != nil && f.Changed {
-		return s.Config.AccountID(), "--account-id"
-	}
-
-	if id := os.Getenv("QDRANT_CLOUD_ACCOUNT_ID"); id != "" {
-		return id, "QDRANT_CLOUD_ACCOUNT_ID"
-	}
-
-	if name := s.Config.ActiveContext(); name != "" {
-		if entry, ok := s.Config.GetContext(name); ok && entry.AccountID != "" {
-			return entry.AccountID, "context " + name
-		}
-	}
-
-	return "", ""
 }

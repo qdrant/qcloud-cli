@@ -3,7 +3,6 @@ package oauth
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -30,6 +29,14 @@ func (failingSecrets) Set(string, string, string) error   { return errNoKeychain
 func (failingSecrets) Get(string, string) (string, error) { return "", errNoKeychain }
 func (failingSecrets) Delete(string, string) error        { return errNoKeychain }
 
+// newStore is a token store in a new directory, with secrets and mode.
+func newStore(t *testing.T, secrets SecretStore, mode string) tokenStore {
+	t.Helper()
+	dir := t.TempDir()
+
+	return tokenStore{dir: func() string { return dir }, mode: func() string { return mode }, secrets: secrets}
+}
+
 func readFile(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -41,35 +48,36 @@ func readFile(t *testing.T, path string) string {
 func TestTokenStore_KeepsTheTokensInTheKeychain(t *testing.T) {
 	t.Parallel()
 
-	secrets := newMemorySecrets()
-	path := filepath.Join(t.TempDir(), "credentials.yaml")
+	secrets := NewMemorySecrets()
+	store := newStore(t, secrets, StoreAuto)
 	tok := testToken()
 
-	saved, err := saveToken(secrets, StoreAuto, path, tok)
+	keychainErr, err := store.save(tok)
 	require.NoError(t, err)
-	assert.Equal(t, StoreKeychain, saved.Store)
-	require.NoError(t, saved.KeychainErr)
+	require.NoError(t, keychainErr)
 
-	file := readFile(t, path)
+	file := readFile(t, store.path())
 	assert.NotContains(t, file, "access_token")
 	assert.NotContains(t, file, "refresh_token")
 	assert.Contains(t, file, "store: keychain")
 
-	got, ok, err := loadToken(secrets, path, tok.Endpoint)
+	got, ok, err := store.load(tok.Endpoint)
 	require.NoError(t, err)
 	require.True(t, ok)
 	assert.Equal(t, "access", got.AccessToken)
 	assert.Equal(t, "refresh", got.RefreshToken)
 	assert.Equal(t, "manage", got.Scope)
 
-	info, ok, err := LoadTokenInfo(path, tok.Endpoint)
+	info, ok, err := store.info(tok.Endpoint)
 	require.NoError(t, err)
 	require.True(t, ok)
-	assert.Empty(t, info.AccessToken, "LoadTokenInfo does not read the keychain")
+	assert.Empty(t, info.AccessToken, "info does not read the keychain")
 	assert.Equal(t, tok.Expiry, info.Expiry)
 
-	require.NoError(t, deleteToken(secrets, path, tok.Endpoint))
-	_, ok, err = loadToken(secrets, path, tok.Endpoint)
+	keychainErr, err = store.delete(tok.Endpoint)
+	require.NoError(t, err)
+	require.NoError(t, keychainErr)
+	_, ok, err = store.load(tok.Endpoint)
 	require.NoError(t, err)
 	assert.False(t, ok)
 	assert.Empty(t, secrets.secrets, "logout removes the keychain entries")
@@ -78,74 +86,76 @@ func TestTokenStore_KeepsTheTokensInTheKeychain(t *testing.T) {
 func TestTokenStore_FallsBackToTheFileWithoutAKeychain(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(t.TempDir(), "credentials.yaml")
+	store := newStore(t, failingSecrets{}, StoreAuto)
 	tok := testToken()
 
-	saved, err := saveToken(failingSecrets{}, StoreAuto, path, tok)
+	keychainErr, err := store.save(tok)
 	require.NoError(t, err)
-	assert.Equal(t, StoreFile, saved.Store)
-	require.ErrorIs(t, saved.KeychainErr, errNoKeychain)
+	require.ErrorIs(t, keychainErr, errNoKeychain)
 
-	info, err := os.Stat(path)
+	info, err := os.Stat(store.path())
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 
-	got, ok, err := loadToken(failingSecrets{}, path, tok.Endpoint)
+	got, ok, err := store.load(tok.Endpoint)
 	require.NoError(t, err)
 	require.True(t, ok)
 	assert.Equal(t, "access", got.AccessToken)
 	assert.Equal(t, "refresh", got.RefreshToken)
 
-	require.NoError(t, deleteToken(failingSecrets{}, path, tok.Endpoint), "no keychain is not an error on logout")
+	keychainErr, err = store.delete(tok.Endpoint)
+	require.NoError(t, err)
+	require.NoError(t, keychainErr, "no keychain is not an error on logout")
 }
 
 func TestTokenStore_KeychainModeFailsWithoutAKeychain(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(t.TempDir(), "credentials.yaml")
+	store := newStore(t, failingSecrets{}, StoreKeychain)
 
-	_, err := saveToken(failingSecrets{}, StoreKeychain, path, testToken())
+	_, err := store.save(testToken())
 	require.ErrorIs(t, err, errNoKeychain)
-	assert.NoFileExists(t, path)
+	assert.NoFileExists(t, store.path())
 }
 
 func TestTokenStore_FileModeSkipsTheKeychain(t *testing.T) {
 	t.Parallel()
 
-	secrets := newMemorySecrets()
-	path := filepath.Join(t.TempDir(), "credentials.yaml")
+	secrets := NewMemorySecrets()
+	store := newStore(t, secrets, StoreFile)
 
-	saved, err := saveToken(secrets, StoreFile, path, testToken())
+	keychainErr, err := store.save(testToken())
 	require.NoError(t, err)
-	assert.Equal(t, StoreFile, saved.Store)
-	require.NoError(t, saved.KeychainErr)
+	require.NoError(t, keychainErr)
 	assert.Empty(t, secrets.secrets)
-	assert.Contains(t, readFile(t, path), "refresh_token: refresh")
+	assert.Contains(t, readFile(t, store.path()), "refresh_token: refresh")
 }
 
 func TestTokenStore_MovesAFileTokenToTheKeychainOnTheNextSave(t *testing.T) {
 	t.Parallel()
 
-	secrets := newMemorySecrets()
-	path := filepath.Join(t.TempDir(), "credentials.yaml")
+	secrets := NewMemorySecrets()
+	fileStore := newStore(t, secrets, StoreFile)
+	store := fileStore
+	store.mode = func() string { return StoreAuto }
 	tok := testToken()
 
 	// A session saved before qcloud used the keychain.
-	_, err := saveToken(secrets, StoreFile, path, tok)
+	_, err := fileStore.save(tok)
 	require.NoError(t, err)
 
-	got, ok, err := loadToken(secrets, path, tok.Endpoint)
+	got, ok, err := store.load(tok.Endpoint)
 	require.NoError(t, err)
 	require.True(t, ok)
 	assert.Equal(t, "access", got.AccessToken)
 
 	// The next refresh saves it again.
 	got.AccessToken = "refreshed"
-	_, err = saveToken(secrets, StoreAuto, path, got)
+	_, err = store.save(got)
 	require.NoError(t, err)
-	assert.NotContains(t, readFile(t, path), "refresh_token")
+	assert.NotContains(t, readFile(t, store.path()), "refresh_token")
 
-	got, _, err = loadToken(secrets, path, tok.Endpoint)
+	got, _, err = store.load(tok.Endpoint)
 	require.NoError(t, err)
 	assert.Equal(t, "refreshed", got.AccessToken)
 	assert.Equal(t, "refresh", got.RefreshToken)
@@ -154,12 +164,14 @@ func TestTokenStore_MovesAFileTokenToTheKeychainOnTheNextSave(t *testing.T) {
 func TestTokenStore_MovingBackToTheFileClearsTheKeychain(t *testing.T) {
 	t.Parallel()
 
-	secrets := newMemorySecrets()
-	path := filepath.Join(t.TempDir(), "credentials.yaml")
+	secrets := NewMemorySecrets()
+	store := newStore(t, secrets, StoreAuto)
+	fileStore := store
+	fileStore.mode = func() string { return StoreFile }
 
-	_, err := saveToken(secrets, StoreAuto, path, testToken())
+	_, err := store.save(testToken())
 	require.NoError(t, err)
-	_, err = saveToken(secrets, StoreFile, path, testToken())
+	_, err = fileStore.save(testToken())
 	require.NoError(t, err)
 
 	assert.Empty(t, secrets.secrets)
@@ -168,47 +180,66 @@ func TestTokenStore_MovingBackToTheFileClearsTheKeychain(t *testing.T) {
 func TestTokenStore_MissingKeychainEntryAsksToLogIn(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(t.TempDir(), "credentials.yaml")
+	store := newStore(t, NewMemorySecrets(), StoreAuto)
 	tok := testToken()
-	_, err := saveToken(newMemorySecrets(), StoreAuto, path, tok)
+	_, err := store.save(tok)
 	require.NoError(t, err)
 
 	// Another machine's keychain, or an entry deleted by hand.
-	_, _, err = loadToken(newMemorySecrets(), path, tok.Endpoint)
+	store.secrets = NewMemorySecrets()
+	_, _, err = store.load(tok.Endpoint)
 	require.ErrorContains(t, err, "qcloud auth login")
 }
 
 func TestTokenStore_ConfigDirectoriesHaveSeparateKeychainEntries(t *testing.T) {
 	t.Parallel()
 
-	secrets := newMemorySecrets()
-	a := filepath.Join(t.TempDir(), "credentials.yaml")
-	b := filepath.Join(t.TempDir(), "credentials.yaml")
+	secrets := NewMemorySecrets()
+	a := newStore(t, secrets, StoreAuto)
+	b := newStore(t, secrets, StoreAuto)
 	tok := testToken()
 
-	_, err := saveToken(secrets, StoreAuto, a, tok)
+	_, err := a.save(tok)
 	require.NoError(t, err)
 
 	tok.AccessToken = "other"
-	_, err = saveToken(secrets, StoreAuto, b, tok)
+	_, err = b.save(tok)
 	require.NoError(t, err)
 
-	got, _, err := loadToken(secrets, a, tok.Endpoint)
+	got, _, err := a.load(tok.Endpoint)
 	require.NoError(t, err)
 	assert.Equal(t, "access", got.AccessToken)
 }
 
-func TestStoreMode(t *testing.T) {
+func TestParseStoreMode(t *testing.T) {
+	t.Parallel()
+
 	for value, want := range map[string]string{"": StoreAuto, "auto": StoreAuto, "keychain": StoreKeychain, "file": StoreFile} {
-		t.Setenv(TokenStoreEnv, value)
-		got, err := storeMode()
+		got, err := parseStoreMode(value)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	}
 
-	t.Setenv(TokenStoreEnv, "vault")
-	_, err := storeMode()
+	_, err := parseStoreMode("vault")
 	require.Error(t, err)
+}
+
+func TestTokenStore_DeleteReportsAKeychainThatFails(t *testing.T) {
+	t.Parallel()
+
+	store := newStore(t, NewMemorySecrets(), StoreAuto)
+	tok := testToken()
+	_, err := store.save(tok)
+	require.NoError(t, err)
+
+	store.secrets = failingSecrets{}
+	keychainErr, err := store.delete(tok.Endpoint)
+	require.NoError(t, err, "the session is removed from credentials.yaml")
+	require.ErrorIs(t, keychainErr, errNoKeychain)
+
+	_, ok, err := store.info(tok.Endpoint)
+	require.NoError(t, err)
+	assert.False(t, ok)
 }
 
 func TestToken_Expired(t *testing.T) {

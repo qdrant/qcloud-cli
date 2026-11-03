@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -11,53 +13,55 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
+// tokenOutput is a fresh access token. The field names are what the Terraform provider reads.
+type tokenOutput struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	// Scope is the requested scope.
+	Scope        string    `json:"scope,omitempty"`
+	GrantedScope string    `json:"granted_scope,omitempty"`
+	Expiry       time.Time `json:"expiry,omitzero"`
+}
+
 func newTokenCommand(s *state.State) *cobra.Command {
-	return base.Cmd{
+	return base.DescribeCmd[*tokenOutput]{
+		Use:   "token",
+		Short: "Print a fresh OAuth access token (sensitive)",
 		Long: `Print a fresh OAuth access token for the current endpoint.
 
-The token is sensitive. Use this for local Terraform (auth = "cli") or scripts
-that need a Bearer token. Expired access tokens are refreshed when a refresh
-token is stored.`,
-		Example: `qcloud auth token
+An access token that has expired, or is about to, is refreshed first. The token
+is a credential: it is meant for tools that need a Bearer token, such as the
+Terraform provider with auth = "cli", and should not be logged or shared.`,
+		Example: `# Print the access token
+qcloud auth token
+
+# Keep the token in a variable for a script
+TOKEN=$(qcloud auth token)
+
+# Print the token with its type, scope, and expiry
 qcloud auth token --json`,
-		BaseCobraCommand: func() *cobra.Command {
-			return &cobra.Command{
-				Use:   "token",
-				Short: "Print a fresh OAuth access token (sensitive)",
-				Args:  cobra.NoArgs,
+		Args: cobra.NoArgs,
+		Fetch: func(s *state.State, cmd *cobra.Command, _ []string) (*tokenOutput, error) {
+			tok, err := s.OAuth().Token(cmd.Context(), s.Config.Endpoint())
+			if errors.Is(err, oauth.ErrNotLoggedIn) {
+				return nil, fmt.Errorf("not logged in — run \"qcloud auth login\"")
 			}
-		},
-		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
-			path := oauth.CredentialsPath(s.Config.ConfigFilePath())
-			tok, ok, err := oauth.LoadToken(path, s.Config.Endpoint())
+
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			if !ok {
-				return fmt.Errorf("not logged in — run \"qcloud auth login\"")
-			}
-
-			if tok.Expired(time.Now()) {
-				refreshed, err := s.OAuthDiscoverer().Refresh(cmd.Context(), tok, time.Now())
-				if err != nil {
-					return fmt.Errorf("refresh OAuth token: %w", err)
-				}
-
-				if _, err := oauth.SaveToken(path, refreshed); err != nil {
-					return err
-				}
-
-				tok = refreshed
-			}
-
-			if s.Config.JSONOutput() {
-				fmt.Fprintf(cmd.OutOrStdout(), `{"access_token":%q,"token_type":%q,"scope":%q,"granted_scope":%q}`+"\n", tok.AccessToken, tok.TokenType, tok.Scope, tok.GrantedScope)
-				return nil
-			}
-
-			fmt.Fprintln(cmd.OutOrStdout(), tok.AccessToken)
-			return nil
+			return &tokenOutput{
+				AccessToken:  tok.AccessToken,
+				TokenType:    tok.TokenType,
+				Scope:        tok.Scope,
+				GrantedScope: tok.GrantedScope,
+				Expiry:       tok.Expiry,
+			}, nil
+		},
+		PrintText: func(_ *cobra.Command, w io.Writer, tok *tokenOutput) error {
+			_, err := fmt.Fprintln(w, tok.AccessToken)
+			return err
 		},
 	}.CobraCommand(s)
 }

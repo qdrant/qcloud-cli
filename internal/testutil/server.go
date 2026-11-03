@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 	"net"
+	"net/http"
 	"sync"
 	"testing"
 
@@ -28,6 +29,7 @@ import (
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
+	"github.com/qdrant/qcloud-cli/internal/oauth"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
@@ -87,9 +89,11 @@ type TestEnv struct {
 type Option func(*envConfig)
 
 type envConfig struct {
-	apiKey    string
-	accountID string
-	version   string
+	apiKey      string
+	accountID   string
+	version     string
+	oauthServer *FakeOAuthServer
+	secrets     oauth.SecretStore
 }
 
 // WithAPIKey sets the API key used by the test client's auth interceptor.
@@ -109,6 +113,17 @@ func WithAccountID(id string) Option {
 // WithVersion sets the CLI version used in the user-agent header.
 func WithVersion(v string) Option {
 	return func(c *envConfig) { c.version = v }
+}
+
+// WithOAuthServer sends the OAuth requests of the login to f instead of failing them.
+func WithOAuthServer(f *FakeOAuthServer) Option {
+	return func(c *envConfig) { c.oauthServer = f }
+}
+
+// WithSecretStore keeps the OAuth tokens in secrets instead of a new in-memory keychain. Use it to
+// test a keychain that fails.
+func WithSecretStore(secrets oauth.SecretStore) Option {
+	return func(c *envConfig) { c.secrets = secrets }
 }
 
 // newBaseTestEnv sets up the bufconn-backed gRPC server and wires the state,
@@ -192,6 +207,8 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	s := state.New(cfg.version)
 	s.SetClient(client)
 	s.SetUnAuthenticatedClient(client)
+	s.SetOAuthClient(client)
+	s.SetOAuth(newTestOAuth(t, s, cfg))
 
 	var once sync.Once
 	cleanup := func() {
@@ -225,6 +242,34 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	}
 }
 
+// newTestOAuth is the OAuth login of a test: an in-memory keychain, and HTTP requests that fail unless
+// they go to a FakeOAuthServer. The browser login gets its code without a browser.
+func newTestOAuth(t *testing.T, s *state.State, cfg *envConfig) *oauth.Client {
+	t.Helper()
+
+	secrets := cfg.secrets
+	if secrets == nil {
+		secrets = oauth.NewMemorySecrets()
+	}
+
+	httpClient := &http.Client{Transport: noNetwork{}}
+	if cfg.oauthServer != nil {
+		httpClient = cfg.oauthServer.start(t)
+		s.SetBrowserOpener(func(string) error { return nil })
+	}
+
+	return oauth.NewClient(oauth.Options{
+		ConfigDir:   s.ConfigDir,
+		TokenStore:  s.Config.TokenStore,
+		Secrets:     secrets,
+		HTTPClient:  httpClient,
+		RedirectURL: "http://127.0.0.1:48271/callback",
+		WaitCode: func(context.Context, string, string) (string, error) {
+			return "test-code", nil
+		},
+	})
+}
+
 // NewTestEnv creates a test environment with a bufconn-backed gRPC server and
 // a pre-populated config. account_id and api_key are set via the highest viper
 // priority (Set), so they reliably override any machine environment variables.
@@ -250,9 +295,14 @@ func NewTestEnv(t *testing.T, opts ...Option) *TestEnv {
 // but with no config values pre-populated in viper. Use this when the test
 // itself controls how config is loaded — for example, to verify that account_id
 // is read from a config file, an environment variable, or a CLI flag.
-func NewBareTestEnv(t *testing.T) *TestEnv {
+// WithAPIKey and WithAccountID have no effect here.
+func NewBareTestEnv(t *testing.T, opts ...Option) *TestEnv {
 	t.Helper()
 
 	cfg := &envConfig{}
+	for _, o := range opts {
+		o(cfg)
+	}
+
 	return newBaseTestEnv(t, cfg)
 }

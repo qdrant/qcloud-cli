@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
-	"time"
+	"path/filepath"
 
 	"github.com/pkg/browser"
+	"golang.org/x/oauth2"
 
 	"github.com/qdrant/qcloud-cli/internal/oauth"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
@@ -27,6 +27,19 @@ type Updater interface {
 	UpdateSelf(ctx context.Context, currentVersion string) (*selfupgrade.ReleaseInfo, error)
 }
 
+// OAuth is the OAuth login: discovery of the login server, the browser and device logins, and the
+// stored session of each endpoint, which it refreshes and removes.
+type OAuth interface {
+	Discover(ctx context.Context, endpoint string) (oauth.Discovery, error)
+	Login(ctx context.Context, opts oauth.LoginOptions) (oauth.LoginResult, error)
+	// Session returns the stored session without its tokens, or false when there is none.
+	Session(endpoint string) (oauth.Token, bool, error)
+	// Token returns the session with a fresh access token.
+	Token(ctx context.Context, endpoint string) (oauth.Token, error)
+	TokenSource(ctx context.Context, endpoint string) (oauth2.TokenSource, error)
+	Logout(ctx context.Context, endpoint string) (warnings []error, err error)
+}
+
 // BrowserOpener opens a URL in the user's default browser.
 type BrowserOpener func(url string) error
 
@@ -37,11 +50,10 @@ type State struct {
 	Logger                *slog.Logger
 	client                *qcloudapi.Client
 	unAuthenticatedClient *qcloudapi.Client
+	oauthClient           *qcloudapi.Client
 	updater               Updater
 	openBrowser           BrowserOpener
-	httpClient            *http.Client
-	waitAuthCode          oauth.WaitCodeFunc
-	oauthRedirectURL      string
+	oauth                 OAuth
 }
 
 // New creates a new State with the given version string.
@@ -53,35 +65,56 @@ func New(version string) *State {
 	}
 }
 
-// Client returns the gRPC client, creating it lazily on first call.
+// Client returns the gRPC client, creating it lazily on first call. It uses the configured API key, or
+// else the OAuth login of the endpoint.
 func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
 
 	key := s.Config.APIKey()
-	if key != "" {
-		c, err := qcloudapi.New(ctx, s.Config.Endpoint(), key, s.Version)
+	if key == "" {
+		c, err := s.OAuthClient(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to connect to Qdrant Cloud API: %w", err)
+			return nil, err
 		}
 
 		s.client = c
 		return s.client, nil
 	}
 
-	tok, err := s.oauthAccessToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := qcloudapi.NewWithBearer(ctx, s.Config.Endpoint(), tok, s.Version)
+	c, err := qcloudapi.New(ctx, s.Config.Endpoint(), key, s.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Qdrant Cloud API: %w", err)
 	}
 
 	s.client = c
 	return s.client, nil
+}
+
+// OAuthClient returns the gRPC client that uses the OAuth login of the endpoint, whatever API key is
+// configured, creating it lazily on first call.
+func (s *State) OAuthClient(ctx context.Context) (*qcloudapi.Client, error) {
+	if s.oauthClient != nil {
+		return s.oauthClient, nil
+	}
+
+	ts, err := s.OAuth().TokenSource(ctx, s.Config.Endpoint())
+	if errors.Is(err, oauth.ErrNotLoggedIn) {
+		return nil, errNoAPIKey
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := qcloudapi.NewWithTokenSource(ctx, s.Config.Endpoint(), ts, s.Version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant Cloud API: %w", err)
+	}
+
+	s.oauthClient = c
+	return s.oauthClient, nil
 }
 
 // UnAuthenticatedClient returns the gRPC client without authentication, creating it lazily on first call.
@@ -109,6 +142,11 @@ func (s *State) SetUnAuthenticatedClient(c *qcloudapi.Client) {
 	s.unAuthenticatedClient = c
 }
 
+// SetOAuthClient injects a pre-built OAuth client, bypassing lazy creation.
+func (s *State) SetOAuthClient(c *qcloudapi.Client) {
+	s.oauthClient = c
+}
+
 // OpenBrowser opens the given URL in the user's default browser.
 func (s *State) OpenBrowser(url string) error {
 	if s.openBrowser != nil {
@@ -123,66 +161,32 @@ func (s *State) SetBrowserOpener(fn BrowserOpener) {
 	s.openBrowser = fn
 }
 
-// HTTPClient returns the HTTP client used for OAuth discovery and token calls.
-func (s *State) HTTPClient() *http.Client {
-	if s.httpClient != nil {
-		return s.httpClient
+// OAuth returns the OAuth login, creating it lazily on first call: the OS keychain, and
+// credentials.yaml next to the config file.
+func (s *State) OAuth() OAuth {
+	if s.oauth == nil {
+		s.oauth = oauth.NewClient(oauth.Options{
+			ConfigDir:  s.ConfigDir,
+			TokenStore: s.Config.TokenStore,
+		})
 	}
 
-	return http.DefaultClient
+	return s.oauth
 }
 
-// SetHTTPClient injects an HTTP client. For testing.
-func (s *State) SetHTTPClient(c *http.Client) {
-	s.httpClient = c
+// SetOAuth injects an OAuth implementation.
+func (s *State) SetOAuth(o OAuth) {
+	s.oauth = o
 }
 
-// SetWaitAuthCode injects a function that supplies the OAuth authorization code. For testing.
-func (s *State) SetWaitAuthCode(fn oauth.WaitCodeFunc, redirectURL string) {
-	s.waitAuthCode = fn
-	s.oauthRedirectURL = redirectURL
-}
-
-// OAuthDiscoverer returns a Discoverer bound to this state's HTTP client.
-func (s *State) OAuthDiscoverer() oauth.Discoverer {
-	return oauth.Discoverer{HTTPClient: s.HTTPClient()}
-}
-
-// WaitAuthCode is the injected authorization-code waiter, or nil for loopback.
-func (s *State) WaitAuthCode() oauth.WaitCodeFunc {
-	return s.waitAuthCode
-}
-
-// OAuthRedirectURL is the injected loopback redirect used with WaitAuthCode.
-func (s *State) OAuthRedirectURL() string {
-	return s.oauthRedirectURL
-}
-
-func (s *State) oauthAccessToken(ctx context.Context) (string, error) {
-	path := oauth.CredentialsPath(s.Config.ConfigFilePath())
-	tok, ok, err := oauth.LoadToken(path, s.Config.Endpoint())
-	if err != nil {
-		return "", err
+// ConfigDir is the directory of the config file, or of the default one when none was loaded.
+func (s *State) ConfigDir() string {
+	path := s.Config.ConfigFilePath()
+	if path == "" {
+		path = config.DefaultConfigPath()
 	}
 
-	if !ok || tok.AccessToken == "" {
-		return "", errNoAPIKey
-	}
-
-	if tok.Expired(time.Now()) {
-		refreshed, err := s.OAuthDiscoverer().Refresh(ctx, tok, time.Now())
-		if err != nil {
-			return "", fmt.Errorf("refresh OAuth token: %w (run \"qcloud auth login\")", err)
-		}
-
-		if _, err := oauth.SaveToken(path, refreshed); err != nil {
-			return "", err
-		}
-
-		tok = refreshed
-	}
-
-	return tok.AccessToken, nil
+	return filepath.Dir(path)
 }
 
 // Updater returns the CLI updater, creating it lazily on first call.

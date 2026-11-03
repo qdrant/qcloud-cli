@@ -4,10 +4,11 @@ Show OAuth login status for the current endpoint
 
 ### Synopsis
 
-Show whether an OAuth session exists for the current endpoint.
+Show whether you are logged in to the current endpoint, as whom, and with what access.
 
-Prints the inferred login URL, token expiry, and scope. Does not print the
-access token.
+It also shows the account commands use and where it comes from, and the access
+token's expiry. An expired access token is refreshed by the next command. The
+token itself is never printed; use "qcloud auth token" for that.
 
 ```
 qcloud auth status [flags]
@@ -16,7 +17,11 @@ qcloud auth status [flags]
 ### Examples
 
 ```
+# Show the login of the current endpoint
 qcloud auth status
+
+# Check from a script whether you are logged in
+qcloud auth status --json | jq .logged_in
 ```
 
 ### Options

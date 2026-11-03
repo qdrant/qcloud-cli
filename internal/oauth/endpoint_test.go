@@ -26,12 +26,12 @@ func TestParseHosts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.endpoint, func(t *testing.T) {
 			t.Parallel()
-			h, err := ParseHosts(tt.endpoint)
+			h, err := parseHosts(tt.endpoint)
 			require.NoError(t, err)
-			assert.Equal(t, tt.api, h.APIHost)
-			assert.Equal(t, tt.login, h.LoginHost)
-			assert.Equal(t, "https://"+tt.api, h.APIBaseURL())
-			assert.Equal(t, "https://"+tt.login+"/", h.InferredIssuer())
+			assert.Equal(t, tt.api, h.apiHost)
+			assert.Equal(t, tt.login, h.loginHost)
+			assert.Equal(t, "https://"+tt.api, h.resource())
+			assert.Equal(t, "https://"+tt.login+"/", h.inferredIssuer())
 		})
 	}
 }
@@ -39,7 +39,7 @@ func TestParseHosts(t *testing.T) {
 func TestParseHosts_RejectsURL(t *testing.T) {
 	t.Parallel()
 
-	_, err := ParseHosts("https://grpc.cloud.qdrant.io:443")
+	_, err := parseHosts("https://grpc.cloud.qdrant.io:443")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "looks like a URL")
 }
@@ -47,7 +47,7 @@ func TestParseHosts_RejectsURL(t *testing.T) {
 func TestParseHosts_RejectsUnknownHost(t *testing.T) {
 	t.Parallel()
 
-	_, err := ParseHosts("localhost:50051")
+	_, err := parseHosts("localhost:50051")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot infer")
 }

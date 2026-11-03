@@ -11,36 +11,31 @@ const (
 	wellKnownPRM    = "/.well-known/oauth-protected-resource"
 )
 
-// Hosts are the HTTPS API and Auth0 issuer derived from a gRPC endpoint.
-type Hosts struct {
-	GRPCEndpoint string
-	APIHost      string
-	LoginHost    string
+// hosts are the HTTPS API and login hosts derived from a gRPC endpoint.
+type hosts struct {
+	grpcEndpoint string
+	apiHost      string
+	loginHost    string
 }
 
-// APIBaseURL is https://api.<cluster>.qdrant.io (no trailing slash).
-func (h Hosts) APIBaseURL() string {
-	return "https://" + h.APIHost
+// resource is the generic Cloud API OAuth resource identifier (JWT aud): https://api.<cluster>.qdrant.io.
+func (h hosts) resource() string {
+	return "https://" + h.apiHost
 }
 
-// Resource is the generic Cloud API OAuth resource identifier (JWT aud).
-func (h Hosts) Resource() string {
-	return h.APIBaseURL()
+// inferredIssuer is https://login.<cluster>.qdrant.io/ (trailing slash as the login server issues it).
+func (h hosts) inferredIssuer() string {
+	return "https://" + h.loginHost + "/"
 }
 
-// InferredIssuer is https://login.<cluster>.qdrant.io/ (trailing slash as Auth0 issues it).
-func (h Hosts) InferredIssuer() string {
-	return "https://" + h.LoginHost + "/"
+// protectedResourceMetadataURL is the unauthenticated RFC 9728 document on the API host.
+func (h hosts) protectedResourceMetadataURL() string {
+	return h.resource() + wellKnownPRM
 }
 
-// ProtectedResourceMetadataURL is the unauthenticated RFC 9728 document on the API host.
-func (h Hosts) ProtectedResourceMetadataURL() string {
-	return h.APIBaseURL() + wellKnownPRM
-}
-
-// ParseHosts maps a gRPC endpoint (QDRANT_CLOUD_ENDPOINT) to API and login hosts.
+// parseHosts maps a gRPC endpoint (QDRANT_CLOUD_ENDPOINT) to API and login hosts.
 // grpc.cloud.qdrant.io:443 → api.cloud.qdrant.io / login.cloud.qdrant.io.
-func ParseHosts(endpoint string) (Hosts, error) {
+func parseHosts(endpoint string) (hosts, error) {
 	endpoint = strings.TrimSpace(endpoint)
 	if endpoint == "" {
 		endpoint = defaultGRPCHost + ":443"
@@ -48,7 +43,7 @@ func ParseHosts(endpoint string) (Hosts, error) {
 
 	host := endpoint
 	if strings.Contains(endpoint, "://") {
-		return Hosts{}, fmt.Errorf("endpoint %q looks like a URL; use a gRPC host:port (e.g. grpc.cloud.qdrant.io:443)", endpoint)
+		return hosts{}, fmt.Errorf("endpoint %q looks like a URL; use a gRPC host:port (e.g. grpc.cloud.qdrant.io:443)", endpoint)
 	}
 
 	if h, _, err := net.SplitHostPort(endpoint); err == nil {
@@ -57,23 +52,23 @@ func ParseHosts(endpoint string) (Hosts, error) {
 
 	host = strings.TrimSuffix(host, ".")
 	if host == "" {
-		return Hosts{}, fmt.Errorf("empty host in endpoint %q", endpoint)
+		return hosts{}, fmt.Errorf("empty host in endpoint %q", endpoint)
 	}
 
 	apiHost, ok := rewriteFirstLabel(host, "api")
 	if !ok {
-		return Hosts{}, fmt.Errorf("cannot infer API/login hosts from endpoint %q; expected grpc.<cluster>.qdrant.io", endpoint)
+		return hosts{}, fmt.Errorf("cannot infer API/login hosts from endpoint %q; expected grpc.<cluster>.qdrant.io", endpoint)
 	}
 
 	loginHost, ok := rewriteFirstLabel(host, "login")
 	if !ok {
-		return Hosts{}, fmt.Errorf("cannot infer login host from endpoint %q", endpoint)
+		return hosts{}, fmt.Errorf("cannot infer login host from endpoint %q", endpoint)
 	}
 
-	return Hosts{
-		GRPCEndpoint: endpoint,
-		APIHost:      apiHost,
-		LoginHost:    loginHost,
+	return hosts{
+		grpcEndpoint: endpoint,
+		apiHost:      apiHost,
+		loginHost:    loginHost,
 	}, nil
 }
 

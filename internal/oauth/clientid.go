@@ -12,8 +12,8 @@ var cliClientIDs = map[string]string{
 	"https://login.development-cloud.qdrant.io/": "CjeXCZKv1plzIF9h3vZBGAhM6MLE68fI",
 }
 
-// DefaultClientID returns the built-in client ID for issuer, if that tenant has one.
-func DefaultClientID(issuer string) (string, bool) {
+// defaultClientID returns the built-in client ID for issuer, if that tenant has one.
+func defaultClientID(issuer string) (string, bool) {
 	id, ok := cliClientIDs[canonicalizeIssuer(issuer)]
 	if !ok || id == clientIDTBD {
 		return "", false

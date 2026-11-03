@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -13,121 +13,126 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/base"
 	"github.com/qdrant/qcloud-cli/internal/oauth"
 	"github.com/qdrant/qcloud-cli/internal/state"
+	"github.com/qdrant/qcloud-cli/internal/state/config"
 )
 
+// loginOutput is the result of a login: who logged in, with what access, and the context of each
+// granted account.
+type loginOutput struct {
+	Endpoint     string `json:"endpoint"`
+	Email        string `json:"email,omitempty"`
+	GrantedScope string `json:"granted_scope,omitempty"`
+	// Contexts is empty when no account was granted, or the accounts could not be listed.
+	Contexts []loginContext `json:"contexts"`
+	// CurrentContext is the current context after the login.
+	CurrentContext string `json:"current_context,omitempty"`
+	// SelectedContext is the context the login made current, if it did.
+	SelectedContext string `json:"selected_context,omitempty"`
+	// AccountsListed is false when the accounts could not be listed, so no contexts were written.
+	AccountsListed bool `json:"accounts_listed"`
+}
+
+type loginContext struct {
+	Name        string `json:"name"`
+	AccountID   string `json:"account_id"`
+	AccountName string `json:"account_name"`
+}
+
 func newLoginCommand(s *state.State) *cobra.Command {
-	return base.Cmd{
-		Long: `Log in and store a refreshable access token for the current endpoint.
+	return base.CreateCmd[*loginOutput]{
+		Long: `Log in to Qdrant Cloud and store a session that refreshes itself, for the current endpoint.
 
-The default flow is authorization code + PKCE with a loopback listener on
-127.0.0.1 (RFC 8252), on the first free port of 48271, 48272 and 48273. The
-browser callback checks state and, when Auth0 sends it, iss.
+By default the login opens a browser and waits for it on 127.0.0.1; use
+--device on a machine without a browser (over SSH, for example). Either way the
+login ends on the Qdrant Cloud consent page, where you choose the accounts and
+the access (read only or manage) the CLI gets.
 
-Use --device on SSH or when no browser is available. The CLI only prints the
-verification URL and polls. Sign-in and the Qdrant consent page happen in the
-browser; a declined consent ends the poll with access denied.
+After the login, qcloud creates a context for every account you granted, named
+after the account and prefixed with the environment (dev-my-account on
+development), that uses this login instead of an API key. Unless a context is
+already current, the first one becomes current. A later login updates these
+contexts, and "qcloud auth logout" removes them. Contexts with an API key are
+never changed.
 
-The login URL comes from the gateway's unauthenticated protected-resource
-metadata when OAuth is enabled, otherwise from rewriting grpc.cloud.qdrant.io
-to login.cloud.qdrant.io. Override with --login-url only for debugging.
-
-The Qdrant Cloud CLI client id is built in per login URL. --client-id or
-QDRANT_CLOUD_OAUTH_CLIENT_ID override it, for a tenant without a built-in id.
-The access and refresh tokens are stored in the OS keychain (macOS Keychain,
-Windows Credential Manager, or the Secret Service on Linux); the rest of the
-session is in credentials.yaml next to the config file. Without a keychain, the
-tokens go to credentials.yaml (mode 0600) too. Set QDRANT_CLOUD_TOKEN_STORE to
-"keychain" to require the keychain, or to "file" to skip it.
-
-After the login, qcloud creates a context for every account you granted on the
-consent page (named after the account, prefixed with the environment, e.g.
-dev-my-account), marked as OAuth so it needs no API key. Unless you already have
-a current context, the first one becomes current; switch with
-"qcloud context use <name>". A later login updates
-these contexts, and "qcloud auth logout" removes them. Contexts with an API key
-are never changed.`,
-		Example: `# Browser login (default production endpoint)
+The access and refresh tokens are kept in the OS keychain (macOS Keychain,
+Windows Credential Manager, or the Secret Service on Linux), and the rest of the
+session in credentials.yaml next to the config file. Without a keychain, the
+tokens go to credentials.yaml (mode 0600) too; QDRANT_CLOUD_TOKEN_STORE=keychain
+makes that an error, and QDRANT_CLOUD_TOKEN_STORE=file skips the keychain.`,
+		Example: `# Log in with the browser
 qcloud auth login
 
-# Read-only session
+# Log in with read-only access
 qcloud auth login --scope read-only
 
-# Device code
-qcloud auth login --device`,
+# Log in on a machine without a browser
+qcloud auth login --device
+
+# Log in from a script and use the context it selected
+qcloud auth login --json | jq -r .current_context`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "login",
 				Short: "Log in with a browser or device code",
 				Args:  cobra.NoArgs,
 			}
-			cmd.Flags().String("scope", "manage", "OAuth scope: read-only or manage")
-			cmd.Flags().Bool("device", false, "Use the device authorization grant instead of a loopback browser flow")
-			cmd.Flags().String("client-id", os.Getenv("QDRANT_CLOUD_OAUTH_CLIENT_ID"), "Override the built-in OAuth client id (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)")
-			cmd.Flags().String("login-url", "", "Override the login issuer URL (defaults to discovery / endpoint inference)")
+			cmd.Flags().String("scope", "manage", "Access to ask for: read-only or manage (the consent page can narrow it)")
+			cmd.Flags().Bool("device", false, "Log in with a device code (prints a code to confirm in any browser) instead of opening a browser here")
+			cmd.Flags().String("client-id", "", "OAuth client id, for a login server without a built-in one (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)")
+			cmd.Flags().String("login-url", "", "Login server URL, instead of the one discovered from the endpoint (for debugging)")
+			s.Config.BindPFlag(config.KeyOAuthClientID, cmd.Flags().Lookup("client-id"))
 			return cmd
 		},
-		Run: func(s *state.State, cmd *cobra.Command, args []string) error {
+		Run: func(s *state.State, cmd *cobra.Command, _ []string) (*loginOutput, error) {
 			scope, _ := cmd.Flags().GetString("scope")
 			device, _ := cmd.Flags().GetBool("device")
-			clientID, _ := cmd.Flags().GetString("client-id")
 			loginURL, _ := cmd.Flags().GetString("login-url")
 
-			opts := oauth.LoginOptions{
-				Endpoint:    s.Config.Endpoint(),
-				ClientID:    clientID,
-				Scope:       scope,
-				Device:      device,
-				LoginURL:    loginURL,
-				WaitCode:    s.WaitAuthCode(),
-				RedirectURL: s.OAuthRedirectURL(),
-				OpenURL:     s.OpenBrowser,
-				Output:      cmd.ErrOrStderr(),
-			}
-
-			tok, _, err := s.OAuthDiscoverer().Login(cmd.Context(), opts)
+			res, err := s.OAuth().Login(cmd.Context(), oauth.LoginOptions{
+				Endpoint: s.Config.Endpoint(),
+				ClientID: s.Config.OAuthClientID(),
+				Scope:    scope,
+				Device:   device,
+				LoginURL: loginURL,
+				OpenURL:  s.OpenBrowser,
+				Output:   cmd.ErrOrStderr(),
+			})
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			claims := oauth.ReadTokenClaims(tok.AccessToken)
-			tok.GrantedScope = claims.GrantedScope
-
-			path := oauth.CredentialsPath(s.Config.ConfigFilePath())
-			saved, err := oauth.SaveToken(path, tok)
-			if err != nil {
-				return err
+			if res.KeychainErr != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: no OS keychain available (%v); the tokens are stored in %s (0600).\n", res.KeychainErr, res.CredentialsPath)
 			}
 
-			if saved.KeychainErr != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "No OS keychain available (%v); the tokens are stored in %s (0600).\n", saved.KeychainErr, path)
-			}
-
-			who := "Logged in"
-			if claims.Email != "" {
-				who += " as " + claims.Email
-			}
-
-			access := ""
-			if tok.GrantedScope != "" {
-				access = ", " + oauth.ScopeLabel(tok.GrantedScope)
+			out := &loginOutput{
+				Endpoint:     s.Config.Endpoint(),
+				Email:        res.Token.Email,
+				GrantedScope: res.Token.GrantedScope,
+				Contexts:     []loginContext{},
 			}
 
 			accounts, ok := grantedAccounts(cmd, s)
 			if !ok {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s%s.\n", who, access)
-				return nil
+				out.CurrentContext = s.Config.CurrentContext()
+				return out, nil
 			}
 
-			endpoint := s.Config.Endpoint()
-			names, selected, err := syncOAuthContexts(s, endpoint, accounts)
+			names, selected, err := syncOAuthContexts(s, out.Endpoint, accounts)
 			if err != nil {
-				return fmt.Errorf("logged in, but could not write the contexts: %w", err)
+				return nil, fmt.Errorf("logged in, but could not write the contexts: %w", err)
 			}
 
-			printLoginResult(cmd, who, access, accounts, names, selected, s.Config.CurrentContext())
+			out.AccountsListed = true
+			out.SelectedContext = selected
+			out.CurrentContext = s.Config.CurrentContext()
+			for i, name := range names {
+				out.Contexts = append(out.Contexts, loginContext{Name: name, AccountID: accounts[i].GetId(), AccountName: accounts[i].GetName()})
+			}
 
-			return nil
+			return out, nil
 		},
+		PrintResource: printLoginResult,
 	}.CobraCommand(s)
 }
 
@@ -135,18 +140,17 @@ qcloud auth login --device`,
 const accountLookupTimeout = 15 * time.Second
 
 // grantedAccounts lists the accounts the login was granted. It never fails the login: on an error it
-// warns and returns false. An API key takes precedence over the OAuth login, so then there is nothing to
-// look up.
+// warns and returns false. The lookup always uses the new login, whatever API key the current context
+// has; an API key from --api-key or QDRANT_CLOUD_API_KEY is only reported, as it overrides the login.
 func grantedAccounts(cmd *cobra.Command, s *state.State) ([]*accountv1.Account, bool) {
-	if s.Config.APIKey() != "" {
-		fmt.Fprintln(cmd.ErrOrStderr(), "An API key is set, so commands use it instead of this login; no contexts were created.")
-		return nil, false
+	if s.Config.APIKeyFromFlagOrEnv() {
+		fmt.Fprintln(cmd.ErrOrStderr(), "Warning: an API key is set with --api-key or QDRANT_CLOUD_API_KEY, so commands use it instead of this login.")
 	}
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), accountLookupTimeout)
 	defer cancel()
 
-	client, err := s.Client(ctx)
+	client, err := s.OAuthClient(ctx)
 	if err == nil {
 		var resp *accountv1.ListAccountsResponse
 		if resp, err = client.Account().ListAccounts(ctx, &accountv1.ListAccountsRequest{}); err == nil {
@@ -154,31 +158,43 @@ func grantedAccounts(cmd *cobra.Command, s *state.State) ([]*accountv1.Account, 
 		}
 	}
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "Could not list your accounts (%v); no contexts were created, pass --account-id to commands.\n", err)
+	fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not list your accounts (%v); no contexts were created, pass --account-id to commands.\n", err)
 
 	return nil, false
 }
 
 // printLoginResult reports the login and the contexts it created, one line per context.
-func printLoginResult(cmd *cobra.Command, who, access string, accounts []*accountv1.Account, names []string, selected, current string) {
-	out := cmd.OutOrStdout()
-	switch len(names) {
-	case 0:
+func printLoginResult(_ *cobra.Command, out io.Writer, res *loginOutput) {
+	who := "Logged in"
+	if res.Email != "" {
+		who += " as " + res.Email
+	}
+
+	access := ""
+	if res.GrantedScope != "" {
+		access = ", " + oauth.ScopeLabel(res.GrantedScope)
+	}
+
+	switch {
+	case !res.AccountsListed:
+		fmt.Fprintf(out, "%s%s.\n", who, access)
+	case len(res.Contexts) == 0:
 		fmt.Fprintf(out, "%s%s; no accounts were granted.\n", who, access)
-	case 1:
-		fmt.Fprintf(out, "%s, account %s%s (context %s).\n", who, accounts[0].GetName(), access, names[0])
-		if selected == "" {
-			fmt.Fprintf(out, "Switch to it with: qcloud context use %s\n", names[0])
+	case len(res.Contexts) == 1:
+		c := res.Contexts[0]
+		fmt.Fprintf(out, "%s, account %s%s (context %s).\n", who, c.AccountName, access, c.Name)
+		if res.CurrentContext != c.Name {
+			fmt.Fprintf(out, "Switch to it with: qcloud context use %s\n", c.Name)
 		}
 	default:
-		fmt.Fprintf(out, "%s%s. Contexts for your %d accounts:\n", who, access, len(names))
-		for i, name := range names {
+		fmt.Fprintf(out, "%s%s. Contexts for your %d accounts:\n", who, access, len(res.Contexts))
+		for _, c := range res.Contexts {
 			marker := " "
-			if name == current {
+			if c.Name == res.CurrentContext {
 				marker = "*"
 			}
 
-			fmt.Fprintf(out, "  %s %s  (%s)\n", marker, name, accounts[i].GetName())
+			fmt.Fprintf(out, "  %s %s  (%s)\n", marker, c.Name, c.AccountName)
 		}
 
 		fmt.Fprintln(out, "Switch with: qcloud context use <name>")

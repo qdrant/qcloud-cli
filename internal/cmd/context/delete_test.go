@@ -1,8 +1,6 @@
 package context_test
 
 import (
-	"os"
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,13 +76,9 @@ func TestContextDelete_RefusesAnOAuthContext(t *testing.T) {
 	env := newEnv(t)
 	t.Cleanup(env.Cleanup)
 
-	cfgPath := path.Join(t.TempDir(), "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte(`contexts:
-  - name: dev-my-account
-    endpoint: grpc.development-cloud.qdrant.io:443
-    account_id: acc-1
-    auth: oauth
-`), 0o600))
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "", map[string]map[string]string{
+		"dev-my-account": {"endpoint": "grpc.development-cloud.qdrant.io:443", "account_id": "acc-1", "auth": "oauth"},
+	})
 
 	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "delete", "dev-my-account", "--force")
 	require.Error(t, err)

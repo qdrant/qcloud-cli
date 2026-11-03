@@ -6,9 +6,9 @@ Print a fresh OAuth access token (sensitive)
 
 Print a fresh OAuth access token for the current endpoint.
 
-The token is sensitive. Use this for local Terraform (auth = "cli") or scripts
-that need a Bearer token. Expired access tokens are refreshed when a refresh
-token is stored.
+An access token that has expired, or is about to, is refreshed first. The token
+is a credential: it is meant for tools that need a Bearer token, such as the
+Terraform provider with auth = "cli", and should not be logged or shared.
 
 ```
 qcloud auth token [flags]
@@ -17,7 +17,13 @@ qcloud auth token [flags]
 ### Examples
 
 ```
+# Print the access token
 qcloud auth token
+
+# Keep the token in a variable for a script
+TOKEN=$(qcloud auth token)
+
+# Print the token with its type, scope, and expiry
 qcloud auth token --json
 ```
 

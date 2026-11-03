@@ -14,9 +14,9 @@ import (
 func TestDiscover_FallsBackToInferredIssuer(t *testing.T) {
 	t.Parallel()
 
-	d := Discoverer{HTTPClient: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+	d := NewClient(Options{HTTPClient: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return nil, assert.AnError
-	})}}
+	})}})
 
 	disc, err := d.Discover(context.Background(), "grpc.development-cloud.qdrant.io:443")
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestDiscover_UsesProtectedResourceMetadata(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
+	d := NewClient(Options{HTTPClient: rewriteClient(t, srv.URL)})
 	disc, err := d.Discover(context.Background(), "grpc.development-cloud.qdrant.io:443")
 	require.NoError(t, err)
 	assert.Equal(t, "https://login.development-cloud.qdrant.io/", disc.Issuer)
@@ -66,7 +66,7 @@ func TestDiscover_IgnoresMetadataForAnotherResource(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 
-			d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
+			d := NewClient(Options{HTTPClient: rewriteClient(t, srv.URL)})
 			disc, err := d.Discover(context.Background(), "grpc.example.com:443")
 			require.NoError(t, err)
 			assert.Equal(t, "https://login.example.com/", disc.Issuer)
@@ -89,12 +89,31 @@ func TestDiscover_AcceptsResourceWithTrailingSlash(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	d := Discoverer{HTTPClient: rewriteClient(t, srv.URL)}
+	d := NewClient(Options{HTTPClient: rewriteClient(t, srv.URL)})
 	disc, err := d.Discover(context.Background(), "grpc.development-cloud.qdrant.io:443")
 	require.NoError(t, err)
 	assert.Equal(t, "https://login.development-cloud.qdrant.io/", disc.Issuer)
 	assert.Equal(t, "https://api.development-cloud.qdrant.io", disc.Resource)
 	assert.Equal(t, sourceProtectedResource, disc.Source)
+}
+
+func TestDiscover_ExplainsMetadataWithoutAuthorizationServers(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"resource":              "https://api.development-cloud.qdrant.io",
+			"authorization_servers": []string{},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	d := NewClient(Options{HTTPClient: rewriteClient(t, srv.URL)})
+	disc, err := d.Discover(context.Background(), "grpc.development-cloud.qdrant.io:443")
+	require.NoError(t, err)
+	assert.Equal(t, "https://login.development-cloud.qdrant.io/", disc.Issuer)
+	assert.Equal(t, sourceEndpointInference, disc.Source)
+	assert.Equal(t, "protected-resource metadata lists no authorization_servers", disc.MetadataError)
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

@@ -4,11 +4,13 @@ Log out and drop stored OAuth tokens
 
 ### Synopsis
 
-Remove the stored OAuth token for the current endpoint.
+Log out of the current endpoint: remove its stored session and the contexts that use it.
 
-If the authorization server advertises a revocation endpoint, the refresh
-token is revoked first. Management API keys in the config file are not
-changed.
+The refresh token is revoked at the login server first. Logging out still
+succeeds when that is not possible (the keychain entry is gone, or the login
+server cannot be reached); qcloud then warns and removes the session anyway.
+The access you granted stays listed under "Connected apps" in the console, where
+you revoke it. Contexts with an API key are not changed.
 
 ```
 qcloud auth logout [flags]
@@ -17,7 +19,11 @@ qcloud auth logout [flags]
 ### Examples
 
 ```
+# Log out of the current endpoint
 qcloud auth logout
+
+# Log out of another endpoint
+qcloud auth logout --endpoint grpc.cloud.qdrant.io:443
 ```
 
 ### Options
