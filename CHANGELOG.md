@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.34.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.34.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.33.0...v0.34.0)
+
+### Features
+
+- **auth**: add auth login, logout, status, token, and discover commands ([8b7e05f](https://github.com/qdrant/qcloud-cli/commit/8b7e05f1b5ce71ce10a76505ad5db5fa0608ff7b))
+- **context**: create a context per granted account after oauth login ([8b7e05f](https://github.com/qdrant/qcloud-cli/commit/8b7e05f1b5ce71ce10a76505ad5db5fa0608ff7b))
+- **auth**: built-in oauth client id for staging (#240) ([0abecd9](https://github.com/qdrant/qcloud-cli/commit/0abecd98b21a635b381a28b51bfba2beb304e807))
+- **auth**: built-in oauth client id for production (#241) ([55bf0bf](https://github.com/qdrant/qcloud-cli/commit/55bf0bf53847c08cdb62951f2bd5313d40c93e88))
+
 ## [v0.33.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.33.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.32.0...v0.33.0)
