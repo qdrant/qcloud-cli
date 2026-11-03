@@ -269,6 +269,11 @@ func TestCreateCluster_PackageByName(t *testing.T) {
 	req, ok := env.Server.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "pkg-uuid-123", req.GetCluster().GetConfiguration().GetPackageId())
+
+	listReq, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, listReq.MultiAz, "multi-AZ packages must be excluded without --multi-az")
+	assert.False(t, *listReq.MultiAz)
 }
 
 func TestCreateCluster_PackageByNameMultiAZ(t *testing.T) {
@@ -805,6 +810,38 @@ closest available packages:
 use 'package list' to see all available packages`, err.Error())
 }
 
+func TestCreateCluster_PackageByResourcesExcludesMultiAZ(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-gpx1", Name: "gpx1", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "2Gi"}},
+		},
+	}, nil)
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-gpx1"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "eu-central-1",
+		"--cpu", "0.5",
+		"--ram", "2Gi",
+	)
+	require.NoError(t, err)
+
+	listReq, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, listReq.MultiAz, "multi-AZ packages must be excluded without --multi-az")
+	assert.False(t, *listReq.MultiAz)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "pkg-gpx1", req.GetCluster().GetConfiguration().GetPackageId())
+}
+
 func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
@@ -813,6 +850,7 @@ func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 			{
 				Id:   "pkg-a",
 				Name: "starter-a",
+				Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD,
 				ResourceConfiguration: &bookingv1.ResourceConfiguration{
 					Cpu: "1000m",
 				},
@@ -820,6 +858,7 @@ func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 			{
 				Id:   "pkg-b",
 				Name: "starter-b",
+				Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD,
 				ResourceConfiguration: &bookingv1.ResourceConfiguration{
 					Cpu: "1000m",
 				},
@@ -835,7 +874,7 @@ func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 		"--cpu", "1000m",
 	)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "multiple packages match")
+	assert.Equal(t, `multiple packages match cpu="1": starter-a (id=pkg-a tier=STANDARD multi-az=no), starter-b (id=pkg-b tier=STANDARD multi-az=no); use --package with a package ID to pick one`, err.Error())
 }
 
 func TestCreateCluster_NoPackageOrResources(t *testing.T) {

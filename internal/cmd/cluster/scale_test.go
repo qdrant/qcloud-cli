@@ -525,6 +525,23 @@ closest available packages:
 use 'package list' to see all available packages`, err.Error())
 }
 
+func TestScale_ExcludesMultiAZPackagesForSingleAZCluster(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgIDA, "2000m", "8GiB", "50GiB"),
+	})
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--ram", "8GiB", "--force")
+	require.NoError(t, err)
+
+	listReq, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, listReq.MultiAz, "multi-AZ packages must be excluded for a single-AZ cluster")
+	assert.False(t, *listReq.MultiAz)
+}
+
 func TestScale_AmbiguousPackageMatch(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")

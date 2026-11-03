@@ -53,9 +53,8 @@ func FilteredPackages(
 		CloudProviderRegionId: cloudRegion,
 		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
 		Gpu:                   &f.IncludeGPU,
-	}
-	if f.MultiAz {
-		req.MultiAz = new(true)
+		// Leaving multi_az unset would also return multi-AZ packages.
+		MultiAz: &f.MultiAz,
 	}
 
 	resp, err := client.Booking().ListPackages(ctx, req)
@@ -128,9 +127,9 @@ func ResolvePackageByName(
 		CloudProviderId:       cloudProvider,
 		CloudProviderRegionId: cloudRegion,
 		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
-	}
-	if multiAz {
-		req.MultiAz = new(true)
+		// Leaving multi_az unset would also return multi-AZ packages, which
+		// share their names with the single-AZ ones.
+		MultiAz: &multiAz,
 	}
 
 	resp, err := booking.ListPackages(ctx, req)
@@ -190,9 +189,8 @@ func ResolvePackageByResources(
 		CloudProviderId:       q.CloudProvider,
 		CloudProviderRegionId: q.CloudRegion,
 		Statuses:              []bookingv1.PackageStatus{bookingv1.PackageStatus_PACKAGE_STATUS_ACTIVE},
-	}
-	if q.MultiAz {
-		req.MultiAz = new(true)
+		// Leaving multi_az unset would also return multi-AZ packages.
+		MultiAz: &q.MultiAz,
 	}
 
 	if q.GPU != 0 {
@@ -261,10 +259,10 @@ func ResolvePackageByResources(
 	default:
 		names := make([]string, len(matches))
 		for i, p := range matches {
-			names[i] = p.GetName()
+			names[i] = fmt.Sprintf("%s (id=%s tier=%s multi-az=%s)", p.GetName(), p.GetId(), output.PackageTier(p.GetTier()), output.BoolYesNo(p.GetMultiAz()))
 		}
 
-		return nil, fmt.Errorf("multiple packages match %s: %s; use 'package list' to see available packages", desc, strings.Join(names, ", "))
+		return nil, fmt.Errorf("multiple packages match %s: %s; use --package with a package ID to pick one", desc, strings.Join(names, ", "))
 	}
 }
 
