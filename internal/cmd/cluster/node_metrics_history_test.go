@@ -398,7 +398,8 @@ func TestNodeMetricsHistory_GPU(t *testing.T) {
 		Nodes: []*monitoringv1.ClusterNodeUsageMetrics{node},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0",
+		"--since", "2026-10-20T00:00:00Z", "--until", "2026-10-20T02:00:00Z")
 	require.NoError(t, err)
 
 	assert.Regexp(t, "\nGPU\nusage\n *100%│", stdout, "the GPU axis ends at 100% without a capacity line")

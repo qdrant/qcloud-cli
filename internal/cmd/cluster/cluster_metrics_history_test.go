@@ -178,7 +178,8 @@ func TestClusterMetricsHistory_LowRateLabels(t *testing.T) {
 		Latency: series(0, 0.04, 0),
 	})
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID,
+		"--since", "2026-10-20T00:00:00Z", "--until", "2026-10-20T02:00:00Z")
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "0.002/s│")
