@@ -8,7 +8,7 @@ const clientIDTBD = "TBD"
 // no secret), so they ship with the CLI and users never pass one.
 var cliClientIDs = map[string]string{
 	"https://login.cloud.qdrant.io/":             clientIDTBD,
-	"https://login.staging-cloud.qdrant.io/":     clientIDTBD,
+	"https://login.staging-cloud.qdrant.io/":     "LNY7TjjIPiTvLAKjPVsGNlfUz5EdStG9",
 	"https://login.development-cloud.qdrant.io/": "CjeXCZKv1plzIF9h3vZBGAhM6MLE68fI",
 }
 
