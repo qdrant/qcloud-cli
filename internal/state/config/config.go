@@ -29,6 +29,10 @@ const (
 	KeyEndpoint = "endpoint"
 	// KeyConsoleURL is the config key for the web console base URL.
 	KeyConsoleURL = "console_url"
+	// KeyOAuthClientID is the config key for the OAuth client id, overriding the built-in one.
+	KeyOAuthClientID = "oauth_client_id"
+	// KeyTokenStore is the config key for where the OAuth tokens are kept: auto, keychain, or file.
+	KeyTokenStore = "token_store"
 )
 
 // ContextEntry holds the configuration for a single named context.
@@ -38,6 +42,39 @@ type ContextEntry struct {
 	APIKey        string `mapstructure:"api_key"         yaml:"api_key,omitempty"             json:"api_key,omitempty"`
 	APIKeyCommand string `mapstructure:"api_key_command" yaml:"api_key_command,omitempty"     json:"api_key_command,omitempty"`
 	AccountID     string `mapstructure:"account_id"      yaml:"account_id,omitempty"          json:"account_id,omitempty"`
+	// Auth is AuthOAuth for a context that uses the OAuth login for its endpoint ("qcloud auth login")
+	// instead of an API key. Empty for an API key context.
+	Auth string `mapstructure:"auth" yaml:"auth,omitempty" json:"auth,omitempty"`
+}
+
+// AuthOAuth marks a context that authenticates with the OAuth login for its endpoint.
+const AuthOAuth = "oauth"
+
+// IsOAuth reports whether the context uses the OAuth login instead of an API key.
+func (e ContextEntry) IsOAuth() bool {
+	return e.Auth == AuthOAuth
+}
+
+// Validate checks that the context has an endpoint, an account, and exactly one credential: an API key
+// (or a command that prints one), or the OAuth login.
+func (e ContextEntry) Validate() error {
+	if e.Endpoint == "" {
+		return errors.New("cannot set a context with an empty endpoint")
+	}
+
+	hasKey := e.APIKey != "" || e.APIKeyCommand != ""
+	switch {
+	case hasKey && e.IsOAuth():
+		return errors.New("a context uses either an API key or OAuth, not both")
+	case !hasKey && !e.IsOAuth():
+		return errors.New("cannot set a context with an empty API key (use --api-key, --api-key-command, or --api-key-helper; for OAuth, run \"qcloud auth login\")")
+	}
+
+	if e.AccountID == "" {
+		return errors.New("cannot set a context with an empty account id")
+	}
+
+	return nil
 }
 
 // File holds the top-level structure of the config file.
@@ -51,6 +88,7 @@ type Config struct {
 	v        *viper.Viper
 	filePath string // from v.ConfigFileUsed() after Load
 	file     File   // parsed file contents, for write-back
+	flags    map[string]*pflag.Flag
 }
 
 // DefaultConfigPath returns the default config file path (~/.config/qcloud/config.yaml).
@@ -72,7 +110,7 @@ func New() *Config {
 	v.AutomaticEnv()
 	v.SetDefault(KeyEndpoint, defaultAPIEndpoint)
 	v.SetDefault(KeyConsoleURL, defaultConsoleURL)
-	return &Config{v: v}
+	return &Config{v: v, flags: map[string]*pflag.Flag{}}
 }
 
 // Load reads the config file. If configPath is non-empty it is used directly;
@@ -148,6 +186,22 @@ func (c *Config) Load(configPath string) error {
 // BindPFlag binds a viper key to a pflag.Flag.
 func (c *Config) BindPFlag(key string, flag *pflag.Flag) {
 	_ = c.v.BindPFlag(key, flag)
+	c.flags[key] = flag
+}
+
+// fromFlagOrEnv reports whether key is set by its flag or its environment variable, the two sources
+// that take precedence over the config file and its contexts.
+func (c *Config) fromFlagOrEnv(key string) (string, bool) {
+	if f := c.flags[key]; f != nil && f.Changed {
+		return "--" + f.Name, true
+	}
+
+	env := envPrefix + "_" + strings.ToUpper(key)
+	if v, ok := os.LookupEnv(env); ok && v != "" {
+		return env, true
+	}
+
+	return "", false
 }
 
 // APIKey returns the management api key from config/env/flags.
@@ -155,9 +209,50 @@ func (c *Config) APIKey() string {
 	return c.v.GetString(KeyAPIKey)
 }
 
+// APIKeyFromFlagOrEnv reports whether an API key is set with --api-key or QDRANT_CLOUD_API_KEY. Unlike a
+// key saved in a context, those override the OAuth login for every context.
+func (c *Config) APIKeyFromFlagOrEnv() bool {
+	_, ok := c.fromFlagOrEnv(KeyAPIKey)
+	return ok
+}
+
 // AccountID returns the account ID from config/env/flags.
 func (c *Config) AccountID() string {
 	return c.v.GetString(KeyAccountID)
+}
+
+// AccountIDSource returns the account ID and where it comes from, in the order it is resolved: the
+// --account-id flag, QDRANT_CLOUD_ACCOUNT_ID, the active context, then the config file. Both are empty
+// when no account is set.
+func (c *Config) AccountIDSource() (string, string) {
+	id := c.AccountID()
+	if id == "" {
+		return "", ""
+	}
+
+	if source, ok := c.fromFlagOrEnv(KeyAccountID); ok {
+		return id, source
+	}
+
+	if name := c.ActiveContext(); name != "" {
+		if entry, ok := c.GetContext(name); ok && entry.AccountID != "" {
+			return id, "context " + name
+		}
+	}
+
+	return id, "config file"
+}
+
+// OAuthClientID returns the OAuth client id that overrides the built-in one, from --client-id or
+// QDRANT_CLOUD_OAUTH_CLIENT_ID; empty means the built-in one.
+func (c *Config) OAuthClientID() string {
+	return c.v.GetString(KeyOAuthClientID)
+}
+
+// TokenStore returns where the OAuth tokens are kept, from QDRANT_CLOUD_TOKEN_STORE: auto (the
+// default), keychain, or file.
+func (c *Config) TokenStore() string {
+	return c.v.GetString(KeyTokenStore)
 }
 
 // SetAPIKey overrides the api key with the highest viper priority.
@@ -201,6 +296,11 @@ func (c *Config) ActiveContext() string {
 	}
 
 	return c.file.CurrentContext
+}
+
+// Contexts returns a copy of all contexts, in file order.
+func (c *Config) Contexts() []ContextEntry {
+	return append([]ContextEntry(nil), c.file.Contexts...)
 }
 
 // ContextNames returns a sorted list of all context names.

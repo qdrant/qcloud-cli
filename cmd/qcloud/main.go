@@ -29,6 +29,10 @@ func main() {
 	cmd.SetContext(ctx)
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		if hint := cli.ErrorHint(err); hint != "" {
+			fmt.Fprintln(os.Stderr, hint)
+		}
+
 		os.Exit(1)
 	}
 }

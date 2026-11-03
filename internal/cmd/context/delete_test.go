@@ -71,3 +71,17 @@ func TestContextDelete_RequiresExactlyOneArg(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "delete", "--force")
 	require.Error(t, err)
 }
+
+func TestContextDelete_RefusesAnOAuthContext(t *testing.T) {
+	env := newEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	cfgPath := testutil.WriteContextConfigFile(t, t.TempDir(), "", map[string]map[string]string{
+		"dev-my-account": {"endpoint": "grpc.development-cloud.qdrant.io:443", "account_id": "acc-1", "auth": "oauth"},
+	})
+
+	_, _, err := testutil.Exec(t, env, "--config", cfgPath, "context", "delete", "dev-my-account", "--force")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "qcloud auth logout")
+	assert.NotNil(t, testutil.FindContextEntry(t, cfgPath, "dev-my-account"), "still there")
+}

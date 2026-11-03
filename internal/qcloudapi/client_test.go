@@ -7,12 +7,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func TestAuthInterceptor_TraceID(t *testing.T) {
-	interceptor := authInterceptor("test-key")
+	interceptor := authInterceptor("apikey test-key")
 
 	t.Run("no error returns nil", func(t *testing.T) {
 		invoker := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
@@ -75,3 +78,25 @@ func TestAuthInterceptor_TraceID(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestBearerCredentials(t *testing.T) {
+	t.Run("sends the current token", func(t *testing.T) {
+		creds := bearerCredentials{ts: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "access-token", TokenType: "bearer"})}
+		md, err := creds.GetRequestMetadata(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"authorization": "Bearer access-token"}, md)
+		assert.True(t, creds.RequireTransportSecurity())
+	})
+
+	t.Run("a token that cannot be had fails the call as unauthenticated", func(t *testing.T) {
+		creds := bearerCredentials{ts: failingTokenSource{errors.New("the login has ended")}}
+		_, err := creds.GetRequestMetadata(context.Background())
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.Contains(t, err.Error(), "the login has ended")
+	})
+}
+
+type failingTokenSource struct{ err error }
+
+func (f failingTokenSource) Token() (*oauth2.Token, error) { return nil, f.err }
