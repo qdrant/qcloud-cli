@@ -289,9 +289,10 @@ func TestAuthLogin_MissingClientID(t *testing.T) {
 	env := testutil.NewTestEnv(t, testutil.WithAPIKey(""), testutil.WithOAuthServer(testutil.NewFakeOAuthServer()))
 	t.Setenv("QDRANT_CLOUD_OAUTH_CLIENT_ID", "")
 
-	_, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", "grpc.cloud.qdrant.io:443")
+	// A login server without a built-in client id.
+	_, _, err := testutil.Exec(t, env, "auth", "login", "--endpoint", "grpc.example.com:443")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "client id")
+	assert.Contains(t, err.Error(), "no built-in OAuth client id for https://login.example.com/")
 }
 
 func TestAuthLogin_ClientIDFromTheEnvironment(t *testing.T) {

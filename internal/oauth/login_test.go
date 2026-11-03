@@ -188,7 +188,7 @@ func TestLogin_RequiresClientID(t *testing.T) {
 	c := newTestClient(t, &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return nil, assert.AnError
 	})})
-	_, err := c.Login(context.Background(), LoginOptions{Endpoint: "grpc.cloud.qdrant.io:443"})
+	_, err := c.Login(context.Background(), LoginOptions{Endpoint: "grpc.example.com:443"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "client id")
 }

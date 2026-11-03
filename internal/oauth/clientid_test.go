@@ -17,11 +17,10 @@ func TestDefaultClientID(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "LNY7TjjIPiTvLAKjPVsGNlfUz5EdStG9", id)
 
-	for _, issuer := range []string{
-		"https://login.cloud.qdrant.io/", // TBD
-		"https://login.example.com/",     // unknown
-	} {
-		_, ok := defaultClientID(issuer)
-		assert.False(t, ok, issuer)
-	}
+	id, ok = defaultClientID("https://login.cloud.qdrant.io/")
+	assert.True(t, ok)
+	assert.Equal(t, "I4JRXp12pFB8WwTTQAxyWrViVbIGONrp", id)
+
+	_, ok = defaultClientID("https://login.example.com/")
+	assert.False(t, ok, "unknown login server")
 }
