@@ -24,8 +24,9 @@ func NewCommand(s *state.State) *cobra.Command {
 
 The quota caps how many spaces the account can create and sets the platform
 limits that are copied into every space it owns: the maximum number of
-collections per space, the maximum size of a collection and the maximum number
-of search workers per collection. A limit of 0 is shown as "unlimited".`,
+collections per space, the maximum size and maximum indexed size of a
+collection, and the maximum number of search workers per collection. A limit of
+0 is shown as "unlimited".`,
 		Example: `# Show the serverless quota
 qcloud serverless quota
 
@@ -60,6 +61,8 @@ qcloud serverless quota --json`,
 				output.UnlimitedIfZero(strconv.FormatUint(q.GetMaxCollectionsPerSpace(), 10), q.GetMaxCollectionsPerSpace()))
 			fmt.Fprintf(w, "Max Size per Collection:           %s\n",
 				output.UnlimitedIfZero(resource.ByteQuantity(q.GetPlatformMaxSizePerCollection()).String(), q.GetPlatformMaxSizePerCollection()))
+			fmt.Fprintf(w, "Max Indexed Size per Collection:   %s\n",
+				output.UnlimitedIfZero(resource.ByteQuantity(q.GetPlatformMaxIndexedSizePerCollection()).String(), q.GetPlatformMaxIndexedSizePerCollection()))
 			fmt.Fprintf(w, "Max Search Workers per Collection: %s\n",
 				output.UnlimitedIfZero(strconv.FormatUint(q.GetPlatformMaxWorkersPerCollection(), 10), q.GetPlatformMaxWorkersPerCollection()))
 			return nil

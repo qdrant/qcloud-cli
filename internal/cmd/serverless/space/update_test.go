@@ -33,9 +33,10 @@ func existingSpace() *spacev1.Space {
 			CollectionSettings: &spacev1.CollectionSettings{
 				PlatformMaxSize: uint64(100 * resource.GiB),
 				MaxSize:         new(uint64(10 * resource.GiB)),
+				MaxIndexedSize:  new(uint64(1 * resource.GiB)),
 			},
 			SearcherSettings: &spacev1.SearcherSettings{
-				IdleTimeout:        durationpb.New(5 * time.Minute),
+				MinIdleTimeout:     durationpb.New(5 * time.Minute),
 				PlatformMaxWorkers: 8,
 				MaxWorkers:         new(uint64(2)),
 			},
@@ -78,7 +79,8 @@ func TestSpaceUpdate_OnlyChangedFields(t *testing.T) {
 	assert.Equal(t, want.GetConfiguration().GetAllowedIpSourceRanges(), sp.GetConfiguration().GetAllowedIpSourceRanges())
 	assert.Equal(t, want.GetConfiguration().GetAllowedOrigins(), sp.GetConfiguration().GetAllowedOrigins())
 	assert.Equal(t, uint64(10*resource.GiB), sp.GetConfiguration().GetCollectionSettings().GetMaxSize())
-	assert.Equal(t, 5*time.Minute, sp.GetConfiguration().GetSearcherSettings().GetIdleTimeout().AsDuration())
+	assert.Equal(t, uint64(1*resource.GiB), sp.GetConfiguration().GetCollectionSettings().GetMaxIndexedSize())
+	assert.Equal(t, 5*time.Minute, sp.GetConfiguration().GetSearcherSettings().GetMinIdleTimeout().AsDuration())
 	assert.Equal(t, uint64(4), sp.GetConfiguration().GetSearcherSettings().GetMaxWorkers())
 }
 
@@ -95,7 +97,8 @@ func TestSpaceUpdate_MergeAndRemove(t *testing.T) {
 		"--allowed-origin", "https://old.example.com-",
 		"--allowed-origin", "https://new.example.com",
 		"--max-collection-size", "20GiB",
-		"--searcher-idle-timeout", "15m",
+		"--max-collection-indexed-size", "8GiB",
+		"--collection-size-warning-percent", "75",
 	)
 	require.NoError(t, err)
 
@@ -107,7 +110,8 @@ func TestSpaceUpdate_MergeAndRemove(t *testing.T) {
 		"configuration.allowed_ip_source_ranges",
 		"configuration.allowed_origins",
 		"configuration.collection_settings.max_size",
-		"configuration.searcher_settings.idle_timeout",
+		"configuration.collection_settings.max_indexed_size",
+		"configuration.collection_settings.size_warning_threshold_percent",
 	}, req.GetUpdateMask().GetPaths())
 
 	sp := req.GetSpace()
@@ -121,7 +125,9 @@ func TestSpaceUpdate_MergeAndRemove(t *testing.T) {
 	assert.Equal(t, []string{"https://new.example.com"}, cfg.GetAllowedOrigins())
 	assert.Equal(t, uint64(20*resource.GiB), cfg.GetCollectionSettings().GetMaxSize())
 	assert.Equal(t, uint64(100*resource.GiB), cfg.GetCollectionSettings().GetPlatformMaxSize())
-	assert.Equal(t, 15*time.Minute, cfg.GetSearcherSettings().GetIdleTimeout().AsDuration())
+	assert.Equal(t, uint64(8*resource.GiB), cfg.GetCollectionSettings().GetMaxIndexedSize())
+	assert.Equal(t, uint32(75), cfg.GetCollectionSettings().GetSizeWarningThresholdPercent())
+	assert.Equal(t, 5*time.Minute, cfg.GetSearcherSettings().GetMinIdleTimeout().AsDuration())
 	assert.Equal(t, uint64(2), cfg.GetSearcherSettings().GetMaxWorkers())
 }
 
