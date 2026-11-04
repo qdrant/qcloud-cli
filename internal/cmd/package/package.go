@@ -78,34 +78,16 @@ qcloud package list --cloud-provider hybrid`,
 				return output.PackageTier(p.GetTier())
 			})
 			t.AddField("RAM", func(p *bookingv1.Package) string {
-				if rc := p.GetResourceConfiguration(); rc != nil {
-					return rc.GetRam()
-				}
-
-				return ""
+				return output.PackageRAM(p.GetResourceConfiguration())
 			})
 			t.AddField("CPU", func(p *bookingv1.Package) string {
-				if rc := p.GetResourceConfiguration(); rc != nil {
-					return output.Cores(rc.GetCpu())
-				}
-
-				return ""
+				return output.PackageCPU(p.GetResourceConfiguration())
 			})
 			t.AddField("DISK", func(p *bookingv1.Package) string {
-				if rc := p.GetResourceConfiguration(); rc != nil {
-					return rc.GetDisk()
-				}
-
-				return ""
+				return output.PackageDisk(p.GetResourceConfiguration())
 			})
 			t.AddField("GPU", func(p *bookingv1.Package) string {
-				if rc := p.GetResourceConfiguration(); rc != nil {
-					if v := rc.GetGpu(); v != "" {
-						return output.Cores(v)
-					}
-				}
-
-				return "n/a"
+				return output.PackageGPU(p.GetResourceConfiguration())
 			})
 			t.AddField("MULTI-AZ", func(p *bookingv1.Package) string {
 				return output.BoolYesNo(p.GetMultiAz())

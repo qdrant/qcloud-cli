@@ -208,7 +208,7 @@ func PackageNameCompletion(s *state.State) func(*cobra.Command, []string, string
 		for _, p := range resp.GetItems() {
 			desc := output.PackageTier(p.GetTier())
 			if rc := p.GetResourceConfiguration(); rc != nil {
-				desc += fmt.Sprintf(" | %s RAM / %s CPU / %s disk", rc.GetRam(), output.Cores(rc.GetCpu()), rc.GetDisk())
+				desc += fmt.Sprintf(" | %s RAM / %s CPU / %s disk", output.PackageRAM(rc), output.PackageCPU(rc), output.PackageDisk(rc))
 			}
 
 			desc += " | " + output.FormatMillicents(p.GetUnitIntPricePerHour(), p.GetCurrency()) + "/hr"

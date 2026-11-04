@@ -124,6 +124,22 @@ func TestScale_CPU(t *testing.T) {
 	assert.Equal(t, 1, env.BookingServer.ListPackagesCalls.Count())
 }
 
+func TestScale_PromptShowsCanonicalResources(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: newPkg(pkgID1, "1000m", "4Gi", "50GiB"),
+		newPkg:     newPkg(pkgID2, "2000m", "4GiB", "50GiB"),
+	})
+
+	// Without --force the prompt is printed and, with no answer on stdin, aborted.
+	_, stderr, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2")
+	require.NoError(t, err)
+	assert.Contains(t, stderr, "CPU:     1 => 2\n")
+	assert.Contains(t, stderr, "RAM:     4GiB\n")
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
 func TestScale_PromptShowsCPUInCores(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupScale(env, scaleEnv{
@@ -440,6 +456,90 @@ func TestScale_PackageNotFound(t *testing.T) {
 	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "1", "--force")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no package found")
+}
+
+func TestScale_PackageNotFoundSuggestsClosest(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
+	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: currentPkg}, nil)
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{
+		newPkg("pkg-big", "4000m", "16GiB", "100GiB"),
+		newPkg("pkg-near", "2000m", "8GiB", "80GiB"),
+	}}, nil)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "3", "--force")
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="3" ram="4GiB"
+smallest package that fits: pkg-big (cpu=4 ram=16GiB)
+closest available packages:
+  NAME       CPU   RAM     DISK
+  pkg-big    4     16GiB   100GiB
+  pkg-near   2     8GiB    80GiB
+use 'package list' to see all available packages`, err.Error())
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestScale_PackageNotFoundScaleDownNamesNoFit(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	currentPkg := newPkg(pkgID1, "4000m", "16GiB", "100GiB")
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
+	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: currentPkg}, nil)
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{
+		currentPkg,
+		newPkg("pkg-bigger", "8000m", "32GiB", "200GiB"),
+		newPkg("pkg-small", "2000m", "8GiB", "50GiB"),
+	}}, nil)
+
+	// Lowering RAM: the current package and pkg-bigger both "fit" (at least
+	// 4 CPU and 8GiB), but neither is a scale-down, so no fit is named and the
+	// current package is not suggested at all.
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--ram", "8GiB", "--force")
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="4" ram="8GiB"
+closest available packages:
+  NAME         CPU   RAM     DISK
+  pkg-small    2     8GiB    50GiB
+  pkg-bigger   8     32GiB   200GiB
+use 'package list' to see all available packages`, err.Error())
+	assert.Equal(t, 0, env.Server.UpdateClusterCalls.Count())
+}
+
+func TestScale_PackageNotFoundSkipsCurrentPackage(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	currentPkg := newPkg(pkgID1, "1000m", "4GiB", "50GiB")
+	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: baseCluster()}, nil)
+	env.BookingServer.GetPackageCalls.Returns(&bookingv1.GetPackageResponse{Package: currentPkg}, nil)
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: []*bookingv1.Package{
+		currentPkg,
+		newPkg("pkg-big", "4000m", "16GiB", "100GiB"),
+	}}, nil)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "3", "--force")
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="3" ram="4GiB"
+smallest package that fits: pkg-big (cpu=4 ram=16GiB)
+closest available packages:
+  NAME      CPU   RAM     DISK
+  pkg-big   4     16GiB   100GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestScale_ExcludesMultiAZPackagesForSingleAZCluster(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupScale(env, scaleEnv{
+		cluster:    baseCluster(),
+		currentPkg: newPkg(pkgID1, "1000m", "4GiB", "50GiB"),
+		newPkg:     newPkg(pkgIDA, "2000m", "8GiB", "50GiB"),
+	})
+
+	_, _, err := testutil.Exec(t, env, "cluster", "scale", "cluster-123", "--cpu", "2", "--ram", "8GiB", "--force")
+	require.NoError(t, err)
+
+	listReq, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, listReq.MultiAz, "multi-AZ packages must be excluded for a single-AZ cluster")
+	assert.False(t, *listReq.MultiAz)
 }
 
 func TestScale_AmbiguousPackageMatch(t *testing.T) {

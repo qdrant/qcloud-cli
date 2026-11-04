@@ -50,6 +50,7 @@ func TestListPackages_TableOutput(t *testing.T) {
 	assert.Contains(t, stdout, "0.5")
 	assert.NotContains(t, stdout, "500m")
 	assert.NotContains(t, stdout, "1000m")
+	assert.Contains(t, stdout, "10GiB")
 	assert.Contains(t, stdout, "yes")
 	assert.Contains(t, stdout, "0.0500 USD")
 }

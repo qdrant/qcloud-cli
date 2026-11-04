@@ -3,6 +3,7 @@ package cluster_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -268,6 +269,11 @@ func TestCreateCluster_PackageByName(t *testing.T) {
 	req, ok := env.Server.CreateClusterCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "pkg-uuid-123", req.GetCluster().GetConfiguration().GetPackageId())
+
+	listReq, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, listReq.MultiAz, "multi-AZ packages must be excluded without --multi-az")
+	assert.False(t, *listReq.MultiAz)
 }
 
 func TestCreateCluster_PackageByNameMultiAZ(t *testing.T) {
@@ -437,6 +443,405 @@ func TestCreateCluster_PackageByResourcesNoMatch(t *testing.T) {
 	assert.Contains(t, err.Error(), "no package found")
 }
 
+func TestCreateCluster_PackageByResourcesNoMatchSuggestsClosest(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram, disk string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:   "pkg-" + name,
+			Name: name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{
+				Cpu:  cpu,
+				Ram:  ram,
+				Disk: disk,
+			},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("large", "4000m", "16GiB", "128Gi"),
+			pkg("tiny", "500m", "1GiB", "8GiB"),
+			pkg("medium", "2000m", "8GiB", "64GiB"),
+			pkg("small", "1000m", "4GiB", "32GiB"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "2",
+		"--ram", "4GiB",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="2" ram="4GiB"
+smallest package that fits: medium (cpu=2 ram=8GiB)
+closest available packages:
+  NAME     CPU   RAM     DISK
+  medium   2     8GiB    64GiB
+  small    1     4GiB    32GiB
+  large    4     16GiB   128GiB
+  tiny     0.5   1GiB    8GiB
+use 'package list' to see all available packages`, err.Error())
+	assert.Equal(t, 0, env.Server.CreateClusterCalls.Count())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchSuggestsSmallestFitFirst(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Disk: "16Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("gpx1", "500m", "2Gi"),
+			pkg("mx1", "500m", "4Gi"),
+			pkg("mx2", "1000m", "8Gi"),
+			pkg("mx3", "2000m", "16Gi"),
+			pkg("gpx4", "4000m", "16Gi"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "eu-central-1",
+		"--cpu", "0.5",
+		"--ram", "12Gi",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="0.5" ram="12GiB"
+smallest package that fits: mx3 (cpu=2 ram=16GiB)
+closest available packages:
+  NAME   CPU   RAM     DISK
+  mx3    2     16GiB   16GiB
+  mx1    0.5   4GiB    16GiB
+  mx2    1     8GiB    16GiB
+  gpx1   0.5   2GiB    16GiB
+  gpx4   4     16GiB   16GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchPicksLeastRAMFit(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Disk: "32Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("a", "2000m", "64Gi"),
+			pkg("b", "4000m", "16Gi"),
+		},
+	}, nil)
+
+	// a matches the CPU exactly, but b is the smaller fit because it has less RAM.
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "2",
+		"--ram", "8Gi",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="2" ram="8GiB"
+smallest package that fits: b (cpu=4 ram=16GiB)
+closest available packages:
+  NAME   CPU   RAM     DISK
+  b      4     16GiB   32GiB
+  a      2     64GiB   32GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchCPUOnlyPicksLeastRAMFit(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Disk: "32Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("big", "4000m", "64Gi"),
+			pkg("lean", "4000m", "16Gi"),
+			pkg("huge", "8000m", "8Gi"),
+			pkg("small", "2000m", "8Gi"),
+		},
+	}, nil)
+
+	// Every 4+ CPU package fits a --cpu-only request; the smallest of them
+	// is the one with the least RAM, even though it has the most CPU.
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "3",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "smallest package that fits: huge (cpu=8 ram=8GiB)\n")
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchNothingBigEnough(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Disk: "32Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("small", "1000m", "4Gi"),
+			pkg("large", "4000m", "16Gi"),
+			pkg("medium", "2000m", "8Gi"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "8",
+		"--ram", "64Gi",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="8" ram="64GiB"
+closest available packages:
+  NAME     CPU   RAM     DISK
+  large    4     16GiB   32GiB
+  medium   2     8GiB    32GiB
+  small    1     4GiB    32GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchWithGPU(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram, gpu string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Gpu: &gpu, Disk: "128Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("ax4", "4000m", "16Gi", "1000m"),
+			pkg("ax5", "8000m", "32Gi", "1000m"),
+			pkg("ax-big", "8000m", "64Gi", "2000m"),
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "4",
+		"--ram", "32Gi",
+		"--gpu", "2",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="4" ram="32GiB" gpu="2"
+smallest package that fits: ax-big (cpu=8 ram=64GiB gpu=2)
+closest available packages:
+  NAME     CPU   RAM     GPU   DISK
+  ax-big   8     64GiB   2     128GiB
+  ax4      4     16GiB   1     128GiB
+  ax5      8     32GiB   1     128GiB
+use 'package list' to see all available packages`, err.Error())
+
+	req, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	assert.True(t, req.GetGpu())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchNoSuggestions(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	pkg := func(name, cpu, ram string) *bookingv1.Package {
+		return &bookingv1.Package{
+			Id:                    "pkg-" + name,
+			Name:                  name,
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: cpu, Ram: ram, Disk: "32Gi"},
+		}
+	}
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			pkg("small", "1000m", "4Gi"),
+			pkg("large", "4000m", "16Gi"),
+		},
+	}, nil)
+
+	// No package has a GPU, so none can be suggested for a GPU request.
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "4",
+		"--ram", "16Gi",
+		"--gpu", "1",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="4" ram="16GiB" gpu="1"; use 'package list' to see available packages`, err.Error())
+	assert.Equal(t, 0, env.Server.CreateClusterCalls.Count())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchSkipsPackageWithoutResources(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-bare", Name: "bare"},
+			{
+				Id:                    "pkg-small",
+				Name:                  "small",
+				ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "1000m", Ram: "4Gi", Disk: "32Gi"},
+			},
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "2",
+		"--ram", "8Gi",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="2" ram="8GiB"
+closest available packages:
+  NAME    CPU   RAM    DISK
+  small   1     4GiB   32GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchAllWithoutResources(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-a", Name: "a"},
+			{Id: "pkg-b", Name: "b"},
+		},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "2",
+	)
+	require.Error(t, err)
+	assert.Equal(t, `no package found matching cpu="2"; use 'package list' to see available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesNegativeCPU(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu=-1",
+		"--ram", "8Gi",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `"-1" must not be negative`)
+	assert.Equal(t, 0, env.BookingServer.ListPackagesCalls.Count())
+}
+
+func TestCreateCluster_PackageByResourcesNoMatchLimitsSuggestions(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	var items []*bookingv1.Package
+	for i := 1; i <= 8; i++ {
+		items = append(items, &bookingv1.Package{
+			Id:                    fmt.Sprintf("pkg-%d", i),
+			Name:                  fmt.Sprintf("pkg-%d", i),
+			ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: fmt.Sprintf("%d", i), Ram: fmt.Sprintf("%dGiB", 4*i), Disk: "32GiB"},
+		})
+	}
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{Items: items}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "us-east-1",
+		"--cpu", "3",
+		"--ram", "4GiB",
+	)
+	require.Error(t, err)
+	// pkg-1 to pkg-3 tie on distance, so they are ordered by RAM; pkg-3 is
+	// the smallest fit and comes first. pkg-6 to pkg-8 are cut off.
+	assert.Equal(t, `no package found matching cpu="3" ram="4GiB"
+smallest package that fits: pkg-3 (cpu=3 ram=12GiB)
+closest available packages:
+  NAME    CPU   RAM     DISK
+  pkg-3   3     12GiB   32GiB
+  pkg-1   1     4GiB    32GiB
+  pkg-2   2     8GiB    32GiB
+  pkg-4   4     16GiB   32GiB
+  pkg-5   5     20GiB   32GiB
+use 'package list' to see all available packages`, err.Error())
+}
+
+func TestCreateCluster_PackageByResourcesExcludesMultiAZ(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.BookingServer.ListPackagesCalls.Returns(&bookingv1.ListPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-gpx1", Name: "gpx1", ResourceConfiguration: &bookingv1.ResourceConfiguration{Cpu: "500m", Ram: "2Gi"}},
+		},
+	}, nil)
+	env.Server.CreateClusterCalls.Returns(&clusterv1.CreateClusterResponse{
+		Cluster: &clusterv1.Cluster{Id: "cluster-gpx1"},
+	}, nil)
+
+	_, _, err := testutil.Exec(t, env,
+		"cluster", "create",
+		"--name", "my-cluster",
+		"--cloud-provider", "aws",
+		"--cloud-region", "eu-central-1",
+		"--cpu", "0.5",
+		"--ram", "2Gi",
+	)
+	require.NoError(t, err)
+
+	listReq, ok := env.BookingServer.ListPackagesCalls.Last()
+	require.True(t, ok)
+	require.NotNil(t, listReq.MultiAz, "multi-AZ packages must be excluded without --multi-az")
+	assert.False(t, *listReq.MultiAz)
+
+	req, ok := env.Server.CreateClusterCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, "pkg-gpx1", req.GetCluster().GetConfiguration().GetPackageId())
+}
+
 func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
@@ -445,6 +850,7 @@ func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 			{
 				Id:   "pkg-a",
 				Name: "starter-a",
+				Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD,
 				ResourceConfiguration: &bookingv1.ResourceConfiguration{
 					Cpu: "1000m",
 				},
@@ -452,6 +858,7 @@ func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 			{
 				Id:   "pkg-b",
 				Name: "starter-b",
+				Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD,
 				ResourceConfiguration: &bookingv1.ResourceConfiguration{
 					Cpu: "1000m",
 				},
@@ -467,7 +874,7 @@ func TestCreateCluster_PackageByResourcesAmbiguous(t *testing.T) {
 		"--cpu", "1000m",
 	)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "multiple packages match")
+	assert.Equal(t, `multiple packages match cpu="1": starter-a (id=pkg-a tier=STANDARD multi-az=no), starter-b (id=pkg-b tier=STANDARD multi-az=no); use --package with a package ID to pick one`, err.Error())
 }
 
 func TestCreateCluster_NoPackageOrResources(t *testing.T) {

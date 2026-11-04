@@ -54,6 +54,9 @@ func TestMillicores_Set(t *testing.T) {
 		{"1", 1000, false},
 		{"0.5", 500, false},
 		{"1000m", 1000, false},
+		{"0", 0, false},
+		{"-1", 0, true},
+		{"-500m", 0, true},
 		{"bad", 0, true},
 	}
 	for _, tt := range tests {
