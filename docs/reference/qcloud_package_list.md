@@ -2,6 +2,16 @@
 
 List available packages for cluster creation
 
+### Synopsis
+
+List the packages available for creating a cluster in a cloud provider and region.
+
+A package is a configuration (CPU, RAM, disk, and optionally GPU) for a cluster
+node, with an hourly price. When you are authenticated, the packages
+available to that account are listed, including multi-AZ packages and those of
+the account's tier. Without credentials, the public standard-tier packages are
+listed.
+
 ```
 qcloud package list [flags]
 ```

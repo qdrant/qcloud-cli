@@ -27,21 +27,23 @@ func NewCommand(s *state.State) *cobra.Command {
 }
 
 func newListCommand(s *state.State) *cobra.Command {
-	cmd := base.ListCmd[*bookingv1.ListGlobalPackagesResponse]{
+	cmd := base.ListCmd[*bookingv1.ListPackagesResponse]{
 		Use:   "list",
 		Short: "List available packages for cluster creation",
+		Long: `List the packages available for creating a cluster in a cloud provider and region.
+
+A package is a configuration (CPU, RAM, disk, and optionally GPU) for a cluster
+node, with an hourly price. When you are authenticated, the packages
+available to that account are listed, including multi-AZ packages and those of
+the account's tier. Without credentials, the public standard-tier packages are
+listed.`,
 		Example: `# List packages for a cloud provider and region
 qcloud package list --cloud-provider aws --cloud-region eu-central-1
 
 # List packages for a hybrid cloud provider (no region required)
 qcloud package list --cloud-provider hybrid`,
-		Fetch: func(s *state.State, cmd *cobra.Command) (*bookingv1.ListGlobalPackagesResponse, error) {
+		Fetch: func(s *state.State, cmd *cobra.Command) (*bookingv1.ListPackagesResponse, error) {
 			ctx := cmd.Context()
-			client, err := s.UnAuthenticatedClient(ctx)
-			if err != nil {
-				return nil, err
-			}
-
 			cloudProvider, _ := cmd.Flags().GetString("cloud-provider")
 			cloudRegion, _ := cmd.Flags().GetString("cloud-region")
 
@@ -56,6 +58,36 @@ qcloud package list --cloud-provider hybrid`,
 				cloudRegionPtr = &cloudRegion
 			}
 
+			// The public list only has standard-tier packages and misses
+			// multi-AZ ones, so prefer the account's list when credentials exist.
+			hasCredentials, err := s.HasCredentials()
+			if err != nil {
+				return nil, err
+			}
+
+			if hasCredentials && s.Config.AccountID() != "" {
+				client, err := s.Client(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				resp, err := client.Booking().ListPackages(ctx, &bookingv1.ListPackagesRequest{
+					AccountId:             s.Config.AccountID(),
+					CloudProviderId:       cloudProvider,
+					CloudProviderRegionId: cloudRegionPtr,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to list packages: %w", err)
+				}
+
+				return resp, nil
+			}
+
+			client, err := s.UnAuthenticatedClient(ctx)
+			if err != nil {
+				return nil, err
+			}
+
 			resp, err := client.Booking().ListGlobalPackages(ctx, &bookingv1.ListGlobalPackagesRequest{
 				CloudProviderId:       cloudProvider,
 				CloudProviderRegionId: cloudRegionPtr,
@@ -64,9 +96,9 @@ qcloud package list --cloud-provider hybrid`,
 				return nil, fmt.Errorf("failed to list packages: %w", err)
 			}
 
-			return resp, nil
+			return &bookingv1.ListPackagesResponse{Items: resp.GetItems()}, nil
 		},
-		OutputTable: func(_ *cobra.Command, w io.Writer, resp *bookingv1.ListGlobalPackagesResponse) (output.TableRenderer, error) {
+		OutputTable: func(_ *cobra.Command, w io.Writer, resp *bookingv1.ListPackagesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*bookingv1.Package](w)
 			t.AddField("NAME", func(p *bookingv1.Package) string {
 				return p.GetName()
