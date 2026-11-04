@@ -33,11 +33,14 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 				AllowedOrigins:         []string{"https://app.example.com"},
 				MaxCollectionsPerSpace: 50,
 				CollectionSettings: &spacev1.CollectionSettings{
-					PlatformMaxSize: uint64(100 * resource.GiB),
-					MaxSize:         new(uint64(10 * resource.GiB)),
+					PlatformMaxSize:             uint64(100 * resource.GiB),
+					MaxSize:                     new(uint64(10 * resource.GiB)),
+					PlatformMaxIndexedSize:      uint64(20 * resource.GiB),
+					MaxIndexedSize:              new(uint64(2 * resource.GiB)),
+					SizeWarningThresholdPercent: new(uint32(85)),
 				},
 				SearcherSettings: &spacev1.SearcherSettings{
-					IdleTimeout:        durationpb.New(5 * time.Minute),
+					MinIdleTimeout:     durationpb.New(5 * time.Minute),
 					PlatformMaxWorkers: 8,
 					MaxWorkers:         new(uint64(2)),
 				},
@@ -65,7 +68,10 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "https://app.example.com")
 	assert.Contains(t, stdout, "10GiB")
 	assert.Contains(t, stdout, "100GiB")
-	assert.Contains(t, stdout, "5m0s")
+	assert.Contains(t, stdout, "Max Indexed Size:                2GiB")
+	assert.Contains(t, stdout, "Max Indexed Size (platform):     20GiB")
+	assert.Contains(t, stdout, "Size Warning Threshold:          85%")
+	assert.Contains(t, stdout, "Searcher Min Idle Timeout:       5m0s")
 	assert.NotContains(t, stdout, "Cloud:")
 
 	req, ok := env.ServerlessSpaceServer.GetSpaceCalls.Last()
@@ -94,6 +100,8 @@ func TestSpaceDescribe_UnsetLimits(t *testing.T) {
 	assert.Contains(t, stdout, "quota exceeded")
 	assert.Contains(t, stdout, "unlimited")
 	assert.Contains(t, stdout, "(not set)")
+	assert.Contains(t, stdout, "Size Warning Threshold:          (not set)")
+	assert.Contains(t, stdout, "Searcher Min Idle Timeout:       (not set)")
 	assert.NotContains(t, stdout, "Endpoint:")
 }
 

@@ -22,7 +22,8 @@ var spaceUpdatePaths = []flagPath{
 	{"allowed-ip", "configuration.allowed_ip_source_ranges"},
 	{"allowed-origin", "configuration.allowed_origins"},
 	{"max-collection-size", "configuration.collection_settings.max_size"},
-	{"searcher-idle-timeout", "configuration.searcher_settings.idle_timeout"},
+	{"max-collection-indexed-size", "configuration.collection_settings.max_indexed_size"},
+	{"collection-size-warning-percent", "configuration.collection_settings.size_warning_threshold_percent"},
 	{"searcher-max-workers", "configuration.searcher_settings.max_workers"},
 }
 

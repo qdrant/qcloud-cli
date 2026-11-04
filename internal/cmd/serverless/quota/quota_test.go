@@ -16,12 +16,13 @@ import (
 func sampleQuota() *serverlessquotav1.GetQuotasResponse {
 	return &serverlessquotav1.GetQuotasResponse{
 		Quota: &serverlessquotav1.AccountQuota{
-			AccountId:                       "test-account-id",
-			MaxSpaces:                       5,
-			UsedSpaces:                      2,
-			MaxCollectionsPerSpace:          10,
-			PlatformMaxSizePerCollection:    uint64(50 * resource.GiB),
-			PlatformMaxWorkersPerCollection: 4,
+			AccountId:                           "test-account-id",
+			MaxSpaces:                           5,
+			UsedSpaces:                          2,
+			MaxCollectionsPerSpace:              10,
+			PlatformMaxSizePerCollection:        uint64(50 * resource.GiB),
+			PlatformMaxWorkersPerCollection:     4,
+			PlatformMaxIndexedSizePerCollection: uint64(20 * resource.GiB),
 		},
 	}
 }
@@ -35,6 +36,7 @@ func TestQuota_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "Spaces:                            2 / 5")
 	assert.Contains(t, stdout, "Max Collections per Space:         10")
 	assert.Contains(t, stdout, "Max Size per Collection:           50GiB")
+	assert.Contains(t, stdout, "Max Indexed Size per Collection:   20GiB")
 	assert.Contains(t, stdout, "Max Search Workers per Collection: 4")
 
 	req, ok := env.ServerlessQuotaServer.GetQuotasCalls.Last()
@@ -53,6 +55,7 @@ func TestQuota_Unlimited(t *testing.T) {
 	assert.Contains(t, stdout, "Spaces:                            3 / unlimited")
 	assert.Contains(t, stdout, "Max Collections per Space:         unlimited")
 	assert.Contains(t, stdout, "Max Size per Collection:           unlimited")
+	assert.Contains(t, stdout, "Max Indexed Size per Collection:   unlimited")
 	assert.Contains(t, stdout, "Max Search Workers per Collection: unlimited")
 }
 

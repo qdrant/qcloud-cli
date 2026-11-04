@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/durationpb"
 
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
@@ -19,7 +18,8 @@ func addSharedSpaceFlags(cmd *cobra.Command) {
 	cmd.Flags().StringArray("allowed-ip", nil, "Allowed client IP CIDR range (e.g. \"10.0.0.0/8\"); append '-' to remove; IPv4 only")
 	cmd.Flags().StringArray("allowed-origin", nil, "Allowed browser origin for CORS (e.g. \"https://app.example.com\"); append '-' to remove; max 10")
 	cmd.Flags().String("max-collection-size", "", "Maximum size per collection (e.g. 10GiB, 512MiB); must not exceed the platform limit")
-	cmd.Flags().Duration("searcher-idle-timeout", 0, "Idle timeout after which search workers may be scaled down (1m to 15m)")
+	cmd.Flags().String("max-collection-indexed-size", "", "Maximum indexed size per collection (e.g. 1GiB, 512MiB); must not exceed the platform limit or the maximum collection size")
+	cmd.Flags().Uint32("collection-size-warning-percent", 0, "Percentage of the maximum collection size at which a size warning is sent (40 to 100)")
 	cmd.Flags().Uint64("searcher-max-workers", 0, "Maximum number of search workers per collection")
 }
 
@@ -87,13 +87,35 @@ func applySharedSpaceFlags(cmd *cobra.Command, space *spacev1.Space) error {
 		cfg.CollectionSettings.MaxSize = new(uint64(size))
 	}
 
-	if cmd.Flags().Changed("searcher-idle-timeout") {
-		v, _ := cmd.Flags().GetDuration("searcher-idle-timeout")
-		if cfg.SearcherSettings == nil {
-			cfg.SearcherSettings = &spacev1.SearcherSettings{}
+	if cmd.Flags().Changed("max-collection-indexed-size") {
+		raw, _ := cmd.Flags().GetString("max-collection-indexed-size")
+		size, err := resource.ParseByteQuantity(raw)
+		if err != nil {
+			return fmt.Errorf("invalid --max-collection-indexed-size: %w", err)
 		}
 
-		cfg.SearcherSettings.IdleTimeout = durationpb.New(v)
+		if size <= 0 {
+			return fmt.Errorf("invalid --max-collection-indexed-size %q: must be greater than zero", raw)
+		}
+
+		if cfg.CollectionSettings == nil {
+			cfg.CollectionSettings = &spacev1.CollectionSettings{}
+		}
+
+		cfg.CollectionSettings.MaxIndexedSize = new(uint64(size))
+	}
+
+	if cmd.Flags().Changed("collection-size-warning-percent") {
+		v, _ := cmd.Flags().GetUint32("collection-size-warning-percent")
+		if v < 40 || v > 100 {
+			return fmt.Errorf("invalid --collection-size-warning-percent %d: must be between 40 and 100", v)
+		}
+
+		if cfg.CollectionSettings == nil {
+			cfg.CollectionSettings = &spacev1.CollectionSettings{}
+		}
+
+		cfg.CollectionSettings.SizeWarningThresholdPercent = &v
 	}
 
 	if cmd.Flags().Changed("searcher-max-workers") {

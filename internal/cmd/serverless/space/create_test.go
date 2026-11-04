@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,7 +91,8 @@ func TestSpaceCreate_AllFlags(t *testing.T) {
 		"--allowed-ip", "192.168.0.0/16",
 		"--allowed-origin", "https://app.example.com",
 		"--max-collection-size", "10GiB",
-		"--searcher-idle-timeout", "10m",
+		"--max-collection-indexed-size", "4GiB",
+		"--collection-size-warning-percent", "90",
 		"--searcher-max-workers", "4",
 	)
 	require.NoError(t, err)
@@ -110,7 +110,8 @@ func TestSpaceCreate_AllFlags(t *testing.T) {
 	assert.Equal(t, []string{"10.0.0.0/8", "192.168.0.0/16"}, cfg.GetAllowedIpSourceRanges())
 	assert.Equal(t, []string{"https://app.example.com"}, cfg.GetAllowedOrigins())
 	assert.Equal(t, uint64(10*resource.GiB), cfg.GetCollectionSettings().GetMaxSize())
-	assert.Equal(t, 10*time.Minute, cfg.GetSearcherSettings().GetIdleTimeout().AsDuration())
+	assert.Equal(t, uint64(4*resource.GiB), cfg.GetCollectionSettings().GetMaxIndexedSize())
+	assert.Equal(t, uint32(90), cfg.GetCollectionSettings().GetSizeWarningThresholdPercent())
 	assert.Equal(t, uint64(4), cfg.GetSearcherSettings().GetMaxWorkers())
 }
 
@@ -232,6 +233,11 @@ func TestSpaceCreate_InvalidFlags(t *testing.T) {
 		{name: "empty allowed origin", args: []string{"--allowed-origin", "-"}},
 		{name: "invalid size", args: []string{"--max-collection-size", "lots"}},
 		{name: "zero size", args: []string{"--max-collection-size", "0"}},
+		{name: "invalid indexed size", args: []string{"--max-collection-indexed-size", "lots"}},
+		{name: "zero indexed size", args: []string{"--max-collection-indexed-size", "0"}},
+		{name: "warning percent too low", args: []string{"--collection-size-warning-percent", "39"}},
+		{name: "warning percent too high", args: []string{"--collection-size-warning-percent", "101"}},
+		{name: "removed idle timeout flag", args: []string{"--searcher-idle-timeout", "10m"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
