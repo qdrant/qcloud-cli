@@ -83,6 +83,10 @@ qcloud package list --cloud-provider hybrid`,
 				return resp, nil
 			}
 
+			if hasCredentials {
+				fmt.Fprintln(cmd.ErrOrStderr(), "Hint: no account ID configured, listing the public standard-tier packages. Set QDRANT_CLOUD_ACCOUNT_ID or use --account-id to list the packages and prices of your account.")
+			}
+
 			client, err := s.UnAuthenticatedClient(ctx)
 			if err != nil {
 				return nil, err

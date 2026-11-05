@@ -179,18 +179,42 @@ func TestListPackages_UnauthenticatedUsesGlobalPackages(t *testing.T) {
 		},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env,
+	stdout, stderr, err := testutil.Exec(t, env,
 		"package", "list",
 		"--cloud-provider", "aws",
 		"--cloud-region", "eu-central-1",
 	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "pkg-public")
+	assert.NotContains(t, stderr, "no account ID configured")
 	assert.Equal(t, 0, env.BookingServer.ListPackagesCalls.Count())
 
 	req, ok := env.BookingServer.ListGlobalPackagesCalls.Last()
 	require.True(t, ok)
 	assert.Equal(t, "eu-central-1", req.GetCloudProviderRegionId())
+}
+
+func TestListPackages_APIKeyWithoutAccountIDHints(t *testing.T) {
+	env := testutil.NewTestEnv(t, testutil.WithAccountID(""))
+
+	env.BookingServer.ListGlobalPackagesCalls.Returns(&bookingv1.ListGlobalPackagesResponse{
+		Items: []*bookingv1.Package{
+			{Id: "pkg-public", Name: "gpx1", Tier: bookingv1.PackageTier_PACKAGE_TIER_STANDARD},
+		},
+	}, nil)
+
+	stdout, stderr, err := testutil.Exec(t, env,
+		"package", "list",
+		"--cloud-provider", "aws",
+		"--cloud-region", "eu-central-1",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "pkg-public")
+	assert.NotContains(t, stdout, "Hint")
+	assert.Contains(t, stderr, "no account ID configured")
+	assert.Contains(t, stderr, "QDRANT_CLOUD_ACCOUNT_ID")
+	assert.Equal(t, 0, env.BookingServer.ListPackagesCalls.Count())
+	assert.Equal(t, 1, env.BookingServer.ListGlobalPackagesCalls.Count())
 }
 
 func TestListPackages_BackendError(t *testing.T) {
@@ -205,6 +229,21 @@ func TestListPackages_BackendError(t *testing.T) {
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to list packages")
+}
+
+func TestListPackages_UnauthenticatedBackendError(t *testing.T) {
+	env := testutil.NewTestEnv(t, testutil.WithAPIKey(""))
+
+	env.BookingServer.ListGlobalPackagesCalls.Returns(nil, fmt.Errorf("boom"))
+
+	_, _, err := testutil.Exec(t, env,
+		"package", "list",
+		"--cloud-provider", "aws",
+		"--cloud-region", "eu-central-1",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to list packages")
+	assert.Equal(t, 0, env.BookingServer.ListPackagesCalls.Count())
 }
 
 func TestListPackages_OAuthLoginRequest(t *testing.T) {
