@@ -92,6 +92,17 @@ func (s *State) Client(ctx context.Context) (*qcloudapi.Client, error) {
 	return s.client, nil
 }
 
+// HasCredentials reports whether Client can authenticate: an API key is configured, or there is an OAuth
+// login for the endpoint. An expired login still counts, Client refreshes it.
+func (s *State) HasCredentials() (bool, error) {
+	if s.Config.APIKey() != "" {
+		return true, nil
+	}
+
+	_, ok, err := s.OAuth().Session(s.Config.Endpoint())
+	return ok, err
+}
+
 // OAuthClient returns the gRPC client that uses the OAuth login of the endpoint, whatever API key is
 // configured, creating it lazily on first call.
 func (s *State) OAuthClient(ctx context.Context) (*qcloudapi.Client, error) {
