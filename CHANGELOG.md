@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.35.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.35.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.34.0...v0.35.0)
+
+### Features
+
+- **cluster**: suggest closest packages when no package matches (#235) ([cf9832a](https://github.com/qdrant/qcloud-cli/commit/cf9832ae5d647fafd61d6e85aa68ff53032019cb))
+- **serverless**: add indexed size and size warning settings for spaces (#246) ([9f6d602](https://github.com/qdrant/qcloud-cli/commit/9f6d60205dd60b03eb6393fea7abf1bcd781ffb6))
+- **booking**: Use authenticated listPackages API when authenticated (#245) ([80f9c8b](https://github.com/qdrant/qcloud-cli/commit/80f9c8bf3825912bf85adbd9f44aa5c950b86e1e))
+
 ## [v0.34.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.34.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.33.0...v0.34.0)
