@@ -8,8 +8,9 @@ Show the serverless quota of the current account.
 
 The quota caps how many spaces the account can create and sets the platform
 limits that are copied into every space it owns: the maximum number of
-collections per space, the maximum size of a collection and the maximum number
-of search workers per collection. A limit of 0 is shown as "unlimited".
+collections per space, the maximum size and maximum indexed size of a
+collection, and the maximum number of search workers per collection. A limit of
+0 is shown as "unlimited".
 
 ```
 qcloud serverless quota [flags]

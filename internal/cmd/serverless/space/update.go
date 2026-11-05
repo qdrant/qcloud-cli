@@ -20,8 +20,8 @@ func newUpdateCommand(s *state.State) *cobra.Command {
 		Long: `Update an existing serverless space.
 
 Use this command to rename a space or change its labels, network restrictions,
-per-collection size limit and search-worker settings. The cloud region cannot be
-changed after creation.
+per-collection size limits, size warning threshold and search-worker settings.
+The cloud region cannot be changed after creation.
 
 Labels are merged with existing labels. Use 'key=value' to add or overwrite a
 label, and 'key-' (with a trailing dash) to remove one. Allowed IPs and allowed
@@ -37,9 +37,10 @@ qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --label env=
 qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
   --allowed-origin https://app.example.com --allowed-ip 10.0.0.0/8-
 
-# Tune the search workers
+# Tune the collection limits and search workers
 qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
-  --searcher-idle-timeout 10m --searcher-max-workers 4`,
+  --max-collection-indexed-size 2GiB --collection-size-warning-percent 90 \
+  --searcher-max-workers 4`,
 		BaseCobraCommand: func() *cobra.Command {
 			cmd := &cobra.Command{
 				Use:   "update <space-id>",
