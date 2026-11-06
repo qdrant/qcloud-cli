@@ -209,7 +209,7 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 			Usage:         historyPoints(usage.GetCpu()),
 		},
 		RAM: ramHistory{
-			ReservedBytes: resources.GetRam().GetReserved() * bytesPerGB,
+			ReservedBytes: resources.GetRam().GetReserved() * bytesPerGiB,
 			TotalBytes:    resourceTotal(resources.GetRam()) * bytesPerGiB,
 			Cache:         cache,
 			Data:          data,

@@ -24,10 +24,6 @@ import (
 
 const metricsBarWidth = 30
 
-// The reserved RAM of a cluster is given in decimal gigabytes, unlike the
-// configured RAM, which is in GiB. This matches the Qdrant Cloud console.
-const bytesPerGB = 1000 * 1000 * 1000
-
 type clusterMetrics struct {
 	ClusterID string        `json:"clusterId"`
 	Nodes     []nodeMetrics `json:"nodes"`
@@ -131,7 +127,7 @@ qcloud cluster metrics summary 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json | jq 
 func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.ClusterNodeMetrics) *clusterMetrics {
 	resources := cluster.GetState().GetResources()
 	reservedVCPUs := resources.GetCpu().GetReserved() / 1000
-	reservedRAM := resources.GetRam().GetReserved() * bytesPerGB
+	reservedRAM := resources.GetRam().GetReserved() * bytesPerGiB
 	isHybrid := cluster.GetCloudProviderId() == qcloudapi.HybridCloudProviderID
 
 	result := &clusterMetrics{ClusterID: cluster.GetId(), Nodes: make([]nodeMetrics, 0, len(nodes))}

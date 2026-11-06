@@ -92,9 +92,9 @@ func TestClusterMetrics_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "\n        system 0.2  usage 0.5  available 1.3\n")
 	// Small usage keeps two significant digits instead of rounding to 0.
 	assert.Contains(t, stdout, "\n        system 0.2  usage 0.3  available 1.5\n")
-	// RAM: 0.5 GB (477 MiB) reserved + 1.5 GiB cache + 2 GiB data of 8 GiB.
-	assert.Contains(t, stdout, " 49.6%  4.0 GiB of 8.0 GiB")
-	assert.Contains(t, stdout, "system 477 MiB  cache 1.5 GiB  data 2.0 GiB  available 4.0 GiB")
+	// RAM: 512 MiB reserved + 1.5 GiB cache + 2 GiB data of 8 GiB.
+	assert.Contains(t, stdout, " 50.0%  4.0 GiB of 8.0 GiB")
+	assert.Contains(t, stdout, "system 512 MiB  cache 1.5 GiB  data 2.0 GiB  available 4.0 GiB")
 	// Disk: 8 GiB of 32 GiB.
 	assert.Contains(t, stdout, " 25.0%  8.0 GiB of 32 GiB")
 	assert.Contains(t, stdout, "used 8.0 GiB  available 24 GiB")
@@ -122,7 +122,7 @@ func TestClusterMetrics_HybridUsesNodeRSS(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "data 3.0 GiB")
-	assert.Contains(t, stdout, " 62.1%  5.0 GiB of 8.0 GiB")
+	assert.Contains(t, stdout, " 62.5%  5.0 GiB of 8.0 GiB")
 }
 
 func TestClusterMetrics_NoData(t *testing.T) {
@@ -204,10 +204,10 @@ func TestClusterMetrics_JSONOutput(t *testing.T) {
 	assert.InDelta(t, 35, n.CPU.UsedPercent, 1e-9)
 	assert.InDelta(t, 2*gib, n.RAM.DataBytes, 1)
 	assert.InDelta(t, 1.5*gib, n.RAM.CacheBytes, 1)
-	assert.InDelta(t, 0.5e9, n.RAM.ReservedBytes, 1)
-	assert.InDelta(t, 4.5*gib-0.5e9, n.RAM.AvailableBytes, 1)
+	assert.InDelta(t, 0.5*gib, n.RAM.ReservedBytes, 1)
+	assert.InDelta(t, 4*gib, n.RAM.AvailableBytes, 1)
 	assert.InDelta(t, 8*gib, n.RAM.TotalBytes, 1)
-	assert.InDelta(t, 49.6, n.RAM.UsedPercent, 1e-9)
+	assert.InDelta(t, 50, n.RAM.UsedPercent, 1e-9)
 	assert.InDelta(t, 8*gib, n.Disk.UsedBytes, 1)
 	assert.InDelta(t, 24*gib, n.Disk.AvailableBytes, 1)
 	assert.InDelta(t, 32*gib, n.Disk.TotalBytes, 1)
@@ -302,5 +302,5 @@ func TestClusterMetrics_FitsIn80Columns(t *testing.T) {
 		assert.LessOrEqual(t, utf8.RuneCountInString(line), 80, line)
 	}
 
-	assert.Contains(t, stdout, "\n        system 477 MiB  cache 9.0 GiB  data 12 GiB  available 107 GiB\n")
+	assert.Contains(t, stdout, "\n        system 512 MiB  cache 9.0 GiB  data 12 GiB  available 107 GiB\n")
 }

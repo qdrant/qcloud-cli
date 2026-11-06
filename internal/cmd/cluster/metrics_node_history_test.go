@@ -122,7 +122,7 @@ func TestNodeMetricsHistory_TextOutput(t *testing.T) {
 	assert.True(t, strings.HasPrefix(stdout, "Node 1  2026-10-20 00:00:00 UTC - 2026-10-20 02:00:00 UTC\n"), stdout)
 	assert.NotContains(t, stdout, "Node 0")
 	assert.Contains(t, stdout, "capacity 2 vCPU  system 0.2 vCPU  + usage")
-	assert.Contains(t, stdout, "capacity 8.0 GiB  system 477 MiB  + cache  + data")
+	assert.Contains(t, stdout, "capacity 8.0 GiB  system 512 MiB  + cache  + data")
 	assert.Contains(t, stdout, "capacity 32 GiB  used")
 	// The Y axes are rounded to even steps.
 	assert.Contains(t, stdout, "2.4 vCPU│")
@@ -213,7 +213,7 @@ func TestNodeMetricsHistory_JSONOutput(t *testing.T) {
 	assert.True(t, n.CPU.Usage[1].Timestamp.Equal(historyStart.Add(time.Hour)))
 	assert.InDelta(t, 0.6, n.CPU.Usage[1].Value, 1e-9)
 
-	assert.InDelta(t, 0.5e9, n.RAM.ReservedBytes, 1)
+	assert.InDelta(t, 0.5*gib, n.RAM.ReservedBytes, 1)
 	assert.InDelta(t, 8*gib, n.RAM.TotalBytes, 1)
 	require.Len(t, n.RAM.Cache, 3)
 	assert.InDelta(t, 1.5*gib, n.RAM.Cache[1].Value, 1)
