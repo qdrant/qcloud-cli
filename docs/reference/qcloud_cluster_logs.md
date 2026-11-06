@@ -9,7 +9,8 @@ Retrieve logs for a cluster.
 By default, logs from the last 3 days up to now are returned. --since and --until
 accept an RFC3339 timestamp, a YYYY-MM-DD date in UTC, or a duration ago such as
 6h or 7d. A date passed to --since starts at the beginning of that day, and a
-date passed to --until includes the whole day.
+date passed to --until includes the whole day. When only --until is given, the
+range covers the 3 days before it.
 
 ```
 qcloud cluster logs <cluster-id> [flags]
@@ -38,9 +39,9 @@ qcloud cluster logs abc-123 --json
 
 ```
   -h, --help           help for logs
-  -s, --since string   Start time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days ago)
+  -s, --since string   Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days before --until)
   -t, --timestamps     Prepend each log line with its timestamp
-  -u, --until string   End time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
+  -u, --until string   End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
 ```
 
 ### Options inherited from parent commands

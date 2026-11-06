@@ -33,6 +33,7 @@ Manage Qdrant Cloud clusters
 * [qcloud cluster key](qcloud_cluster_key.md)	 - Manage API keys for a cluster
 * [qcloud cluster list](qcloud_cluster_list.md)	 - List all clusters
 * [qcloud cluster logs](qcloud_cluster_logs.md)	 - Retrieve logs for a cluster
+* [qcloud cluster metrics](qcloud_cluster_metrics.md)	 - Show resource usage and request metrics of a cluster
 * [qcloud cluster restart](qcloud_cluster_restart.md)	 - Restart a cluster
 * [qcloud cluster scale](qcloud_cluster_scale.md)	 - Scales the resources of a cluster
 * [qcloud cluster suspend](qcloud_cluster_suspend.md)	 - Suspend a cluster
