@@ -141,6 +141,29 @@ func TestClusterMetrics_NoData(t *testing.T) {
 	assert.Contains(t, stdout, "1.0 GiB of 32 GiB")
 }
 
+func TestClusterMetrics_NoDataJSONIsNull(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	setupMetrics(env, "aws", &monitoringv1.ClusterNodeMetrics{
+		NodeId: fmt.Sprintf("qdrant-%s-0", metricsClusterID),
+		Cpu:    &monitoringv1.ClusterMetricOverview{Total: &monitoringv1.ResourceValue{Value: 2, Unit: "vcpu"}},
+		Disk:   overview(1*gib, 32*gib, "bytes"),
+	})
+
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID, "--json")
+	require.NoError(t, err)
+
+	var result struct {
+		Nodes []map[string]json.RawMessage `json:"nodes"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	require.Len(t, result.Nodes, 1)
+	n := result.Nodes[0]
+	assert.JSONEq(t, "null", string(n["cpu"]), "CPU without an average is not reported as 0")
+	assert.JSONEq(t, "null", string(n["ram"]))
+	require.Contains(t, n, "disk")
+	assert.NotEqual(t, "null", string(n["disk"]))
+}
+
 func TestClusterMetrics_NoNodes(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupMetrics(env, "aws")

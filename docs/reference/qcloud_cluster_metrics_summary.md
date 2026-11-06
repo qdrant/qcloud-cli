@@ -12,7 +12,8 @@ resources reserved for the system, which the database cannot use. RAM is further
 split into the page cache and the memory used by the database itself.
 
 The values are short-term averages reported by the cluster's monitoring, so a
-node that has just started may show no data yet.
+node that has just started may show no data yet. In the JSON output, a resource
+without data is null rather than zero.
 
 ```
 qcloud cluster metrics summary <cluster-id> [flags]

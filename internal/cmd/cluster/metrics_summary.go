@@ -30,14 +30,15 @@ type clusterMetrics struct {
 }
 
 type nodeMetrics struct {
-	Node             string      `json:"node"`
-	NodeID           string      `json:"nodeId"`
-	State            string      `json:"state,omitempty"`
-	Version          string      `json:"version,omitempty"`
-	AvailabilityZone string      `json:"availabilityZone,omitempty"`
-	CPU              cpuUsage    `json:"cpu"`
-	RAM              memoryUsage `json:"ram"`
-	Disk             diskUsage   `json:"disk"`
+	Node             string `json:"node"`
+	NodeID           string `json:"nodeId"`
+	State            string `json:"state,omitempty"`
+	Version          string `json:"version,omitempty"`
+	AvailabilityZone string `json:"availabilityZone,omitempty"`
+	// CPU, RAM and Disk are nil when the node has not reported the metric.
+	CPU  *cpuUsage    `json:"cpu"`
+	RAM  *memoryUsage `json:"ram"`
+	Disk *diskUsage   `json:"disk"`
 }
 
 type cpuUsage struct {
@@ -76,7 +77,8 @@ resources reserved for the system, which the database cannot use. RAM is further
 split into the page cache and the memory used by the database itself.
 
 The values are short-term averages reported by the cluster's monitoring, so a
-node that has just started may show no data yet.`,
+node that has just started may show no data yet. In the JSON output, a resource
+without data is null rather than zero.`,
 		Example: `# Show resource usage for every node of a cluster
 qcloud cluster metrics summary 7b2ea926-724b-4de2-b73a-8675c42a6ebe
 
@@ -145,12 +147,14 @@ func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.Clust
 			}
 		}
 
-		cpuUsed, cpuTotal := metricOverview(n.GetCpu())
-		nm.CPU = cpuUsage{UsedVCPUs: cpuUsed, TotalVCPUs: cpuTotal}
-		if cpuTotal > 0 {
-			nm.CPU.ReservedVCPUs = reservedVCPUs
-			nm.CPU.AvailableVCPUs = available(cpuUsed+reservedVCPUs, cpuTotal)
-			nm.CPU.UsedPercent = percent(cpuUsed+reservedVCPUs, cpuTotal)
+		if cpuUsed, cpuTotal := metricOverview(n.GetCpu()); cpuTotal > 0 {
+			nm.CPU = &cpuUsage{
+				UsedVCPUs:      cpuUsed,
+				ReservedVCPUs:  reservedVCPUs,
+				AvailableVCPUs: available(cpuUsed+reservedVCPUs, cpuTotal),
+				TotalVCPUs:     cpuTotal,
+				UsedPercent:    percent(cpuUsed+reservedVCPUs, cpuTotal),
+			}
 		}
 
 		// Like the Qdrant Cloud console, use the RSS of the database process,
@@ -160,21 +164,25 @@ func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.Clust
 			ramMetric = n.GetRamRss()
 		}
 
-		ramData, ramTotal := metricOverview(ramMetric)
-		ramCache, _ := metricOverview(n.GetRamCache())
-		nm.RAM = memoryUsage{DataBytes: ramData, CacheBytes: ramCache, TotalBytes: ramTotal}
-		if ramTotal > 0 {
-			nm.RAM.ReservedBytes = reservedRAM
-			nm.RAM.AvailableBytes = available(ramData+ramCache+reservedRAM, ramTotal)
-			nm.RAM.UsedPercent = percent(ramData+ramCache+reservedRAM, ramTotal)
+		if ramData, ramTotal := metricOverview(ramMetric); ramTotal > 0 {
+			ramCache, _ := metricOverview(n.GetRamCache())
+			nm.RAM = &memoryUsage{
+				DataBytes:      ramData,
+				CacheBytes:     ramCache,
+				ReservedBytes:  reservedRAM,
+				AvailableBytes: available(ramData+ramCache+reservedRAM, ramTotal),
+				TotalBytes:     ramTotal,
+				UsedPercent:    percent(ramData+ramCache+reservedRAM, ramTotal),
+			}
 		}
 
-		diskUsed, diskTotal := metricOverview(n.GetDisk())
-		nm.Disk = diskUsage{
-			UsedBytes:      diskUsed,
-			AvailableBytes: available(diskUsed, diskTotal),
-			TotalBytes:     diskTotal,
-			UsedPercent:    percent(diskUsed, diskTotal),
+		if diskUsed, diskTotal := metricOverview(n.GetDisk()); diskTotal > 0 {
+			nm.Disk = &diskUsage{
+				UsedBytes:      diskUsed,
+				AvailableBytes: available(diskUsed, diskTotal),
+				TotalBytes:     diskTotal,
+				UsedPercent:    percent(diskUsed, diskTotal),
+			}
 		}
 
 		result.Nodes = append(result.Nodes, nm)
@@ -225,8 +233,11 @@ func percent(v, total float64) float64 {
 	return math.Round(v/total*1000) / 10
 }
 
+// metricsRow is a resource of a node. hasData is false when the node has not
+// reported the resource.
 type metricsRow struct {
 	label    string
+	hasData  bool
 	segments []output.BarSegment
 	total    float64
 	percent  float64
@@ -255,7 +266,7 @@ func printClusterMetrics(w io.Writer, m *clusterMetrics, color bool) {
 		fmt.Fprintln(w, strings.Join(header, "  "))
 
 		for _, r := range metricsRows(n, color) {
-			if r.total == 0 {
+			if !r.hasData {
 				fmt.Fprintf(w, "  %-4s  no data\n", r.label)
 				continue
 			}
@@ -269,10 +280,12 @@ func printClusterMetrics(w io.Writer, m *clusterMetrics, color bool) {
 }
 
 func metricsRows(n nodeMetrics, color bool) []metricsRow {
-	cpu, ram, disk := n.CPU, n.RAM, n.Disk
-	return []metricsRow{
-		{
-			label: "CPU",
+	rows := []metricsRow{{label: "CPU"}, {label: "RAM"}, {label: "Disk"}}
+
+	if cpu := n.CPU; cpu != nil {
+		rows[0] = metricsRow{
+			label:   "CPU",
+			hasData: true,
 			segments: []output.BarSegment{
 				{Value: cpu.ReservedVCPUs, Color: output.BarColorSystem},
 				{Value: cpu.UsedVCPUs, Color: output.BarColorData},
@@ -285,9 +298,13 @@ func metricsRows(n nodeMetrics, color bool) []metricsRow {
 				output.BarLegend("usage "+formatVCPUs(cpu.UsedVCPUs), output.BarColorData, color),
 				output.BarLegend("available "+formatVCPUs(cpu.AvailableVCPUs), output.BarColorFree, color),
 			},
-		},
-		{
-			label: "RAM",
+		}
+	}
+
+	if ram := n.RAM; ram != nil {
+		rows[1] = metricsRow{
+			label:   "RAM",
+			hasData: true,
 			segments: []output.BarSegment{
 				{Value: ram.ReservedBytes, Color: output.BarColorSystem},
 				{Value: ram.CacheBytes, Color: output.BarColorCache},
@@ -302,9 +319,13 @@ func metricsRows(n nodeMetrics, color bool) []metricsRow {
 				output.BarLegend("data "+formatBytes(ram.DataBytes), output.BarColorData, color),
 				output.BarLegend("available "+formatBytes(ram.AvailableBytes), output.BarColorFree, color),
 			},
-		},
-		{
-			label: "Disk",
+		}
+	}
+
+	if disk := n.Disk; disk != nil {
+		rows[2] = metricsRow{
+			label:   "Disk",
+			hasData: true,
 			segments: []output.BarSegment{
 				{Value: disk.UsedBytes, Color: output.BarColorData},
 			},
@@ -315,8 +336,10 @@ func metricsRows(n nodeMetrics, color bool) []metricsRow {
 				output.BarLegend("used "+formatBytes(disk.UsedBytes), output.BarColorData, color),
 				output.BarLegend("available "+formatBytes(disk.AvailableBytes), output.BarColorFree, color),
 			},
-		},
+		}
 	}
+
+	return rows
 }
 
 // formatVCPUs formats a number of vCPUs with two decimals, or two significant
