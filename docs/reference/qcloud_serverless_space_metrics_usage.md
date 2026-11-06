@@ -48,8 +48,8 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
   -h, --help                         help for usage
       --page-size int32              Maximum number of collections to return per page (manual pagination mode)
       --page-token string            Page token from a previous response to resume from (manual pagination mode)
-      --since string                 Start of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 6h or 7d; default 1h before --until)
-      --until string                 End of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default now)
+  -s, --since string                 Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 1h before --until)
+  -u, --until string                 End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
 ```
 
 ### Options inherited from parent commands

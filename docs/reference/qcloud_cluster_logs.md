@@ -39,9 +39,9 @@ qcloud cluster logs abc-123 --json
 
 ```
   -h, --help           help for logs
-  -s, --since string   Start time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days before --until)
+  -s, --since string   Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days before --until)
   -t, --timestamps     Prepend each log line with its timestamp
-  -u, --until string   End time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
+  -u, --until string   End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
 ```
 
 ### Options inherited from parent commands

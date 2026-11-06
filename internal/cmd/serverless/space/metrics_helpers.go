@@ -58,13 +58,6 @@ func readCollectionFilter(cmd *cobra.Command) (collectionFilter, error) {
 	return f, nil
 }
 
-// addTimeRangeFlags registers --since and --until. defaultSince describes the
-// default used when --since is omitted.
-func addTimeRangeFlags(cmd *cobra.Command, defaultSince string) {
-	cmd.Flags().String("since", "", "Start of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 6h or 7d; default "+defaultSince+")")
-	cmd.Flags().String("until", "", "End of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default now)")
-}
-
 // seriesRollup summarizes a metric time series.
 type seriesRollup struct {
 	latest float64

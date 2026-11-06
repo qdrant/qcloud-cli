@@ -89,8 +89,7 @@ qcloud cluster logs abc-123 --json`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
-	cmd.Flags().StringP("since", "s", "", "Start time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days before --until)")
-	cmd.Flags().StringP("until", "u", "", "End time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)")
+	util.AddTimeRangeFlags(cmd, defaultLogsRange)
 	cmd.Flags().BoolP("timestamps", "t", false, "Prepend each log line with its timestamp")
 
 	return cmd

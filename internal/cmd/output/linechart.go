@@ -2,9 +2,7 @@ package output
 
 import (
 	"fmt"
-	"io"
 	"math"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,7 +11,6 @@ import (
 	"github.com/NimbleMarkets/ntcharts/v2/canvas"
 	"github.com/NimbleMarkets/ntcharts/v2/canvas/graph"
 	"github.com/NimbleMarkets/ntcharts/v2/linechart/timeserieslinechart"
-	"github.com/charmbracelet/x/term"
 )
 
 const (
@@ -275,22 +272,6 @@ func niceAxisMax(v, unit float64, intervals int) float64 {
 	}
 
 	return v
-}
-
-// TerminalWidth returns the width of the terminal w writes to, or fallback
-// when w is not a terminal.
-func TerminalWidth(w io.Writer, fallback int) int {
-	f, ok := w.(*os.File)
-	if !ok || !term.IsTerminal(f.Fd()) {
-		return fallback
-	}
-
-	width, _, err := term.GetSize(f.Fd())
-	if err != nil || width <= 0 {
-		return fallback
-	}
-
-	return width
 }
 
 // ChartLegend renders the legend entries of a chart on a single line.

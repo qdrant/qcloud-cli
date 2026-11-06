@@ -106,3 +106,9 @@ func TestMillicores_Cores(t *testing.T) {
 		assert.Equal(t, tt.want, tt.input.Cores())
 	}
 }
+
+func TestMillicores_Float(t *testing.T) {
+	assert.InDelta(t, 0.0, Millicores(0).Float(), 0)
+	assert.InDelta(t, 1.0, Millicores(1000).Float(), 0)
+	assert.InDelta(t, 1.5, Millicores(1500).Float(), 0)
+}

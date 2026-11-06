@@ -62,6 +62,21 @@ func Significant(v float64, digits int) string {
 	return strconv.FormatFloat(math.Round(v*scale)/scale, 'f', -1, 64)
 }
 
+// PercentOf returns v as a percentage of total, rounded to one decimal, or 0
+// when total is 0.
+func PercentOf(v, total float64) float64 {
+	if total == 0 {
+		return 0
+	}
+
+	return math.Round(v/total*1000) / 10
+}
+
+// Percent formats a percentage with at most one decimal (e.g. "42.5%", "100%").
+func Percent(v float64) string {
+	return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) + "%"
+}
+
 // Milliseconds formats a value in milliseconds with one decimal (e.g. "12.3ms").
 func Milliseconds(v float64) string {
 	return strconv.FormatFloat(v, 'f', 1, 64) + "ms"

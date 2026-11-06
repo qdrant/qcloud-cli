@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"cmp"
 	"fmt"
 	"io"
 	"math"
@@ -19,6 +18,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
+	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -128,14 +128,14 @@ qcloud cluster metrics summary 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json | jq 
 
 func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.ClusterNodeMetrics) *clusterMetrics {
 	resources := cluster.GetState().GetResources()
-	reservedVCPUs := resources.GetCpu().GetReserved() / 1000
-	reservedRAM := resources.GetRam().GetReserved() * bytesPerGiB
+	reservedVCPUs := resource.Millicores(resources.GetCpu().GetReserved()).Float()
+	reservedRAM := resources.GetRam().GetReserved() * float64(resource.GiB)
 	isHybrid := cluster.GetCloudProviderId() == qcloudapi.HybridCloudProviderID
 
 	result := &clusterMetrics{ClusterID: cluster.GetId(), Nodes: make([]nodeMetrics, 0, len(nodes))}
 	for _, n := range nodes {
 		nm := nodeMetrics{
-			Node:   nodeNumber(cluster.GetId(), n.GetNodeId()),
+			Node:   completion.NodeNumber(cluster.GetId(), n.GetNodeId()),
 			NodeID: n.GetNodeId(),
 		}
 
@@ -153,7 +153,7 @@ func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.Clust
 				ReservedVCPUs:  reservedVCPUs,
 				AvailableVCPUs: available(cpuUsed+reservedVCPUs, cpuTotal),
 				TotalVCPUs:     cpuTotal,
-				UsedPercent:    percent(cpuUsed+reservedVCPUs, cpuTotal),
+				UsedPercent:    output.PercentOf(cpuUsed+reservedVCPUs, cpuTotal),
 			}
 		}
 
@@ -172,7 +172,7 @@ func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.Clust
 				ReservedBytes:  reservedRAM,
 				AvailableBytes: available(ramData+ramCache+reservedRAM, ramTotal),
 				TotalBytes:     ramTotal,
-				UsedPercent:    percent(ramData+ramCache+reservedRAM, ramTotal),
+				UsedPercent:    output.PercentOf(ramData+ramCache+reservedRAM, ramTotal),
 			}
 		}
 
@@ -181,32 +181,16 @@ func buildClusterMetrics(cluster *clusterv1.Cluster, nodes []*monitoringv1.Clust
 				UsedBytes:      diskUsed,
 				AvailableBytes: available(diskUsed, diskTotal),
 				TotalBytes:     diskTotal,
-				UsedPercent:    percent(diskUsed, diskTotal),
+				UsedPercent:    output.PercentOf(diskUsed, diskTotal),
 			}
 		}
 
 		result.Nodes = append(result.Nodes, nm)
 	}
 
-	slices.SortStableFunc(result.Nodes, func(a, b nodeMetrics) int { return compareNodes(a.Node, b.Node) })
+	slices.SortStableFunc(result.Nodes, func(a, b nodeMetrics) int { return completion.CompareNodes(a.Node, b.Node) })
 
 	return result
-}
-
-// nodeNumber returns the short name of a node, such as "0", from its full ID.
-func nodeNumber(clusterID, nodeID string) string {
-	return strings.TrimPrefix(nodeID, "qdrant-"+clusterID+"-")
-}
-
-// compareNodes orders node numbers numerically, falling back to text.
-func compareNodes(a, b string) int {
-	an, aErr := strconv.Atoi(a)
-	bn, bErr := strconv.Atoi(b)
-	if aErr == nil && bErr == nil {
-		return cmp.Compare(an, bn)
-	}
-
-	return cmp.Compare(a, b)
 }
 
 // metricOverview returns the first interval average and the total capacity of
@@ -223,14 +207,6 @@ func metricOverview(m *monitoringv1.ClusterMetricOverview) (float64, float64) {
 // available returns the capacity left on top of used, which is never negative.
 func available(used, total float64) float64 {
 	return max(total-used, 0)
-}
-
-func percent(v, total float64) float64 {
-	if total == 0 {
-		return 0
-	}
-
-	return math.Round(v/total*1000) / 10
 }
 
 // metricsRow is a resource of a node. hasData is false when the node has not

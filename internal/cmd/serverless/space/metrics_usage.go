@@ -173,7 +173,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 		ValidArgsFunction: completion.SpaceIDCompletion(s),
 	}.CobraCommand(s)
 
-	addTimeRangeFlags(cmd, "1h before --until")
+	util.AddTimeRangeFlags(cmd, defaultUsageMetricsRange)
 	cmd.Flags().String("aggregator", "", "Aggregation function applied to the time series (sum, avg, max, min; default sum)")
 	_ = cmd.RegisterFlagCompletionFunc("aggregator", cobra.FixedCompletions([]string{"sum", "avg", "max", "min"}, cobra.ShellCompDirectiveNoFileComp))
 	addCollectionFilterFlags(cmd, false)

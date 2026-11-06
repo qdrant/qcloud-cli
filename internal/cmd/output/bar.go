@@ -1,13 +1,10 @@
 package output
 
 import (
-	"io"
-	"os"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/NimbleMarkets/ntcharts/v2/barchart"
-	"github.com/charmbracelet/colorprofile"
 )
 
 // ANSI colors used for the segments of a usage bar.
@@ -25,12 +22,6 @@ const minUsageBarWidth = 3
 type BarSegment struct {
 	Value float64
 	Color string
-}
-
-// ColorEnabled reports whether w is a terminal that supports colors, honoring
-// NO_COLOR and TERM=dumb.
-func ColorEnabled(w io.Writer) bool {
-	return colorprofile.Detect(w, os.Environ()) >= colorprofile.ANSI
 }
 
 // UsageBar renders segments as a horizontal stacked bar of width cells, scaled

@@ -103,3 +103,21 @@ func TestReadPastTimeRange(t *testing.T) {
 		})
 	}
 }
+
+func TestAddTimeRangeFlags(t *testing.T) {
+	for _, tt := range []struct {
+		defaultRange time.Duration
+		want         string
+	}{
+		{time.Hour, "default: 1h before --until"},
+		{10 * time.Minute, "default: 10m before --until"},
+		{24 * time.Hour, "default: 1 day before --until"},
+		{7 * 24 * time.Hour, "default: 7 days before --until"},
+	} {
+		cmd := &cobra.Command{}
+		util.AddTimeRangeFlags(cmd, tt.defaultRange)
+		assert.Contains(t, cmd.Flags().Lookup("since").Usage, tt.want)
+		assert.Equal(t, "s", cmd.Flags().Lookup("since").Shorthand)
+		assert.Equal(t, "u", cmd.Flags().Lookup("until").Shorthand)
+	}
+}

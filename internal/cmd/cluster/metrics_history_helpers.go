@@ -7,8 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
@@ -25,11 +23,6 @@ const (
 type historyPoint struct {
 	Timestamp time.Time `json:"timestamp"`
 	Value     float64   `json:"value"`
-}
-
-func addMetricsHistoryRangeFlags(cmd *cobra.Command) {
-	cmd.Flags().StringP("since", "s", "", "Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 7 days before --until)")
-	cmd.Flags().StringP("until", "u", "", "End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)")
 }
 
 // historyPoints converts metrics to points in chronological order.

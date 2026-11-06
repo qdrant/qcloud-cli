@@ -1,7 +1,6 @@
 package output_test
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
@@ -44,10 +43,6 @@ func TestUsageBar_Color(t *testing.T) {
 func TestBarLegend(t *testing.T) {
 	assert.Equal(t, "cache 1 GiB", output.BarLegend("cache 1 GiB", output.BarColorCache, false))
 	assert.Equal(t, "■ cache 1 GiB", stripANSI(output.BarLegend("cache 1 GiB", output.BarColorCache, true)))
-}
-
-func TestColorEnabled_NotATerminal(t *testing.T) {
-	assert.False(t, output.ColorEnabled(&bytes.Buffer{}))
 }
 
 func stripANSI(s string) string {

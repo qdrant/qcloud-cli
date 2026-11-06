@@ -9,10 +9,34 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 )
 
 // errInvalidTimeFlag describes the formats accepted by ParseTimeFlag.
 var errInvalidTimeFlag = errors.New("must be RFC3339, YYYY-MM-DD, or a duration ago such as 30m, 24h or 7d")
+
+// AddTimeRangeFlags registers the --since and --until flags read by
+// ReadPastTimeRange. defaultRange is the length of the range when --since is
+// omitted, and is shown in the help text.
+func AddTimeRangeFlags(cmd *cobra.Command, defaultRange time.Duration) {
+	cmd.Flags().StringP("since", "s", "", "Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: "+describeRange(defaultRange)+" before --until)")
+	cmd.Flags().StringP("until", "u", "", "End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)")
+}
+
+// describeRange formats d in whole days when it is a multiple of a day, such
+// as "7 days", and as a compact duration otherwise, such as "1h".
+func describeRange(d time.Duration) string {
+	const day = 24 * time.Hour
+	switch {
+	case d == day:
+		return "1 day"
+	case d > 0 && d%day == 0:
+		return strconv.Itoa(int(d/day)) + " days"
+	default:
+		return output.CompactDuration(d)
+	}
+}
 
 // ParseTimeFlag parses a time flag value used as a lower bound. It accepts an
 // RFC3339 timestamp, a date in YYYY-MM-DD format (start of the day in UTC), or a

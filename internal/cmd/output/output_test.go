@@ -163,3 +163,15 @@ func TestSignificant(t *testing.T) {
 		assert.Equal(t, tc.want, output.Significant(tc.v, tc.digits), "%v with %d digits", tc.v, tc.digits)
 	}
 }
+
+func TestPercentOf(t *testing.T) {
+	assert.InDelta(t, 0.0, output.PercentOf(1, 0), 0)
+	assert.InDelta(t, 33.3, output.PercentOf(1, 3), 1e-9)
+	assert.InDelta(t, 100.0, output.PercentOf(2, 2), 1e-9)
+}
+
+func TestPercent(t *testing.T) {
+	assert.Equal(t, "0%", output.Percent(0))
+	assert.Equal(t, "42.5%", output.Percent(42.46))
+	assert.Equal(t, "100%", output.Percent(100))
+}

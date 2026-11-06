@@ -1,7 +1,6 @@
 package output_test
 
 import (
-	"bytes"
 	"math"
 	"strconv"
 	"strings"
@@ -115,10 +114,6 @@ func TestChartLegend(t *testing.T) {
 
 	assert.Equal(t, "capacity 2 vCPU  + usage", output.ChartLegend(series, false))
 	assert.Equal(t, "■ capacity 2 vCPU  ■ + usage", stripANSI(output.ChartLegend(series, true)))
-}
-
-func TestTerminalWidth_NotATerminal(t *testing.T) {
-	assert.Equal(t, 100, output.TerminalWidth(&bytes.Buffer{}, 100))
 }
 
 func TestTimeChart_FillWithColor(t *testing.T) {

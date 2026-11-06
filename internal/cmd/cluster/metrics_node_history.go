@@ -3,9 +3,7 @@ package cluster
 import (
 	"fmt"
 	"io"
-	"math"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,10 +18,9 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/qcloudapi"
+	"github.com/qdrant/qcloud-cli/internal/resource"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
-
-const bytesPerGiB = 1 << 30
 
 type nodeMetricsHistory struct {
 	ClusterID string      `json:"clusterId"`
@@ -138,10 +135,10 @@ qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --jso
 			printNodeMetricsHistory(w, h, metricsChartWidth(w), output.ColorEnabled(w))
 			return nil
 		},
-		ValidArgsFunction: clusterNodeCompletion(s),
+		ValidArgsFunction: completion.ClusterNodeCompletion(s),
 	}.CobraCommand(s)
 
-	addMetricsHistoryRangeFlags(cmd)
+	util.AddTimeRangeFlags(cmd, defaultMetricsHistoryRange)
 
 	return cmd
 }
@@ -152,8 +149,8 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 	var usage *monitoringv1.ClusterNodeUsageMetrics
 	var known []string
 	matches := func(nodeID string) bool {
-		known = append(known, nodeNumber(cluster.GetId(), nodeID))
-		return nodeID == node || nodeNumber(cluster.GetId(), nodeID) == node
+		known = append(known, completion.NodeNumber(cluster.GetId(), nodeID))
+		return nodeID == node || completion.NodeNumber(cluster.GetId(), nodeID) == node
 	}
 
 	for _, n := range nodes {
@@ -169,7 +166,7 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 	}
 
 	if usage == nil {
-		slices.SortFunc(known, compareNodes)
+		slices.SortFunc(known, completion.CompareNodes)
 		known = slices.Compact(known)
 		if len(known) == 0 {
 			return nil, fmt.Errorf("node %q not found: the cluster has no nodes", node)
@@ -199,23 +196,23 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 
 	history := &nodeMetricsHistory{
 		ClusterID: cluster.GetId(),
-		Node:      nodeNumber(cluster.GetId(), usage.GetNodeId()),
+		Node:      completion.NodeNumber(cluster.GetId(), usage.GetNodeId()),
 		NodeID:    usage.GetNodeId(),
 		Since:     since.UTC(),
 		Until:     until.UTC(),
 		CPU: cpuHistory{
-			ReservedVCPUs: resources.GetCpu().GetReserved() / 1000,
-			TotalVCPUs:    resourceTotal(resources.GetCpu()) / 1000,
+			ReservedVCPUs: resource.Millicores(resources.GetCpu().GetReserved()).Float(),
+			TotalVCPUs:    resource.Millicores(resourceTotal(resources.GetCpu())).Float(),
 			Usage:         historyPoints(usage.GetCpu()),
 		},
 		RAM: ramHistory{
-			ReservedBytes: resources.GetRam().GetReserved() * bytesPerGiB,
-			TotalBytes:    resourceTotal(resources.GetRam()) * bytesPerGiB,
+			ReservedBytes: resources.GetRam().GetReserved() * float64(resource.GiB),
+			TotalBytes:    resourceTotal(resources.GetRam()) * float64(resource.GiB),
 			Cache:         cache,
 			Data:          data,
 		},
 		Disk: diskHistory{
-			TotalBytes: resourceTotal(resources.GetDisk()) * bytesPerGiB,
+			TotalBytes: resourceTotal(resources.GetDisk()) * float64(resource.GiB),
 			Used:       historyPoints(usage.GetDisk()),
 		},
 	}
@@ -226,44 +223,6 @@ func buildNodeMetricsHistory(cluster *clusterv1.Cluster, nodes []*monitoringv1.C
 	}
 
 	return history, nil
-}
-
-// clusterNodeCompletion completes a cluster ID, then the numbers of its nodes.
-func clusterNodeCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	clusterIDs := completion.ClusterIDCompletion(s)
-	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		switch len(args) {
-		case 0:
-			return clusterIDs(cmd, args, toComplete)
-		case 1:
-			ctx := cmd.Context()
-			client, err := s.Client(ctx)
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-
-			accountID, err := s.AccountID()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-
-			resp, err := client.Cluster().GetCluster(ctx, &clusterv1.GetClusterRequest{AccountId: accountID, ClusterId: args[0]})
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-
-			nodes := make([]string, 0, len(resp.GetCluster().GetState().GetNodes()))
-			for _, n := range resp.GetCluster().GetState().GetNodes() {
-				nodes = append(nodes, nodeNumber(args[0], n.GetName()))
-			}
-
-			slices.SortFunc(nodes, compareNodes)
-
-			return nodes, cobra.ShellCompDirectiveNoFileComp
-		default:
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-	}
 }
 
 // resourceTotal returns the capacity of a node resource, which is the sum of
@@ -307,14 +266,14 @@ func nodeMetricsHistoryCharts(n nodeMetricsHistory) []metricsChart {
 
 	charts := []metricsChart{
 		{title: "CPU", base: cpu.Usage, total: cpu.TotalVCPUs, series: cpuSeries, yLabel: vcpus},
-		{title: "RAM", base: ram.Data, total: ram.TotalBytes, series: ramSeries, yLabel: formatBytes, yUnit: bytesPerGiB},
+		{title: "RAM", base: ram.Data, total: ram.TotalBytes, series: ramSeries, yLabel: formatBytes, yUnit: float64(resource.GiB)},
 		{
 			title:  "Disk",
 			base:   disk.Used,
 			total:  disk.TotalBytes,
 			series: []output.ChartSeries{{Name: "used", Color: output.BarColorData, Points: stack(disk.Used, 0), Fill: true}},
 			yLabel: formatBytes,
-			yUnit:  bytesPerGiB,
+			yUnit:  float64(resource.GiB),
 		},
 	}
 
@@ -326,7 +285,7 @@ func nodeMetricsHistoryCharts(n nodeMetricsHistory) []metricsChart {
 			base:   n.GPU.UsagePercent,
 			series: []output.ChartSeries{{Name: "usage", Color: output.BarColorData, Points: stack(n.GPU.UsagePercent, 0), Fill: true}},
 			yTop:   100,
-			yLabel: formatPercent,
+			yLabel: output.Percent,
 		})
 	}
 
@@ -336,13 +295,9 @@ func nodeMetricsHistoryCharts(n nodeMetricsHistory) []metricsChart {
 			base:   n.GPURAM.UsedBytes,
 			series: []output.ChartSeries{{Name: "used", Color: output.BarColorData, Points: stack(n.GPURAM.UsedBytes, 0), Fill: true}},
 			yLabel: formatBytes,
-			yUnit:  bytesPerGiB,
+			yUnit:  float64(resource.GiB),
 		})
 	}
 
 	return charts
-}
-
-func formatPercent(v float64) string {
-	return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64) + "%"
 }
