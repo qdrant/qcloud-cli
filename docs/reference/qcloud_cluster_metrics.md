@@ -1,34 +1,26 @@
 ## qcloud cluster metrics
 
-Show the current CPU, RAM and disk usage of each cluster node
+Show resource usage and request metrics of a cluster
 
 ### Synopsis
 
-Show the current CPU, RAM and disk usage of each node in a cluster.
+Show resource usage and request metrics of a cluster.
 
-Each resource is drawn as a bar relative to the capacity of the node, followed
-by the usage in percent and in absolute values. CPU and RAM include the
-resources reserved for the system, which the database cannot use. RAM is further
-split into the page cache and the memory used by the database itself.
-
-The values are short-term averages reported by the cluster's monitoring, so a
-node that has just started may show no data yet.
-
-```
-qcloud cluster metrics <cluster-id> [flags]
-```
+The summary shows the current CPU, RAM and disk usage of each node. The history
+commands draw how the request rate and latency of the whole cluster, or the
+resource usage of a single node, changed over a time range.
 
 ### Examples
 
 ```
-# Show resource usage for every node of a cluster
-qcloud cluster metrics 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+# Show the current resource usage of every node of a cluster
+qcloud cluster metrics summary 7b2ea926-724b-4de2-b73a-8675c42a6ebe
 
-# Output the usage as JSON
-qcloud cluster metrics 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json
+# Show the request rate and latency of a cluster over the last 7 days
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe
 
-# List the RAM usage in percent per node
-qcloud cluster metrics 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json | jq -r '.nodes[] | "\(.node) \(.ram.usedPercent)"'
+# Show the resource usage of node 0 over the last 24 hours
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --since 24h
 ```
 
 ### Options
@@ -53,4 +45,7 @@ qcloud cluster metrics 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json | jq -r '.nod
 ### SEE ALSO
 
 * [qcloud cluster](qcloud_cluster.md)	 - Manage Qdrant Cloud clusters
+* [qcloud cluster metrics history](qcloud_cluster_metrics_history.md)	 - Show the request rate and latency of a cluster over time
+* [qcloud cluster metrics node-history](qcloud_cluster_metrics_node-history.md)	 - Show the CPU, RAM and disk usage of a cluster node over time
+* [qcloud cluster metrics summary](qcloud_cluster_metrics_summary.md)	 - Show the current CPU, RAM and disk usage of each cluster node
 

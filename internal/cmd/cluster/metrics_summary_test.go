@@ -80,7 +80,7 @@ func TestClusterMetrics_TextOutput(t *testing.T) {
 		nodeMetrics("0", 0.5, 2*gib, 3*gib, 1.5*gib, 8*gib),
 	)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "Node 0  HEALTHY  v1.16.3  us-east-1a")
@@ -107,7 +107,7 @@ func TestClusterMetrics_SmallCPUUsage(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupMetrics(env, "aws", nodeMetrics("0", 0.0044613, 2*gib, 3*gib, 1.5*gib, 8*gib))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "  usage 0.0045  ")
@@ -118,7 +118,7 @@ func TestClusterMetrics_HybridUsesNodeRSS(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupMetrics(env, qcloudapi.HybridCloudProviderID, nodeMetrics("0", 0.5, 2*gib, 3*gib, 1.5*gib, 8*gib))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "data 3.0 GiB")
@@ -133,7 +133,7 @@ func TestClusterMetrics_NoData(t *testing.T) {
 		Disk:   overview(1*gib, 32*gib, "bytes"),
 	})
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "CPU   no data")
@@ -145,7 +145,7 @@ func TestClusterMetrics_NoNodes(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupMetrics(env, "aws")
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "No metrics available for this cluster.")
@@ -155,7 +155,7 @@ func TestClusterMetrics_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupMetrics(env, "aws", nodeMetrics("0", 0.5, 2*gib, 3*gib, 1.5*gib, 8*gib))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID, "--json")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID, "--json")
 	require.NoError(t, err)
 
 	var result struct {
@@ -218,7 +218,7 @@ func TestClusterMetrics_AvailableNeverNegative(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupMetrics(env, "aws", nodeMetrics("0", 1.9, 7.8*gib, 7.8*gib, 0, 33*gib))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID, "--json")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID, "--json")
 	require.NoError(t, err)
 
 	var result struct {
@@ -245,7 +245,7 @@ func TestClusterMetrics_Requests(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupMetrics(env, "aws", nodeMetrics("0", 0.5, 2*gib, 3*gib, 1.5*gib, 8*gib))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.NoError(t, err)
 
 	clusterReq, ok := env.Server.GetClusterCalls.Last()
@@ -264,7 +264,7 @@ func TestClusterMetrics_MetricsError(t *testing.T) {
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: metricsCluster("aws")}, nil)
 	env.MonitoringServer.GetClusterSummaryMetricsCalls.Returns(nil, fmt.Errorf("metrics unavailable"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get cluster metrics")
 }
@@ -273,7 +273,7 @@ func TestClusterMetrics_ClusterError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	env.Server.GetClusterCalls.Returns(nil, fmt.Errorf("not found"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get cluster")
 	assert.Equal(t, 0, env.MonitoringServer.GetClusterSummaryMetricsCalls.Count())
@@ -282,7 +282,7 @@ func TestClusterMetrics_ClusterError(t *testing.T) {
 func TestClusterMetrics_MissingArg(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	_, _, err := testutil.Exec(t, env, "cluster", "metrics")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary")
 	require.Error(t, err)
 }
 
@@ -295,7 +295,7 @@ func TestClusterMetrics_FitsIn80Columns(t *testing.T) {
 	node.Disk = overview(100*gib, 1024*gib, "bytes")
 	setupMetrics(env, "aws", node)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "summary", metricsClusterID)
 	require.NoError(t, err)
 
 	for line := range strings.SplitSeq(stdout, "\n") {

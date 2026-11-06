@@ -66,17 +66,18 @@ type gpuRAMHistory struct {
 	UsedBytes []historyPoint `json:"usedBytes"`
 }
 
-func newNodeMetricsHistoryCommand(s *state.State) *cobra.Command {
+func newMetricsNodeHistoryCommand(s *state.State) *cobra.Command {
 	cmd := base.DescribeCmd[*nodeMetricsHistory]{
-		Use:   "node-metrics-history <cluster-id> <node>",
+		Use:   "node-history <cluster-id> <node>",
 		Short: "Show the CPU, RAM and disk usage of a cluster node over time",
 		Long: `Show the CPU, RAM and disk usage of a cluster node over time.
 
-The node is given by its number, such as 0, as shown by "qcloud cluster metrics",
-or by its full node ID. Each resource is drawn as a stacked area chart, with a
-red line marking the capacity of the node: CPU shows the resources reserved for
-the system with the usage of the database on top, and RAM shows the reserved
-memory, then the page cache, then the memory used by the database. Without
+The node is given by its number, such as 0, as shown by
+"qcloud cluster metrics summary", or by its full node ID. Each resource is drawn
+as a stacked area chart, with a red line marking the capacity of the node: CPU
+shows the resources reserved for the system with the usage of the database on
+top, and RAM shows the reserved memory, then the page cache, then the memory
+used by the database. Without
 color, the areas are drawn as stacked lines instead. For a cluster with GPUs,
 the GPU usage in percent and the GPU RAM in use are shown as well.
 
@@ -85,16 +86,16 @@ an RFC3339 timestamp, a YYYY-MM-DD date in UTC, or a duration ago such as 6h or
 7d. When only --until is given, the range covers the 7 days before it. Times on
 the charts are in UTC.`,
 		Example: `# Show the usage of node 0 over the last 7 days
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0
 
 # Show the usage of node 1 over the last 24 hours
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 1 --since 24h
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 1 --since 24h
 
 # Show the usage in a specific time range
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --since 2026-10-01 --until 2026-10-07
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --since 2026-10-01 --until 2026-10-07
 
 # Output the time series as JSON
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --json`,
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --json`,
 		Args: util.ExactArgs(2, "a cluster ID and a node"),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*nodeMetricsHistory, error) {
 			ctx := cmd.Context()

@@ -1,4 +1,4 @@
-## qcloud cluster cluster-metrics-history
+## qcloud cluster metrics history
 
 Show the request rate and latency of a cluster over time
 
@@ -17,29 +17,29 @@ only --until is given, the range covers the 7 days before it. Times on the
 charts are in UTC.
 
 ```
-qcloud cluster cluster-metrics-history <cluster-id> [flags]
+qcloud cluster metrics history <cluster-id> [flags]
 ```
 
 ### Examples
 
 ```
 # Show the request rate and latency over the last 7 days
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe
 
 # Show the request rate and latency over the last 6 hours
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 6h
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 6h
 
 # Show the request rate and latency in a specific time range
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 2026-10-01 --until 2026-10-07
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 2026-10-01 --until 2026-10-07
 
 # Output the time series as JSON
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json
 ```
 
 ### Options
 
 ```
-  -h, --help           help for cluster-metrics-history
+  -h, --help           help for history
   -s, --since string   Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 7 days before --until)
   -u, --until string   End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
 ```
@@ -59,5 +59,5 @@ qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --js
 
 ### SEE ALSO
 
-* [qcloud cluster](qcloud_cluster.md)	 - Manage Qdrant Cloud clusters
+* [qcloud cluster metrics](qcloud_cluster_metrics.md)	 - Show resource usage and request metrics of a cluster
 

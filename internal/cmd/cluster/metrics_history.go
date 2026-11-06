@@ -29,9 +29,9 @@ type clusterMetricsHistory struct {
 	LatencyMs         []historyPoint `json:"latencyMs"`
 }
 
-func newClusterMetricsHistoryCommand(s *state.State) *cobra.Command {
+func newMetricsHistoryCommand(s *state.State) *cobra.Command {
 	cmd := base.DescribeCmd[*clusterMetricsHistory]{
-		Use:   "cluster-metrics-history <cluster-id>",
+		Use:   "history <cluster-id>",
 		Short: "Show the request rate and latency of a cluster over time",
 		Long: `Show the request rate and latency of a cluster over time.
 
@@ -45,16 +45,16 @@ timestamp, a YYYY-MM-DD date in UTC, or a duration ago such as 6h or 7d. When
 only --until is given, the range covers the 7 days before it. Times on the
 charts are in UTC.`,
 		Example: `# Show the request rate and latency over the last 7 days
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe
 
 # Show the request rate and latency over the last 6 hours
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 6h
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 6h
 
 # Show the request rate and latency in a specific time range
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 2026-10-01 --until 2026-10-07
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --since 2026-10-01 --until 2026-10-07
 
 # Output the time series as JSON
-qcloud cluster cluster-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
+qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 		Args: util.ExactArgs(1, "a cluster ID"),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*clusterMetricsHistory, error) {
 			ctx := cmd.Context()

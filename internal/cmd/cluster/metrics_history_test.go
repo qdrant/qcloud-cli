@@ -34,7 +34,7 @@ func TestClusterMetricsHistory_TextOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupClusterHistory(env, "aws", requestMetrics())
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID,
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID,
 		"--since", "2026-10-20T00:00:00Z", "--until", "2026-10-20T02:00:00Z")
 	require.NoError(t, err)
 
@@ -54,7 +54,7 @@ func TestClusterMetricsHistory_JSONOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupClusterHistory(env, "aws", requestMetrics())
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID, "--json")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID, "--json")
 	require.NoError(t, err)
 
 	var result struct {
@@ -87,7 +87,7 @@ func TestClusterMetricsHistory_Requests(t *testing.T) {
 	setupClusterHistory(env, "aws", requestMetrics())
 
 	before := time.Now().Truncate(time.Second)
-	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID)
 	require.NoError(t, err)
 	after := time.Now()
 
@@ -110,7 +110,7 @@ func TestClusterMetricsHistory_TimeRange(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupClusterHistory(env, "aws", requestMetrics())
 
-	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID, "--until", "2026-10-10T00:00:00Z")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID, "--until", "2026-10-10T00:00:00Z")
 	require.NoError(t, err)
 
 	req, ok := env.MonitoringServer.GetClusterUsageMetricsCalls.Last()
@@ -118,7 +118,7 @@ func TestClusterMetricsHistory_TimeRange(t *testing.T) {
 	assert.Equal(t, time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC), req.GetSince().AsTime())
 	assert.Equal(t, time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), req.GetUntil().AsTime())
 
-	_, _, err = testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID, "--since", "2026-10-20", "--until", "2026-10-01")
+	_, _, err = testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID, "--since", "2026-10-20", "--until", "2026-10-01")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--since must be before --until")
 }
@@ -127,7 +127,7 @@ func TestClusterMetricsHistory_NoData(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupClusterHistory(env, "aws", &monitoringv1.GetClusterUsageMetricsResponse{Rps: series(1, 2)})
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "\nRequests\nrequests per second\n")
@@ -138,7 +138,7 @@ func TestClusterMetricsHistory_HybridCluster(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupClusterHistory(env, qcloudapi.HybridCloudProviderID, requestMetrics())
 
-	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "request metrics are not available for Hybrid Cloud clusters")
 	assert.Equal(t, 0, env.MonitoringServer.GetClusterUsageMetricsCalls.Count())
@@ -149,7 +149,7 @@ func TestClusterMetricsHistory_MetricsError(t *testing.T) {
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: historyCluster("aws")}, nil)
 	env.MonitoringServer.GetClusterUsageMetricsCalls.Returns(nil, fmt.Errorf("metrics unavailable"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get cluster metrics")
 }
@@ -158,7 +158,7 @@ func TestClusterMetricsHistory_ClusterError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	env.Server.GetClusterCalls.Returns(nil, fmt.Errorf("not found"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get cluster")
 	assert.Equal(t, 0, env.MonitoringServer.GetClusterUsageMetricsCalls.Count())
@@ -167,7 +167,7 @@ func TestClusterMetricsHistory_ClusterError(t *testing.T) {
 func TestClusterMetricsHistory_MissingArg(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "history")
 	require.Error(t, err)
 }
 
@@ -178,7 +178,7 @@ func TestClusterMetricsHistory_LowRateLabels(t *testing.T) {
 		Latency: series(0, 0.04, 0),
 	})
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID,
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID,
 		"--since", "2026-10-20T00:00:00Z", "--until", "2026-10-20T02:00:00Z")
 	require.NoError(t, err)
 
@@ -197,7 +197,7 @@ func TestClusterMetricsHistory_NoRequests(t *testing.T) {
 		Latency: series(0, 0, 0),
 	})
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID)
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "\nRequests\nno requests in this time range\n")
@@ -209,7 +209,7 @@ func TestClusterMetricsHistory_FutureRange(t *testing.T) {
 	setupClusterHistory(env, "aws", requestMetrics())
 
 	before := time.Now()
-	_, _, err := testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID,
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID,
 		"--since", "24h", "--until", before.Add(48*time.Hour).UTC().Format(time.RFC3339))
 	require.NoError(t, err)
 
@@ -217,7 +217,7 @@ func TestClusterMetricsHistory_FutureRange(t *testing.T) {
 	require.True(t, ok)
 	assert.False(t, req.GetUntil().AsTime().After(time.Now()), "--until is cut to now")
 
-	_, _, err = testutil.Exec(t, env, "cluster", "cluster-metrics-history", metricsClusterID,
+	_, _, err = testutil.Exec(t, env, "cluster", "metrics", "history", metricsClusterID,
 		"--since", before.Add(time.Hour).UTC().Format(time.RFC3339))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--since must be in the past")

@@ -1,4 +1,4 @@
-## qcloud cluster node-metrics-history
+## qcloud cluster metrics node-history
 
 Show the CPU, RAM and disk usage of a cluster node over time
 
@@ -6,11 +6,12 @@ Show the CPU, RAM and disk usage of a cluster node over time
 
 Show the CPU, RAM and disk usage of a cluster node over time.
 
-The node is given by its number, such as 0, as shown by "qcloud cluster metrics",
-or by its full node ID. Each resource is drawn as a stacked area chart, with a
-red line marking the capacity of the node: CPU shows the resources reserved for
-the system with the usage of the database on top, and RAM shows the reserved
-memory, then the page cache, then the memory used by the database. Without
+The node is given by its number, such as 0, as shown by
+"qcloud cluster metrics summary", or by its full node ID. Each resource is drawn
+as a stacked area chart, with a red line marking the capacity of the node: CPU
+shows the resources reserved for the system with the usage of the database on
+top, and RAM shows the reserved memory, then the page cache, then the memory
+used by the database. Without
 color, the areas are drawn as stacked lines instead. For a cluster with GPUs,
 the GPU usage in percent and the GPU RAM in use are shown as well.
 
@@ -20,29 +21,29 @@ an RFC3339 timestamp, a YYYY-MM-DD date in UTC, or a duration ago such as 6h or
 the charts are in UTC.
 
 ```
-qcloud cluster node-metrics-history <cluster-id> <node> [flags]
+qcloud cluster metrics node-history <cluster-id> <node> [flags]
 ```
 
 ### Examples
 
 ```
 # Show the usage of node 0 over the last 7 days
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0
 
 # Show the usage of node 1 over the last 24 hours
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 1 --since 24h
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 1 --since 24h
 
 # Show the usage in a specific time range
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --since 2026-10-01 --until 2026-10-07
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --since 2026-10-01 --until 2026-10-07
 
 # Output the time series as JSON
-qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --json
+qcloud cluster metrics node-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --json
 ```
 
 ### Options
 
 ```
-  -h, --help           help for node-metrics-history
+  -h, --help           help for node-history
   -s, --since string   Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 7 days before --until)
   -u, --until string   End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
 ```
@@ -62,5 +63,5 @@ qcloud cluster node-metrics-history 7b2ea926-724b-4de2-b73a-8675c42a6ebe 0 --jso
 
 ### SEE ALSO
 
-* [qcloud cluster](qcloud_cluster.md)	 - Manage Qdrant Cloud clusters
+* [qcloud cluster metrics](qcloud_cluster_metrics.md)	 - Show resource usage and request metrics of a cluster
 

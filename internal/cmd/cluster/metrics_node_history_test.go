@@ -102,7 +102,7 @@ type historyJSON struct {
 
 func execHistoryJSON(t *testing.T, env *testutil.TestEnv, node string, args ...string) historyJSON {
 	t.Helper()
-	stdout, _, err := testutil.Exec(t, env, append([]string{"cluster", "node-metrics-history", metricsClusterID, node, "--json"}, args...)...)
+	stdout, _, err := testutil.Exec(t, env, append([]string{"cluster", "metrics", "node-history", metricsClusterID, node, "--json"}, args...)...)
 	require.NoError(t, err)
 
 	var result historyJSON
@@ -115,7 +115,7 @@ func TestNodeMetricsHistory_TextOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws", usageNode("1"), usageNode("0"))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "1",
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "1",
 		"--since", "2026-10-20T00:00:00Z", "--until", "2026-10-20T02:00:00Z")
 	require.NoError(t, err)
 
@@ -183,14 +183,14 @@ func TestNodeMetricsHistory_InvalidRange(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws", usageNode("0"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--since", "1h", "--until", "2h")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0", "--since", "1h", "--until", "2h")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--since must be before --until")
 
-	_, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--since", "2026-10-20", "--until", "2026-10-01")
+	_, _, err = testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0", "--since", "2026-10-20", "--until", "2026-10-01")
 	require.Error(t, err)
 
-	_, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--since", "yesterday")
+	_, _, err = testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0", "--since", "yesterday")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid --since")
 	assert.Equal(t, 0, env.MonitoringServer.GetClusterUsageMetricsCalls.Count())
@@ -295,7 +295,7 @@ func TestNodeMetricsHistory_UnknownNode(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws", usageNode("1"), usageNode("0"), usageNode("3"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "5")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "5")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `node "5" not found, available nodes: 0, 1, 2, 3`)
 }
@@ -305,7 +305,7 @@ func TestNodeMetricsHistory_NoNodes(t *testing.T) {
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: &clusterv1.Cluster{Id: metricsClusterID}}, nil)
 	env.MonitoringServer.GetClusterUsageMetricsCalls.Returns(&monitoringv1.GetClusterUsageMetricsResponse{}, nil)
 
-	_, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `node "0" not found: the cluster has no nodes`)
 }
@@ -314,7 +314,7 @@ func TestNodeMetricsHistory_NodeWithoutMetrics(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws", usageNode("0"))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "2")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "2")
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "Node 2  ")
@@ -330,7 +330,7 @@ func TestNodeMetricsHistory_PartialData(t *testing.T) {
 		Disk:   series(8*gib, 9*gib),
 	})
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "CPU\nno data")
@@ -342,7 +342,7 @@ func TestNodeMetricsHistory_NodeCompletion(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws")
 
-	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "node-metrics-history", metricsClusterID, "")
+	stdout, _, err := testutil.Exec(t, env, "__complete", "cluster", "metrics", "node-history", metricsClusterID, "")
 	require.NoError(t, err)
 	assert.Equal(t, []string{"0", "1", "2", ":4"}, strings.Fields(strings.Split(stdout, "Completion ended")[0]))
 
@@ -356,7 +356,7 @@ func TestNodeMetricsHistory_MetricsError(t *testing.T) {
 	env.Server.GetClusterCalls.Returns(&clusterv1.GetClusterResponse{Cluster: historyCluster("aws")}, nil)
 	env.MonitoringServer.GetClusterUsageMetricsCalls.Returns(nil, fmt.Errorf("metrics unavailable"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get cluster metrics")
 }
@@ -365,7 +365,7 @@ func TestNodeMetricsHistory_ClusterError(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	env.Server.GetClusterCalls.Returns(nil, fmt.Errorf("not found"))
 
-	_, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get cluster")
 	assert.Equal(t, 0, env.MonitoringServer.GetClusterUsageMetricsCalls.Count())
@@ -374,10 +374,10 @@ func TestNodeMetricsHistory_ClusterError(t *testing.T) {
 func TestNodeMetricsHistory_MissingArgs(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
-	_, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history")
+	_, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history")
 	require.Error(t, err)
 
-	_, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID)
+	_, _, err = testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID)
 	require.Error(t, err)
 	assert.Equal(t, 0, env.MonitoringServer.GetClusterUsageMetricsCalls.Count())
 }
@@ -398,7 +398,7 @@ func TestNodeMetricsHistory_GPU(t *testing.T) {
 		Nodes: []*monitoringv1.ClusterNodeUsageMetrics{node},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0",
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0",
 		"--since", "2026-10-20T00:00:00Z", "--until", "2026-10-20T02:00:00Z")
 	require.NoError(t, err)
 
@@ -406,7 +406,7 @@ func TestNodeMetricsHistory_GPU(t *testing.T) {
 	assert.Regexp(t, "\nGPU RAM\nused\n *16 GiB│", stdout)
 	assert.Less(t, strings.Index(stdout, "\nDisk\n"), strings.Index(stdout, "\nGPU\n"))
 
-	stdout, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--json")
+	stdout, _, err = testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0", "--json")
 	require.NoError(t, err)
 
 	var result struct {
@@ -435,13 +435,13 @@ func TestNodeMetricsHistory_GPUClusterWithoutData(t *testing.T) {
 		Nodes: []*monitoringv1.ClusterNodeUsageMetrics{usageNode("0")},
 	}, nil)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "\nGPU\nno data\n")
 	assert.Contains(t, stdout, "\nGPU RAM\nno data\n")
 
-	stdout, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--json")
+	stdout, _, err = testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0", "--json")
 	require.NoError(t, err)
 	assert.Contains(t, stdout, `"usagePercent": []`)
 	assert.Contains(t, stdout, `"usedBytes": []`)
@@ -453,7 +453,7 @@ func TestNodeMetricsHistory_GPUDataWithoutGPUResources(t *testing.T) {
 	node.Gpu = series(40, 80, 60)
 	setupHistory(env, qcloudapi.HybridCloudProviderID, node)
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout, "\nGPU\nusage\n")
@@ -464,11 +464,11 @@ func TestNodeMetricsHistory_NoGPU(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws", usageNode("0"))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.NoError(t, err)
 	assert.NotContains(t, stdout, "GPU")
 
-	stdout, _, err = testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--json")
+	stdout, _, err = testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0", "--json")
 	require.NoError(t, err)
 	assert.NotContains(t, stdout, "gpu")
 }
@@ -485,7 +485,7 @@ func TestNodeMetricsHistory_CapacitySpansRange(t *testing.T) {
 		Disk:   recent(8 * gib),
 	})
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0")
 	require.NoError(t, err)
 
 	notBraille := regexp.MustCompile("[^\u2801-\u28ff]")
@@ -502,7 +502,7 @@ func TestNodeMetricsHistory_ChartsLineUp(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	setupHistory(env, "aws", usageNode("0"))
 
-	stdout, _, err := testutil.Exec(t, env, "cluster", "node-metrics-history", metricsClusterID, "0", "--since", "2026-10-20")
+	stdout, _, err := testutil.Exec(t, env, "cluster", "metrics", "node-history", metricsClusterID, "0", "--since", "2026-10-20")
 	require.NoError(t, err)
 
 	columns := map[int]bool{}
