@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
 
@@ -16,6 +17,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
+
+const defaultUsageMetricsRange = time.Hour
 
 func newMetricsUsageCommand(s *state.State) *cobra.Command {
 	cmd := base.DescribeCmd[*serverlessmonitoringv1.GetSpaceUsageMetricsResponse]{
@@ -29,7 +32,8 @@ The table condenses each series: point count, storage and workers show the
 latest value, while request rates and latency show the average and maximum over
 the period. Use --json to get the full time series.
 
-When --since is omitted, the period covers the last hour.
+By default, the period covers the last hour. When only --until is given, it
+covers the hour before it.
 
 By default, all collections are fetched automatically across multiple pages.
 Use --page-size and --page-token for manual pagination.`,
@@ -47,7 +51,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
 qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 7d --json`,
 		Args: util.ExactArgs(1, "a space ID"),
 		Fetch: func(s *state.State, cmd *cobra.Command, args []string) (*serverlessmonitoringv1.GetSpaceUsageMetricsResponse, error) {
-			since, until, err := util.ReadTimeRange(cmd, time.Now())
+			since, until, err := util.ReadPastTimeRange(cmd, time.Now(), defaultUsageMetricsRange)
 			if err != nil {
 				return nil, err
 			}
@@ -84,8 +88,8 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 				req := &serverlessmonitoringv1.GetSpaceUsageMetricsRequest{
 					AccountId:  accountID,
 					SpaceId:    args[0],
-					Since:      since,
-					Until:      until,
+					Since:      timestamppb.New(since),
+					Until:      timestamppb.New(until),
 					Aggregator: aggregator,
 					PageSize:   pageSize,
 					PageToken:  pageToken,
@@ -169,7 +173,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 		ValidArgsFunction: completion.SpaceIDCompletion(s),
 	}.CobraCommand(s)
 
-	addTimeRangeFlags(cmd, "1h ago")
+	addTimeRangeFlags(cmd, "1h before --until")
 	cmd.Flags().String("aggregator", "", "Aggregation function applied to the time series (sum, avg, max, min; default sum)")
 	_ = cmd.RegisterFlagCompletionFunc("aggregator", cobra.FixedCompletions([]string{"sum", "avg", "max", "min"}, cobra.ShellCompDirectiveNoFileComp))
 	addCollectionFilterFlags(cmd, false)

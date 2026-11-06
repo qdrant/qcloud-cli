@@ -60,6 +60,37 @@ func ReadTimeRange(cmd *cobra.Command, now time.Time) (since, until *timestamppb
 	return since, until, nil
 }
 
+// ReadPastTimeRange reads --since and --until like ReadTimeRange, for a range
+// that lies in the past. --until defaults to now and is cut to now when it is in
+// the future, and --since defaults to defaultRange before --until. It returns an
+// error when --since is not in the past or not before --until.
+func ReadPastTimeRange(cmd *cobra.Command, now time.Time, defaultRange time.Duration) (since, until time.Time, err error) {
+	sinceTS, untilTS, err := ReadTimeRange(cmd, now)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	if sinceTS != nil && !sinceTS.AsTime().Before(now) {
+		return time.Time{}, time.Time{}, errors.New("--since must be in the past")
+	}
+
+	until = now
+	if untilTS != nil && untilTS.AsTime().Before(now) {
+		until = untilTS.AsTime()
+	}
+
+	since = until.Add(-defaultRange)
+	if sinceTS != nil {
+		since = sinceTS.AsTime()
+	}
+
+	if !since.Before(until) {
+		return time.Time{}, time.Time{}, errors.New("--since must be before --until")
+	}
+
+	return since, until, nil
+}
+
 func parseTimeFlag(s string, now time.Time, endOfDay bool) (time.Time, error) {
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
 		return t, nil

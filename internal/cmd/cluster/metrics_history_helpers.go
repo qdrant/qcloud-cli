@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"cmp"
-	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -13,7 +12,6 @@ import (
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/cmd/output"
-	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 )
 
 const (
@@ -32,37 +30,6 @@ type historyPoint struct {
 func addMetricsHistoryRangeFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("since", "s", "", "Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 7 days before --until)")
 	cmd.Flags().StringP("until", "u", "", "End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)")
-}
-
-// readMetricsHistoryRange reads --since and --until, defaulting to the 7 days
-// before --until, and --until to now. An --until in the future is cut to now:
-// the API fills some series with zeros up to any time, which would read as
-// measured values.
-func readMetricsHistoryRange(cmd *cobra.Command, now time.Time) (time.Time, time.Time, error) {
-	sinceTS, untilTS, err := util.ReadTimeRange(cmd, now)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-
-	if sinceTS != nil && !sinceTS.AsTime().Before(now) {
-		return time.Time{}, time.Time{}, errors.New("--since must be in the past")
-	}
-
-	until := now
-	if untilTS != nil && untilTS.AsTime().Before(now) {
-		until = untilTS.AsTime()
-	}
-
-	since := until.Add(-defaultMetricsHistoryRange)
-	if sinceTS != nil {
-		since = sinceTS.AsTime()
-	}
-
-	if !since.Before(until) {
-		return time.Time{}, time.Time{}, errors.New("--since must be before --until")
-	}
-
-	return since, until, nil
 }
 
 // historyPoints converts metrics to points in chronological order.

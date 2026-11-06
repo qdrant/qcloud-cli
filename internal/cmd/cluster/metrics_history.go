@@ -68,7 +68,7 @@ qcloud cluster metrics history 7b2ea926-724b-4de2-b73a-8675c42a6ebe --json`,
 				return nil, err
 			}
 
-			since, until, err := readMetricsHistoryRange(cmd, time.Now().Truncate(time.Second))
+			since, until, err := util.ReadPastTimeRange(cmd, time.Now().Truncate(time.Second), defaultMetricsHistoryRange)
 			if err != nil {
 				return nil, err
 			}

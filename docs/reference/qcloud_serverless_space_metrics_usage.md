@@ -12,7 +12,8 @@ The table condenses each series: point count, storage and workers show the
 latest value, while request rates and latency show the average and maximum over
 the period. Use --json to get the full time series.
 
-When --since is omitted, the period covers the last hour.
+By default, the period covers the last hour. When only --until is given, it
+covers the hour before it.
 
 By default, all collections are fetched automatically across multiple pages.
 Use --page-size and --page-token for manual pagination.
@@ -47,7 +48,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
   -h, --help                         help for usage
       --page-size int32              Maximum number of collections to return per page (manual pagination mode)
       --page-token string            Page token from a previous response to resume from (manual pagination mode)
-      --since string                 Start of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 6h or 7d; default 1h ago)
+      --since string                 Start of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 6h or 7d; default 1h before --until)
       --until string                 End of the period (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default now)
 ```
 

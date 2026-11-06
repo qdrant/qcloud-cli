@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/util"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
+
+const defaultLogsRange = 3 * 24 * time.Hour
 
 func newLogsCommand(s *state.State) *cobra.Command {
 	cmd := base.DescribeCmd[*monitoringv1.GetClusterLogsResponse]{
@@ -26,7 +29,8 @@ func newLogsCommand(s *state.State) *cobra.Command {
 By default, logs from the last 3 days up to now are returned. --since and --until
 accept an RFC3339 timestamp, a YYYY-MM-DD date in UTC, or a duration ago such as
 6h or 7d. A date passed to --since starts at the beginning of that day, and a
-date passed to --until includes the whole day.`,
+date passed to --until includes the whole day. When only --until is given, the
+range covers the 3 days before it.`,
 		Example: `# Get logs for a cluster
 qcloud cluster logs abc-123
 
@@ -53,7 +57,7 @@ qcloud cluster logs abc-123 --json`,
 				return nil, err
 			}
 
-			since, until, err := util.ReadTimeRange(cmd, time.Now())
+			since, until, err := util.ReadPastTimeRange(cmd, time.Now(), defaultLogsRange)
 			if err != nil {
 				return nil, err
 			}
@@ -61,8 +65,8 @@ qcloud cluster logs abc-123 --json`,
 			resp, err := client.Monitoring().GetClusterLogs(ctx, &monitoringv1.GetClusterLogsRequest{
 				AccountId: accountID,
 				ClusterId: args[0],
-				Since:     since,
-				Until:     until,
+				Since:     timestamppb.New(since),
+				Until:     timestamppb.New(until),
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to get cluster logs: %w", err)
@@ -85,7 +89,7 @@ qcloud cluster logs abc-123 --json`,
 		ValidArgsFunction: completion.ClusterIDCompletion(s),
 	}.CobraCommand(s)
 
-	cmd.Flags().StringP("since", "s", "", "Start time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days ago)")
+	cmd.Flags().StringP("since", "s", "", "Start time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days before --until)")
 	cmd.Flags().StringP("until", "u", "", "End time for logs (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)")
 	cmd.Flags().BoolP("timestamps", "t", false, "Prepend each log line with its timestamp")
 
