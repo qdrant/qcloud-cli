@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.36.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.36.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.35.0...v0.36.0)
+
+### Features
+
+- **cluster**: add cluster and node metrics to CLI (#234) ([ec64a1c](https://github.com/qdrant/qcloud-cli/commit/ec64a1c17770f3cd1b9de5490397d884b187bfdd))
+
 ## [v0.35.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.35.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.34.0...v0.35.0)
