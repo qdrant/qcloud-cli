@@ -143,3 +143,35 @@ func TestBytes(t *testing.T) {
 	assert.Equal(t, "0 B", output.Bytes(0))
 	assert.Equal(t, "1.5 GiB", output.Bytes(3<<29))
 }
+
+func TestSignificant(t *testing.T) {
+	for _, tc := range []struct {
+		v      float64
+		digits int
+		want   string
+	}{
+		{0, 3, "0"},
+		{0.0015855, 2, "0.0016"},
+		{0.0015855, 3, "0.00159"},
+		{0.0005, 3, "0.0005"},
+		{0.46, 2, "0.46"},
+		{1.25, 3, "1.25"},
+		{14.55, 3, "14.6"},
+		{1300, 2, "1300"},
+		{-0.0042, 2, "-0.0042"},
+	} {
+		assert.Equal(t, tc.want, output.Significant(tc.v, tc.digits), "%v with %d digits", tc.v, tc.digits)
+	}
+}
+
+func TestPercentOf(t *testing.T) {
+	assert.InDelta(t, 0.0, output.PercentOf(1, 0), 0)
+	assert.InDelta(t, 33.3, output.PercentOf(1, 3), 1e-9)
+	assert.InDelta(t, 100.0, output.PercentOf(2, 2), 1e-9)
+}
+
+func TestPercent(t *testing.T) {
+	assert.Equal(t, "0%", output.Percent(0))
+	assert.Equal(t, "42.5%", output.Percent(42.46))
+	assert.Equal(t, "100%", output.Percent(100))
+}

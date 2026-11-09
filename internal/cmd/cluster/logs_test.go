@@ -212,18 +212,65 @@ func TestClusterLogs_UntilDateIsInclusive(t *testing.T) {
 	assert.Equal(t, time.Date(2024, 2, 1, 23, 59, 59, 0, time.UTC), req.GetUntil().AsTime())
 }
 
-func TestClusterLogs_NoSinceByDefault(t *testing.T) {
+func TestClusterLogs_DefaultRange(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 
 	env.MonitoringServer.GetClusterLogsCalls.Returns(&monitoringv1.GetClusterLogsResponse{}, nil)
 
+	before := time.Now()
 	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster")
 	require.NoError(t, err)
 
 	req, ok := env.MonitoringServer.GetClusterLogsCalls.Last()
 	require.True(t, ok)
-	assert.Nil(t, req.GetSince())
-	assert.Nil(t, req.GetUntil())
+	assert.WithinRange(t, req.GetUntil().AsTime(), before, time.Now())
+	assert.Equal(t, 3*24*time.Hour, req.GetUntil().AsTime().Sub(req.GetSince().AsTime()))
+}
+
+func TestClusterLogs_OnlyUntilCoversThreeDaysBefore(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.MonitoringServer.GetClusterLogsCalls.Returns(&monitoringv1.GetClusterLogsResponse{}, nil)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--until", "2024-02-10T00:00:00Z")
+	require.NoError(t, err)
+
+	req, ok := env.MonitoringServer.GetClusterLogsCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, time.Date(2024, 2, 7, 0, 0, 0, 0, time.UTC), req.GetSince().AsTime())
+	assert.Equal(t, time.Date(2024, 2, 10, 0, 0, 0, 0, time.UTC), req.GetUntil().AsTime())
+}
+
+func TestClusterLogs_FutureUntilIsCutToNow(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.MonitoringServer.GetClusterLogsCalls.Returns(&monitoringv1.GetClusterLogsResponse{}, nil)
+
+	before := time.Now()
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--since", "6h", "--until", "2099-01-01")
+	require.NoError(t, err)
+
+	req, ok := env.MonitoringServer.GetClusterLogsCalls.Last()
+	require.True(t, ok)
+	assert.WithinRange(t, req.GetUntil().AsTime(), before, time.Now())
+}
+
+func TestClusterLogs_SinceInFuture(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--since", "2099-01-01")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--since must be in the past")
+	assert.Equal(t, 0, env.MonitoringServer.GetClusterLogsCalls.Count())
+}
+
+func TestClusterLogs_SinceAfterDefaultUntil(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env, "cluster", "logs", "my-cluster", "--since", "2024-02-10", "--until", "2024-02-01T00:00:00Z")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--since must be before --until")
+	assert.Equal(t, 0, env.MonitoringServer.GetClusterLogsCalls.Count())
 }
 
 func TestClusterLogs_InvalidSince(t *testing.T) {

@@ -56,6 +56,11 @@ func (m Millicores) String() string {
 	return m.Cores()
 }
 
+// Float returns m as a (fractional) number of cores: 1500 → 1.5.
+func (m Millicores) Float() float64 {
+	return float64(m) / 1000
+}
+
 // Cores formats m as a (fractional) number of cores: 1000 → "1", 1500 → "1.5", 0 → "0".
 func (m Millicores) Cores() string {
 	return strconv.FormatFloat(float64(m)/1000, 'f', -1, 64)

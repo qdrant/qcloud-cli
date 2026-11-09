@@ -53,6 +53,7 @@ func TestSpaceMetricsUsage_TextOutput(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Returns(sampleUsage(), nil)
 
+	before := time.Now()
 	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "usage", "space-abc")
 	require.NoError(t, err)
 
@@ -73,8 +74,8 @@ func TestSpaceMetricsUsage_TextOutput(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "test-account-id", req.GetAccountId())
 	assert.Equal(t, "space-abc", req.GetSpaceId())
-	assert.Nil(t, req.Since)
-	assert.Nil(t, req.Until)
+	assert.WithinRange(t, req.GetUntil().AsTime(), before, time.Now())
+	assert.Equal(t, time.Hour, req.GetUntil().AsTime().Sub(req.GetSince().AsTime()))
 	assert.Nil(t, req.Aggregator)
 	assert.Nil(t, req.GetCollectionFilter())
 }
@@ -122,7 +123,7 @@ func TestSpaceMetricsUsage_RequestFields(t *testing.T) {
 	req, ok := env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Last()
 	require.True(t, ok)
 	assert.WithinDuration(t, before.Add(-24*time.Hour), req.GetSince().AsTime(), time.Minute)
-	assert.Equal(t, time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC), req.GetUntil().AsTime())
+	assert.WithinRange(t, req.GetUntil().AsTime(), before, time.Now(), "a future --until is cut to now")
 	assert.Equal(t, serverlessmonitoringv1.Aggregator_AGGREGATOR_MAX, req.GetAggregator())
 	assert.Equal(t, "prod", req.GetCollectionNameContains())
 }
@@ -177,12 +178,28 @@ func TestSpaceMetricsUsage_CollectionName(t *testing.T) {
 	assert.Equal(t, "products", req.GetCollectionName())
 }
 
+func TestSpaceMetricsUsage_OnlyUntilCoversHourBefore(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Returns(sampleUsage(), nil)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "usage", "space-abc",
+		"--until", "2026-10-01T12:00:00Z",
+	)
+	require.NoError(t, err)
+
+	req, ok := env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, time.Date(2026, 10, 1, 11, 0, 0, 0, time.UTC), req.GetSince().AsTime())
+	assert.Equal(t, time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC), req.GetUntil().AsTime())
+}
+
 func TestSpaceMetricsUsage_InputErrors(t *testing.T) {
 	cases := map[string][]string{
 		"missing space id":    {},
 		"invalid since":       {"space-abc", "--since", "yesterday"},
 		"invalid until":       {"space-abc", "--until", "-5h"},
 		"since after until":   {"space-abc", "--since", "1h", "--until", "2h"},
+		"since in the future": {"space-abc", "--since", "2099-01-01"},
 		"unknown aggregator":  {"space-abc", "--aggregator", "median"},
 		"conflicting filters": {"space-abc", "--collection", "a", "--collection-contains", "b"},
 	}

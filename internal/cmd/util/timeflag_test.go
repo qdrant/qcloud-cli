@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -61,5 +62,62 @@ func TestParseUntilFlag(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
+	}
+}
+
+func TestReadPastTimeRange(t *testing.T) {
+	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+
+	tests := map[string]struct {
+		args      []string
+		wantSince time.Time
+		wantUntil time.Time
+		wantErr   string
+	}{
+		"defaults":              {nil, now.Add(-3 * time.Hour), now, ""},
+		"only since":            {[]string{"--since", "6h"}, now.Add(-6 * time.Hour), now, ""},
+		"only until":            {[]string{"--until", "2026-10-01T12:00:00Z"}, time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC), time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC), ""},
+		"future until":          {[]string{"--since", "1h", "--until", "2099-01-01"}, now.Add(-time.Hour), now, ""},
+		"since in the future":   {[]string{"--since", "2099-01-01"}, time.Time{}, time.Time{}, "--since must be in the past"},
+		"since after until":     {[]string{"--since", "1h", "--until", "2h"}, time.Time{}, time.Time{}, "--since must be before --until"},
+		"since after cut until": {[]string{"--since", "2026-10-07T13:00:00Z", "--until", "2099-01-01"}, time.Time{}, time.Time{}, "--since must be in the past"},
+		"invalid since":         {[]string{"--since", "yesterday"}, time.Time{}, time.Time{}, "invalid --since"},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			cmd.Flags().String("since", "", "")
+			cmd.Flags().String("until", "", "")
+			require.NoError(t, cmd.Flags().Parse(tt.args))
+
+			since, until, err := util.ReadPastTimeRange(cmd, now, 3*time.Hour)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantSince, since)
+			assert.Equal(t, tt.wantUntil, until)
+		})
+	}
+}
+
+func TestAddTimeRangeFlags(t *testing.T) {
+	for _, tt := range []struct {
+		defaultRange time.Duration
+		want         string
+	}{
+		{time.Hour, "default: 1h before --until"},
+		{10 * time.Minute, "default: 10m before --until"},
+		{24 * time.Hour, "default: 1 day before --until"},
+		{7 * 24 * time.Hour, "default: 7 days before --until"},
+	} {
+		cmd := &cobra.Command{}
+		util.AddTimeRangeFlags(cmd, tt.defaultRange)
+		assert.Contains(t, cmd.Flags().Lookup("since").Usage, tt.want)
+		assert.Equal(t, "s", cmd.Flags().Lookup("since").Shorthand)
+		assert.Equal(t, "u", cmd.Flags().Lookup("until").Shorthand)
 	}
 }
