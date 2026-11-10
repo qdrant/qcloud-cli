@@ -22,7 +22,7 @@ jobs:
 
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
-          version: 2026.3.8
+          version: 2026.10.20
 
       - name: Run GoReleaser
         run: goreleaser release --clean
