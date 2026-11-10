@@ -47,11 +47,11 @@ qcloud auth login --json | jq -r .current_context
 ### Options
 
 ```
-      --client-id string   OAuth client id, for a login server without a built-in one (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)
-      --device             Log in with a device code (prints a code to confirm in any browser) instead of opening a browser here
-  -h, --help               help for login
-      --login-url string   Login server URL, instead of the one discovered from the endpoint (for debugging)
-      --scope string       Access to ask for: read-only or manage (the consent page can narrow it) (default "manage")
+      --client-id string      OAuth client id, for a login server without a built-in one (env: QDRANT_CLOUD_OAUTH_CLIENT_ID)
+      --device[=true|false]   Log in with a device code (prints a code to confirm in any browser) instead of opening a browser here
+  -h, --help[=true|false]     help for login
+      --login-url string      Login server URL, instead of the one discovered from the endpoint (for debugging)
+      --scope string          Access to ask for: read-only or manage (the consent page can narrow it) (default "manage")
 ```
 
 ### Options inherited from parent commands
@@ -62,9 +62,9 @@ qcloud auth login --json | jq -r .current_context
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

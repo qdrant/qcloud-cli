@@ -30,9 +30,9 @@ qcloud cluster create-from-backup --backup-id <backup-id> --name my-restored-clu
 
 ```
       --backup-id string        ID of the backup to restore from (required)
-  -h, --help                    help for create-from-backup
+  -h, --help[=true|false]       help for create-from-backup
       --name string             Name for the new cluster (required)
-      --wait                    Wait for the cluster to become healthy
+      --wait[=true|false]       Wait for the cluster to become healthy
       --wait-timeout duration   Maximum time to wait for the cluster to become healthy (default 10m0s)
 ```
 
@@ -44,9 +44,9 @@ qcloud cluster create-from-backup --backup-id <backup-id> --name my-restored-clu
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

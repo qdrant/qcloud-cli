@@ -38,10 +38,10 @@ qcloud cluster logs abc-123 --json
 ### Options
 
 ```
-  -h, --help           help for logs
-  -s, --since string   Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days before --until)
-  -t, --timestamps     Prepend each log line with its timestamp
-  -u, --until string   End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
+  -h, --help[=true|false]         help for logs
+  -s, --since string              Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 3 days before --until)
+  -t, --timestamps[=true|false]   Prepend each log line with its timestamp
+  -u, --until string              End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
 ```
 
 ### Options inherited from parent commands
@@ -52,9 +52,9 @@ qcloud cluster logs abc-123 --json
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

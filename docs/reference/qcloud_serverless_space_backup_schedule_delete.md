@@ -26,9 +26,9 @@ qcloud serverless space backup schedule delete 3f1c2b4a-8d7e-4f6a-9b0c-1d2e3f4a5
 ### Options
 
 ```
-      --delete-backups   Also delete all backups created by this schedule
-  -f, --force            Skip confirmation prompt
-  -h, --help             help for delete
+      --delete-backups[=true|false]   Also delete all backups created by this schedule
+  -f, --force[=true|false]            Skip confirmation prompt
+  -h, --help[=true|false]             help for delete
 ```
 
 ### Options inherited from parent commands
@@ -39,9 +39,9 @@ qcloud serverless space backup schedule delete 3f1c2b4a-8d7e-4f6a-9b0c-1d2e3f4a5
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

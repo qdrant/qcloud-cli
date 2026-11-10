@@ -45,7 +45,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
       --aggregator string            Aggregation function applied to the time series (sum, avg, max, min; default sum)
       --collection string            Only include the collection with this exact name
       --collection-contains string   Only include collections whose name contains this substring
-  -h, --help                         help for usage
+  -h, --help[=true|false]            help for usage
       --page-size int32              Maximum number of collections to return per page (manual pagination mode)
       --page-token string            Page token from a previous response to resume from (manual pagination mode)
   -s, --since string                 Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 1h before --until)
@@ -60,9 +60,9 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

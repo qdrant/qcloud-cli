@@ -16,7 +16,7 @@ qcloud backup schedule update <schedule-id> [flags]
 
 ```
       --cluster-id string       Cluster ID (required)
-  -h, --help                    help for update
+  -h, --help[=true|false]       help for update
       --retention-days uint32   New retention period in days (1-365)
       --schedule string         New cron schedule expression in UTC, e.g. '0 2 * * *'
 ```
@@ -29,9 +29,9 @@ qcloud backup schedule update <schedule-id> [flags]
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

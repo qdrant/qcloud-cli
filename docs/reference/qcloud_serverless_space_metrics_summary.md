@@ -43,7 +43,7 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 ```
       --collection string            Only include the collection with this exact name
       --collection-contains string   Only include collections whose name contains this substring
-  -h, --help                         help for summary
+  -h, --help[=true|false]            help for summary
       --page-size int32              Maximum number of collections to return per page (manual pagination mode)
       --page-token string            Page token from a previous response to resume from (manual pagination mode)
 ```
@@ -56,9 +56,9 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

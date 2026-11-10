@@ -25,7 +25,7 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug
 ```
       --cluster-domain string           Kubernetes cluster domain for in-cluster services (defaults to cluster.local if omitted)
       --database-storage-class string   Default database storage class (uses cluster default if omitted)
-  -h, --help                            help for update
+  -h, --help[=true|false]               help for update
       --log-level string                Log level for deployed components ("debug", "info", "warn", "error")
       --name string                     New name for the hybrid cloud environment
       --namespace string                Kubernetes namespace where Qdrant components are deployed (read-only after bootstrapping)
@@ -40,9 +40,9 @@ qcloud hybrid update 7b2ea926-724b-4de2-b73a-8675c42a6ebe --log-level debug
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO
