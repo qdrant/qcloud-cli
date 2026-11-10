@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.36.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.36.1)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.36.0...v0.36.1)
+
+### Bug Fixes
+
+- **deps**: bump golang.org/x/net to v0.62.0 for CVE-2026-78661 (#250) ([ca1e470](https://github.com/qdrant/qcloud-cli/commit/ca1e470c27b886919d45063bef1a766c48aafc51))
+
 ## [v0.36.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.36.0)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.35.0...v0.36.0)
