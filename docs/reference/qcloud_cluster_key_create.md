@@ -26,9 +26,9 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 ```
       --access-type string      Access type: manage or read-only (default: server assigns manage)
       --expires string          Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)
-  -h, --help                    help for create
+  -h, --help[=true|false]       help for create
       --name string             Name of the API key (required)
-      --wait                    Wait for the API key to become active on the cluster
+      --wait[=true|false]       Wait for the API key to become active on the cluster
       --wait-timeout duration   Maximum time to wait for the API key to become active on the cluster (default 1m0s)
 ```
 
@@ -40,9 +40,9 @@ qcloud cluster key create 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

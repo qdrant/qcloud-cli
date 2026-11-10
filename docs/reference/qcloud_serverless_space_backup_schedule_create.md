@@ -31,7 +31,7 @@ qcloud serverless space backup schedule create --space-id 0e7a3c1d-5f2b-4c8e-9a6
 
 ```
       --collection string       Only back up this collection (default: the whole space)
-  -h, --help                    help for create
+  -h, --help[=true|false]       help for create
       --name string             Name of the schedule (required)
       --retention-days uint32   Retention period of created backups in days (1-365) (default: keep indefinitely)
       --schedule string         Cron schedule expression in UTC, e.g. '0 2 * * *' (required)
@@ -46,9 +46,9 @@ qcloud serverless space backup schedule create --space-id 0e7a3c1d-5f2b-4c8e-9a6
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

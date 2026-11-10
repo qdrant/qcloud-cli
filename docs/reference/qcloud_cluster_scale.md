@@ -56,17 +56,17 @@ qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 100Gi --allow-d
 ### Options
 
 ```
-      --allow-disk-decrease       Allow --disk to lower the disk below the current total; this deletes the local snapshots of the cluster
-      --cpu cores                 CPU per node (e.g. "1", "0.5", or "1000m")
-      --disk bytes                Total disk size per node (e.g. "200GiB"); if larger than the node's included disk, the difference is provisioned as additional storage
-      --disk-performance string   Disk performance tier ("balanced", "cost-optimised", "performance")
-  -f, --force                     Skip confirmation prompts
-      --gpu cores                 Number of GPUs per node (e.g. "1", "2", or "1000m")
-  -h, --help                      help for scale
-      --nodes uint32              Number of nodes
-      --ram bytes                 RAM per node (e.g. "8", "8G", "8Gi", or "8GiB")
-      --wait                      Wait for the cluster to become healthy
-      --wait-timeout duration     Maximum time to wait for the cluster to become healthy (default 10m0s)
+      --allow-disk-decrease[=true|false]   Allow --disk to lower the disk below the current total; this deletes the local snapshots of the cluster
+      --cpu cores                          CPU per node (e.g. "1", "0.5", or "1000m")
+      --disk bytes                         Total disk size per node (e.g. "200GiB"); if larger than the node's included disk, the difference is provisioned as additional storage
+      --disk-performance string            Disk performance tier ("balanced", "cost-optimised", "performance")
+  -f, --force[=true|false]                 Skip confirmation prompts
+      --gpu cores                          Number of GPUs per node (e.g. "1", "2", or "1000m")
+  -h, --help[=true|false]                  help for scale
+      --nodes uint32                       Number of nodes
+      --ram bytes                          RAM per node (e.g. "8", "8G", "8Gi", or "8GiB")
+      --wait[=true|false]                  Wait for the cluster to become healthy
+      --wait-timeout duration              Maximum time to wait for the cluster to become healthy (default 10m0s)
 ```
 
 ### Options inherited from parent commands
@@ -77,9 +77,9 @@ qcloud cluster scale 7b2ea926-724b-4de2-b73a-8675c42a6ebe --disk 100Gi --allow-d
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

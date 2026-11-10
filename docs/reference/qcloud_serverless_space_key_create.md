@@ -46,9 +46,9 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
       --access-type string       Global access type: manage, read-only or metrics-read-only (default: server assigns manage)
       --collection stringArray   Collection access rule as 'name=read-only|read-write'; can be specified multiple times
       --expires string           Expiration date in YYYY-MM-DD format; the key is valid until the end of that day (UTC)
-  -h, --help                     help for create
+  -h, --help[=true|false]        help for create
       --name string              Name of the API key (required)
-      --wait                     Wait for the API key to become ready
+      --wait[=true|false]        Wait for the API key to become ready
       --wait-timeout duration    Maximum time to wait for the API key to become ready (default 1m0s)
 ```
 
@@ -60,9 +60,9 @@ qcloud serverless space key create 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --name m
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

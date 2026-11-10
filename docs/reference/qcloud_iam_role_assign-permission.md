@@ -28,7 +28,7 @@ qcloud iam role assign-permission 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
 ### Options
 
 ```
-  -h, --help                 help for assign-permission
+  -h, --help[=true|false]    help for assign-permission
       --permission strings   Permission to add (repeatable)
 ```
 
@@ -40,9 +40,9 @@ qcloud iam role assign-permission 7b2ea926-724b-4de2-b73a-8675c42a6ebe \
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO

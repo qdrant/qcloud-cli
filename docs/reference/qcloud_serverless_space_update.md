@@ -45,7 +45,7 @@ qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
       --allowed-origin stringArray               Allowed browser origin for CORS (e.g. "https://app.example.com"); append '-' to remove; max 10
       --collection-size-warning-percent uint32   Percentage of the maximum collection size at which a size warning is sent (40 to 100)
       --cost-allocation-label string             Label for billing reports
-  -h, --help                                     help for update
+  -h, --help[=true|false]                        help for update
       --label stringArray                        Label ('key=value') to add/overwrite; append '-' to remove ('key-'), can be specified multiple times
       --max-collection-indexed-size string       Maximum indexed size per collection (e.g. 1GiB, 512MiB); must not exceed the platform limit or the maximum collection size
       --max-collection-size string               Maximum size per collection (e.g. 10GiB, 512MiB); must not exceed the platform limit
@@ -61,9 +61,9 @@ qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
   -c, --config string        Config file path (env: QDRANT_CLOUD_CONFIG, default ~/.config/qcloud/config.yaml)
       --console-url string   Qdrant Cloud web console base URL (env: QDRANT_CLOUD_CONSOLE_URL, default https://cloud.qdrant.io)
       --context string       Override the active context (env: QDRANT_CLOUD_CONTEXT)
-      --debug                Enable debug logging to stderr
+      --debug[=true|false]   Enable debug logging to stderr
       --endpoint string      gRPC API endpoint (env: QDRANT_CLOUD_ENDPOINT, default grpc.cloud.qdrant.io:443)
-      --json                 Output as JSON
+      --json[=true|false]    Output as JSON
 ```
 
 ### SEE ALSO
