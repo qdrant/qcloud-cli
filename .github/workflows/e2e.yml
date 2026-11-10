@@ -31,9 +31,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up tools
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
-        with:
-          version: 2026.3.8
+        uses: ./.github/actions/setup-tools
 
       - name: Run E2E tests
         run: make e2e
