@@ -19,6 +19,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Require the release commit to be on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$(git rev-parse --short HEAD) is not in the history of main; releases are cut from main only"
+            exit 1
+          fi
 
       - name: Set up tools
         uses: ./.github/actions/setup-tools
