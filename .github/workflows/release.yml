@@ -21,11 +21,32 @@ jobs:
 
       - name: Require the release commit to be on main
         run: |
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            if git cherry origin/main HEAD | grep -q '^+'; then
-              echo "::error::$(git rev-parse --short HEAD) has commits that are not on main; releases are cut from main, hotfixes cherry-pick commits already on main"
-              git cherry -v origin/main HEAD | grep '^+'
+          set -euo pipefail
+          main=$(git rev-parse --verify "origin/main^{commit}")
+          picked_from_main() {
+            local commit=$1 merges parent source tree want
+            merges=$(git rev-list --no-walk --count --min-parents=2 "$commit") || return 1
+            [ "$merges" = 0 ] || return 1
+            parent=$(git rev-parse --verify --quiet "$commit^") || return 1
+            source=$(git log -1 --format=%B "$commit" | sed -n 's/^(cherry picked from commit \([0-9a-f]\{40\}\))$/\1/p' | tail -n 1) || return 1
+            [ -n "$source" ] || return 1
+            git merge-base --is-ancestor "$source" "$main" || return 1
+            tree=$(git --attr-source="$parent" merge-tree --write-tree --no-messages --merge-base="$source^" "$parent" "$source") || return 1
+            want=$(git rev-parse --verify "$commit^{tree}") || return 1
+            [ "$tree" = "$want" ]
+          }
+          on_main=0
+          git merge-base --is-ancestor HEAD "$main" || on_main=$?
+          if [ "$on_main" != 0 ]; then
+            [ "$on_main" = 1 ]
+            commits=$(git rev-list "$main..HEAD")
+            [ -n "$commits" ]
+            rejected=""
+            for commit in $commits; do
+              picked_from_main "$commit" || rejected="$rejected $(git rev-parse --short "$commit")"
+            done
+            if [ -n "$rejected" ]; then
+              echo "::error::$(git rev-parse --short HEAD) has commits that are not on main:$rejected. Releases are cut from main, hotfixes use git cherry-pick -x of commits already on main, without changes"
               exit 1
             fi
           fi
