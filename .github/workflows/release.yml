@@ -23,8 +23,11 @@ jobs:
         run: |
           git fetch --no-tags origin main
           if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "::error::$(git rev-parse --short HEAD) is not in the history of main; releases are cut from main only"
-            exit 1
+            if git cherry origin/main HEAD | grep -q '^+'; then
+              echo "::error::$(git rev-parse --short HEAD) has commits that are not on main; releases are cut from main, hotfixes cherry-pick commits already on main"
+              git cherry -v origin/main HEAD | grep '^+'
+              exit 1
+            fi
           fi
 
       - name: Set up tools
