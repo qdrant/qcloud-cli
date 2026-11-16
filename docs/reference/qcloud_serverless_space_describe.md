@@ -7,9 +7,15 @@ Describe a space
 Describe a serverless space.
 
 Shows the space's phase, region and endpoint together with its configuration:
-network restrictions, per-collection size limits and search-worker settings.
-Limits prefixed with "platform" are derived from the account's quota and cannot
-be changed directly.
+network restrictions, per-collection size limits, search-worker settings, and
+the storage and monthly spend limits of the space. Limits prefixed with
+"platform" are derived from the account's quota and cannot be changed directly.
+
+When usage has been measured, the Usage section shows storage and this month's
+spend against each limit, and which operations the space accepts: FULL,
+WRITES_BLOCKED (a hard storage limit is reached: upserts are rejected, searches
+and deletes work) or BLOCKED (a hard spend limit is reached: all requests are
+rejected until the next month). Usage is refreshed about every 5 minutes.
 
 ```
 qcloud serverless space describe <space-id> [flags]

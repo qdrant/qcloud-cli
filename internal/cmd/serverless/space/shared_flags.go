@@ -21,6 +21,7 @@ func addSharedSpaceFlags(cmd *cobra.Command) {
 	cmd.Flags().String("max-collection-indexed-size", "", "Maximum indexed size per collection (e.g. 1GiB, 512MiB); must not exceed the platform limit or the maximum collection size")
 	cmd.Flags().Uint32("collection-size-warning-percent", 0, "Percentage of the maximum collection size at which a size warning is sent (40 to 100)")
 	cmd.Flags().Uint64("searcher-max-workers", 0, "Maximum number of search workers per collection")
+	addLimitFlags(cmd)
 }
 
 // applySharedSpaceFlags applies all shared flags to space. It works for both
@@ -127,7 +128,7 @@ func applySharedSpaceFlags(cmd *cobra.Command, space *spacev1.Space) error {
 		cfg.SearcherSettings.MaxWorkers = &v
 	}
 
-	return nil
+	return applyLimitFlags(cmd, cfg)
 }
 
 // spaceResultMessage returns the result line of a create command: the endpoint
