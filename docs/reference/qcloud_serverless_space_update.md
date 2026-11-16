@@ -7,8 +7,15 @@ Update an existing space
 Update an existing serverless space.
 
 Use this command to rename a space or change its labels, network restrictions,
-per-collection size limits, size warning threshold and search-worker settings.
-The cloud region cannot be changed after creation.
+per-collection size limits, size warning threshold, search-worker settings, and
+its storage and monthly spend limits. The cloud region cannot be changed after
+creation.
+
+Only the settings passed as flags are changed. Set --storage-limit or
+--spend-limit to 'unlimited' to remove a limit. A limit's type or alert
+threshold can be changed on its own once the limit is set. Lowering a limit
+below current usage, switching a reached hard limit to soft, or removing it
+applies to requests within about a minute.
 
 Labels are merged with existing labels. Use 'key=value' to add or overwrite a
 label, and 'key-' (with a trailing dash) to remove one. Allowed IPs and allowed
@@ -36,6 +43,16 @@ qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
 qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
   --max-collection-indexed-size 2GiB --collection-size-warning-percent 90 \
   --searcher-max-workers 4
+
+# Cap monthly spend at $49.99 and alert at 90%
+qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
+  --spend-limit 49.99 --spend-limit-alert-percent 90
+
+# Switch the storage limit to a soft limit, keeping its size
+qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --storage-limit-type soft
+
+# Remove the monthly spend limit
+qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --spend-limit unlimited
 ```
 
 ### Options
@@ -51,6 +68,12 @@ qcloud serverless space update 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
       --max-collection-size string               Maximum size per collection (e.g. 10GiB, 512MiB); must not exceed the platform limit
       --name string                              New name of the space
       --searcher-max-workers uint                Maximum number of search workers per collection
+      --spend-limit string                       Maximum monthly spend on searches and writes, in USD (e.g. 50 or 49.99), or 'unlimited' to remove the limit
+      --spend-limit-alert-percent uint32         Percentage of the spend limit at which an alert is sent (1 to 99, default: 80)
+      --spend-limit-type string                  What happens at the spend limit: 'hard' rejects all requests until next month, 'soft' only alerts (default: hard)
+      --storage-limit string                     Maximum storage of the space (e.g. 10GiB, 512MiB), or 'unlimited' to remove the limit
+      --storage-limit-alert-percent uint32       Percentage of the storage limit at which an alert is sent (1 to 99, default: 80)
+      --storage-limit-type string                What happens at the storage limit: 'hard' rejects upserts, 'soft' only alerts (default: hard)
 ```
 
 ### Options inherited from parent commands
