@@ -58,3 +58,18 @@ func SpaceAlertSeverity(s serverlessmonitoringv1.SpaceAlertSeverity) string {
 func SpaceAlertState(s serverlessmonitoringv1.SpaceAlertState) string {
 	return strings.TrimPrefix(s.String(), "SPACE_ALERT_STATE_")
 }
+
+// SpaceAccessMode returns a concise label for a serverless SpaceAccessMode.
+func SpaceAccessMode(m spacev1.SpaceAccessMode) string {
+	return strings.TrimPrefix(m.String(), "SPACE_ACCESS_MODE_")
+}
+
+// LimitUsageLevel returns a concise label for a serverless LimitUsageLevel.
+func LimitUsageLevel(l spacev1.LimitUsageLevel) string {
+	return strings.TrimPrefix(l.String(), "LIMIT_USAGE_LEVEL_")
+}
+
+// LimitType returns a concise label for a serverless LimitType.
+func LimitType(t spacev1.LimitType) string {
+	return strings.TrimPrefix(t.String(), "LIMIT_TYPE_")
+}

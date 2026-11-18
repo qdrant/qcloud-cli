@@ -25,6 +25,12 @@ var spaceUpdatePaths = []flagPath{
 	{"max-collection-indexed-size", "configuration.collection_settings.max_indexed_size"},
 	{"collection-size-warning-percent", "configuration.collection_settings.size_warning_threshold_percent"},
 	{"searcher-max-workers", "configuration.searcher_settings.max_workers"},
+	{"storage-limit", "configuration.storage_limit"},
+	{"storage-limit-type", "configuration.storage_limit"},
+	{"storage-limit-alert-percent", "configuration.storage_limit"},
+	{"spend-limit", "configuration.monthly_spend_limit"},
+	{"spend-limit-type", "configuration.monthly_spend_limit"},
+	{"spend-limit-alert-percent", "configuration.monthly_spend_limit"},
 }
 
 // backupScheduleUpdatePaths lists the "backup schedule update" flags and the
