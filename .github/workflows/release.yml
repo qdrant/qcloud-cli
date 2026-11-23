@@ -22,7 +22,7 @@ jobs:
       - name: Require the release commit to be on main
         run: |
           set -euo pipefail
-          main=$(git rev-parse --verify "origin/main^{commit}")
+          main=$(git rev-parse --verify "refs/remotes/origin/main^{commit}")
           picked_from_main() {
             local commit=$1 merges parent source tree want
             merges=$(git rev-list --no-walk --count --min-parents=2 "$commit") || return 1
