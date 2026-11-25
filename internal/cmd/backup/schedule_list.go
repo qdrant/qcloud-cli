@@ -47,7 +47,7 @@ qcloud backup schedule list --page-size 10 --json`,
 				return nil, err
 			}
 
-			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*backupv1.BackupSchedule, string, error) {
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*backupv1.BackupSchedule, string, *int32, error) {
 				req := &backupv1.ListBackupSchedulesRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -60,16 +60,16 @@ qcloud backup schedule list --page-size 10 --json`,
 
 				resp, err := client.Backup().ListBackupSchedules(ctx, req)
 				if err != nil {
-					return nil, "", fmt.Errorf("failed to list backup schedules: %w", err)
+					return nil, "", nil, fmt.Errorf("failed to list backup schedules: %w", err)
 				}
 
-				return resp.GetItems(), resp.GetNextPageToken(), nil
+				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			return &backupv1.ListBackupSchedulesResponse{Items: items, NextPageToken: next}, nil
+			return &backupv1.ListBackupSchedulesResponse{Items: items, NextPageToken: next, TotalSize: total}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupSchedulesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*backupv1.BackupSchedule](w)

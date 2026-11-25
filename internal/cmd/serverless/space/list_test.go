@@ -143,3 +143,41 @@ func TestSpaceList_RejectsArgs(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, 0, env.ServerlessSpaceServer.ListSpacesCalls.Count())
 }
+
+func TestSpaceList_ManualPaginationKeepsTotalSize(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.ServerlessSpaceServer.ListSpacesCalls.Returns(&spacev1.ListSpacesResponse{
+		Items:         []*spacev1.Space{{Id: "space-1"}},
+		NextPageToken: new("token-2"),
+		TotalSize:     new(int32(3)),
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "list", "--page-size", "1", "--json")
+	require.NoError(t, err)
+
+	var result struct {
+		NextPageToken string `json:"nextPageToken"`
+		TotalSize     *int32 `json:"totalSize"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	assert.Equal(t, "token-2", result.NextPageToken)
+	require.NotNil(t, result.TotalSize)
+	assert.Equal(t, int32(3), *result.TotalSize)
+}
+
+func TestSpaceList_AutoPaginationOmitsTotalSize(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	env.ServerlessSpaceServer.ListSpacesCalls.Returns(&spacev1.ListSpacesResponse{
+		Items:     []*spacev1.Space{{Id: "space-1"}},
+		TotalSize: new(int32(1)),
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "list", "--json")
+	require.NoError(t, err)
+
+	var result map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	assert.NotContains(t, result, "totalSize")
+}

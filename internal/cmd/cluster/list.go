@@ -54,7 +54,7 @@ qcloud cluster list --page-size 10`,
 				return nil, err
 			}
 
-			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*clusterv1.Cluster, string, error) {
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*clusterv1.Cluster, string, *int32, error) {
 				req := &clusterv1.ListClustersRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -72,16 +72,16 @@ qcloud cluster list --page-size 10`,
 
 				resp, err := client.Cluster().ListClusters(ctx, req)
 				if err != nil {
-					return nil, "", fmt.Errorf("failed to list clusters: %w", err)
+					return nil, "", nil, fmt.Errorf("failed to list clusters: %w", err)
 				}
 
-				return resp.GetItems(), resp.GetNextPageToken(), nil
+				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			return &clusterv1.ListClustersResponse{Items: items, NextPageToken: next}, nil
+			return &clusterv1.ListClustersResponse{Items: items, NextPageToken: next, TotalSize: total}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *clusterv1.ListClustersResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*clusterv1.Cluster](w)

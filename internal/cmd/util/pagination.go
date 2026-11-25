@@ -12,13 +12,14 @@ func AddPaginationFlags(cmd *cobra.Command, what string) {
 }
 
 // FetchPages runs a paginated list call. Unless --page-size or --page-token is
-// set, it follows next-page tokens and returns all items with a nil next token.
-// Otherwise it performs a single request with the given flags and returns the
-// next page token, if any.
+// set, it follows next-page tokens and returns all items with a nil next token
+// and a nil total size. Otherwise it performs a single request with the given
+// flags and returns the next page token and the total number of items reported
+// by the server, if any.
 func FetchPages[T any](
 	cmd *cobra.Command,
-	fetch func(pageSize *int32, pageToken *string) (items []T, nextPageToken string, err error),
-) ([]T, *string, error) {
+	fetch func(pageSize *int32, pageToken *string) (items []T, nextPageToken string, totalSize *int32, err error),
+) ([]T, *string, *int32, error) {
 	pageSizeChanged := cmd.Flags().Changed("page-size")
 	pageTokenChanged := cmd.Flags().Changed("page-token")
 
@@ -26,14 +27,14 @@ func FetchPages[T any](
 		var all []T
 		var token *string
 		for {
-			items, next, err := fetch(nil, token)
+			items, next, _, err := fetch(nil, token)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			all = append(all, items...)
 			if next == "" {
-				return all, nil, nil
+				return all, nil, nil, nil
 			}
 
 			token = &next
@@ -52,14 +53,14 @@ func FetchPages[T any](
 		pageToken = &pt
 	}
 
-	items, next, err := fetch(pageSize, pageToken)
+	items, next, total, err := fetch(pageSize, pageToken)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if next == "" {
-		return items, nil, nil
+		return items, nil, total, nil
 	}
 
-	return items, &next, nil
+	return items, &next, total, nil
 }

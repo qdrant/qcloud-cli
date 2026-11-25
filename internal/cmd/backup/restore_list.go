@@ -46,7 +46,7 @@ qcloud backup restore list --page-size 10 --json`,
 				return nil, err
 			}
 
-			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*backupv1.BackupRestore, string, error) {
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*backupv1.BackupRestore, string, *int32, error) {
 				req := &backupv1.ListBackupRestoresRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -59,16 +59,16 @@ qcloud backup restore list --page-size 10 --json`,
 
 				resp, err := client.Backup().ListBackupRestores(ctx, req)
 				if err != nil {
-					return nil, "", fmt.Errorf("failed to list backup restores: %w", err)
+					return nil, "", nil, fmt.Errorf("failed to list backup restores: %w", err)
 				}
 
-				return resp.GetItems(), resp.GetNextPageToken(), nil
+				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			return &backupv1.ListBackupRestoresResponse{Items: items, NextPageToken: next}, nil
+			return &backupv1.ListBackupRestoresResponse{Items: items, NextPageToken: next, TotalSize: total}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *backupv1.ListBackupRestoresResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*backupv1.BackupRestore](w)

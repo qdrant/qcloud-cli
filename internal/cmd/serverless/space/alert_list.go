@@ -73,7 +73,7 @@ qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 			}
 
 			spaceID := cmd.Flags().Arg(0)
-			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceAlert, string, error) {
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceAlert, string, *int32, error) {
 				req := &serverlessmonitoringv1.ListSpaceAlertsRequest{
 					AccountId: accountID,
 					SpaceId:   spaceID,
@@ -92,16 +92,16 @@ qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 
 				resp, err := client.ServerlessMonitoring().ListSpaceAlerts(ctx, req)
 				if err != nil {
-					return nil, "", fmt.Errorf("failed to list space alerts: %w", err)
+					return nil, "", nil, fmt.Errorf("failed to list space alerts: %w", err)
 				}
 
-				return resp.GetItems(), resp.GetNextPageToken(), nil
+				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			return &serverlessmonitoringv1.ListSpaceAlertsResponse{Items: items, NextPageToken: next}, nil
+			return &serverlessmonitoringv1.ListSpaceAlertsResponse{Items: items, NextPageToken: next, TotalSize: total}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *serverlessmonitoringv1.ListSpaceAlertsResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*serverlessmonitoringv1.SpaceAlert](w)

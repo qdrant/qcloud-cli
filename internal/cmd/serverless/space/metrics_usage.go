@@ -84,7 +84,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 			}
 
 			var quota *serverlessmonitoringv1.SpaceQuotaSnapshot
-			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionUsageMetrics, string, error) {
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionUsageMetrics, string, *int32, error) {
 				req := &serverlessmonitoringv1.GetSpaceUsageMetricsRequest{
 					AccountId:  accountID,
 					SpaceId:    args[0],
@@ -103,20 +103,20 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 
 				resp, err := client.ServerlessMonitoring().GetSpaceUsageMetrics(ctx, req)
 				if err != nil {
-					return nil, "", fmt.Errorf("failed to get space usage metrics: %w", err)
+					return nil, "", nil, fmt.Errorf("failed to get space usage metrics: %w", err)
 				}
 
 				if quota == nil {
 					quota = resp.GetQuota()
 				}
 
-				return resp.GetItems(), resp.GetNextPageToken(), nil
+				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			return &serverlessmonitoringv1.GetSpaceUsageMetricsResponse{Items: items, Quota: quota, NextPageToken: next}, nil
+			return &serverlessmonitoringv1.GetSpaceUsageMetricsResponse{Items: items, Quota: quota, NextPageToken: next, TotalSize: total}, nil
 		},
 		PrintText: func(_ *cobra.Command, w io.Writer, resp *serverlessmonitoringv1.GetSpaceUsageMetricsResponse) error {
 			printQuotaSnapshot(w, resp.GetQuota())

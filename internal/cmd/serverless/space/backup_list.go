@@ -48,7 +48,7 @@ qcloud serverless space backup list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5
 				return nil, err
 			}
 
-			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacebackupv1.Backup, string, error) {
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacebackupv1.Backup, string, *int32, error) {
 				req := &spacebackupv1.ListBackupsRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -71,16 +71,16 @@ qcloud serverless space backup list --space-id 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5
 
 				resp, err := client.ServerlessBackup().ListBackups(ctx, req)
 				if err != nil {
-					return nil, "", fmt.Errorf("failed to list backups: %w", err)
+					return nil, "", nil, fmt.Errorf("failed to list backups: %w", err)
 				}
 
-				return resp.GetItems(), resp.GetNextPageToken(), nil
+				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			return &spacebackupv1.ListBackupsResponse{Items: items, NextPageToken: next}, nil
+			return &spacebackupv1.ListBackupsResponse{Items: items, NextPageToken: next, TotalSize: total}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *spacebackupv1.ListBackupsResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*spacebackupv1.Backup](w)
