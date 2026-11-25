@@ -16,17 +16,22 @@ Metrics are reported per collection: request rates, search latency, point
 counts, storage usage and the number of search workers. The summary command
 gives a current overview, while the usage command reports time series over a
 chosen period. Both also report the space's quota so that usage can be compared
-against the limits.`,
+against the limits. The inference command reports the tokens processed by
+inference per collection and model.`,
 		Example: `# Show a current overview of all collections in a space
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
 
 # Show usage over the last 24 hours
-qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 24h`,
+qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 24h
+
+# Show inference token usage over the last 30 days
+qcloud serverless space metrics inference 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 30d`,
 		Args: cobra.NoArgs,
 	}
 	cmd.AddCommand(
 		newMetricsSummaryCommand(s),
 		newMetricsUsageCommand(s),
+		newMetricsInferenceCommand(s),
 	)
 	return cmd
 }
