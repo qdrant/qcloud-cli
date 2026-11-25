@@ -30,7 +30,10 @@ several intervals; the table shows the shortest one, which is named above the
 table. Use --json to get the averages for all intervals.
 
 The space's quota is shown above the table so that storage and worker usage
-can be compared against the per-collection limits.
+can be compared against the per-collection limits. The totals over all
+matching collections are shown as well; they don't depend on pagination. The
+search latency total is weighted by search rate. Use --totals-only to fetch
+only the quota and the totals, without the per-collection table.
 
 By default, all collections are fetched automatically across multiple pages.
 Use --page-size and --page-token for manual pagination.`,
@@ -42,6 +45,9 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --c
 
 # Only show collections whose name contains "staging"
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --collection-contains staging
+
+# Only show the space-level totals
+qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --totals-only
 
 # Output all interval averages as JSON
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
@@ -63,13 +69,14 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 				return nil, err
 			}
 
-			var quota *serverlessmonitoringv1.SpaceQuotaSnapshot
-			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionMetrics, string, *int32, error) {
+			totalsOnly, _ := cmd.Flags().GetBool("totals-only")
+			newRequest := func(pageSize *int32, pageToken *string) *serverlessmonitoringv1.GetSpaceSummaryMetricsRequest {
 				req := &serverlessmonitoringv1.GetSpaceSummaryMetricsRequest{
-					AccountId: accountID,
-					SpaceId:   args[0],
-					PageSize:  pageSize,
-					PageToken: pageToken,
+					AccountId:  accountID,
+					SpaceId:    args[0],
+					TotalsOnly: totalsOnly,
+					PageSize:   pageSize,
+					PageToken:  pageToken,
 				}
 				switch {
 				case filter.name != nil:
@@ -78,13 +85,29 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 					req.CollectionFilter = &serverlessmonitoringv1.GetSpaceSummaryMetricsRequest_CollectionNameContains{CollectionNameContains: *filter.contains}
 				}
 
-				resp, err := client.ServerlessMonitoring().GetSpaceSummaryMetrics(ctx, req)
+				return req
+			}
+
+			// The server ignores pagination with totals_only and returns no items.
+			if totalsOnly {
+				resp, err := client.ServerlessMonitoring().GetSpaceSummaryMetrics(ctx, newRequest(nil, nil))
+				if err != nil {
+					return nil, fmt.Errorf("failed to get space summary metrics: %w", err)
+				}
+
+				return resp, nil
+			}
+
+			// Quota and totals are the same on every page; keep the first.
+			var first *serverlessmonitoringv1.GetSpaceSummaryMetricsResponse
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionMetrics, string, *int32, error) {
+				resp, err := client.ServerlessMonitoring().GetSpaceSummaryMetrics(ctx, newRequest(pageSize, pageToken))
 				if err != nil {
 					return nil, "", nil, fmt.Errorf("failed to get space summary metrics: %w", err)
 				}
 
-				if quota == nil {
-					quota = resp.GetQuota()
+				if first == nil {
+					first = resp
 				}
 
 				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
@@ -93,12 +116,18 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 				return nil, err
 			}
 
-			return &serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{Items: items, Quota: quota, NextPageToken: next, TotalSize: total}, nil
+			return &serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{
+				Items:         items,
+				Quota:         first.GetQuota(),
+				Totals:        first.GetTotals(),
+				TotalSize:     total,
+				NextPageToken: next,
+			}, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *serverlessmonitoringv1.GetSpaceSummaryMetricsResponse) error {
+		PrintText: func(cmd *cobra.Command, w io.Writer, resp *serverlessmonitoringv1.GetSpaceSummaryMetricsResponse) error {
 			printQuotaSnapshot(w, resp.GetQuota())
 
-			interval, hasInterval := shortestOverviewInterval(resp.GetItems())
+			interval, hasInterval := shortestOverviewInterval(resp)
 			if hasInterval {
 				fmt.Fprintf(w, "Rates and latency averaged over the last %s.\n\n", output.CompactDuration(interval))
 			}
@@ -115,6 +144,21 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 				}
 
 				return "-"
+			}
+
+			if totals := resp.GetTotals(); totals != nil {
+				fmt.Fprintln(w, "Totals:")
+				fmt.Fprintf(w, "  Points:         %d\n", totals.GetPointCount())
+				fmt.Fprintf(w, "  Storage:        %s\n", output.Bytes(totals.GetUsedStorageBytes()))
+				fmt.Fprintf(w, "  Search Workers: %d\n", totals.GetCurrentSearcherWorkers())
+				fmt.Fprintf(w, "  Searches:       %s\n", overview(totals.GetSearchRequests(), output.Rate))
+				fmt.Fprintf(w, "  Writes:         %s\n", overview(totals.GetWriteRequests(), output.Rate))
+				fmt.Fprintf(w, "  Latency:        %s\n", overview(totals.GetSearchLatency(), output.Milliseconds))
+				fmt.Fprintln(w)
+			}
+
+			if totalsOnly, _ := cmd.Flags().GetBool("totals-only"); totalsOnly {
+				return nil
 			}
 
 			t := output.NewTable[*serverlessmonitoringv1.SpaceCollectionMetrics](w)
@@ -149,27 +193,32 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 
 	addCollectionFilterFlags(cmd, false)
 	util.AddPaginationFlags(cmd, "collections")
+	addTotalsOnlyFlag(cmd)
 
 	return cmd
 }
 
 // shortestOverviewInterval returns the shortest averaging interval reported
-// for any collection. Averages without an interval are ignored.
-func shortestOverviewInterval(items []*serverlessmonitoringv1.SpaceCollectionMetrics) (time.Duration, bool) {
+// for any collection or the totals. Averages without an interval are ignored.
+func shortestOverviewInterval(resp *serverlessmonitoringv1.GetSpaceSummaryMetricsResponse) (time.Duration, bool) {
+	totals := resp.GetTotals()
+	overviews := []*serverlessmonitoringv1.SpaceMetricOverview{totals.GetSearchRequests(), totals.GetWriteRequests(), totals.GetSearchLatency()}
+	for _, item := range resp.GetItems() {
+		overviews = append(overviews, item.GetSearchRequests(), item.GetWriteRequests(), item.GetSearchLatency())
+	}
+
 	var shortest time.Duration
 	found := false
-	for _, item := range items {
-		for _, o := range []*serverlessmonitoringv1.SpaceMetricOverview{item.GetSearchRequests(), item.GetWriteRequests(), item.GetSearchLatency()} {
-			for _, a := range o.GetAvg() {
-				if a.GetInterval() == nil {
-					continue
-				}
+	for _, o := range overviews {
+		for _, a := range o.GetAvg() {
+			if a.GetInterval() == nil {
+				continue
+			}
 
-				d := a.GetInterval().AsDuration()
-				if !found || d < shortest {
-					shortest = d
-					found = true
-				}
+			d := a.GetInterval().AsDuration()
+			if !found || d < shortest {
+				shortest = d
+				found = true
 			}
 		}
 	}
