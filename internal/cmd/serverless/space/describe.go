@@ -131,6 +131,7 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 	fmt.Fprintf(w, "  Allowed IPs:                     %s\n", output.JoinOrDefault(cfg.GetAllowedIpSourceRanges(), "(any)"))
 	fmt.Fprintf(w, "  Allowed Origins:                 %s\n", output.JoinOrDefault(cfg.GetAllowedOrigins(), notSet))
 	fmt.Fprintf(w, "  Max Collections (platform):      %s\n", output.UnlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxCollectionsPerSpace()), cfg.GetMaxCollectionsPerSpace()))
+	fmt.Fprintf(w, "  Max API Keys (platform):         %s\n", output.UnlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxApiKeysPerSpace()), cfg.GetMaxApiKeysPerSpace()))
 
 	col := cfg.GetCollectionSettings()
 	maxSize := notSet

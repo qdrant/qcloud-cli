@@ -59,6 +59,8 @@ qcloud serverless quota --json`,
 			fmt.Fprintf(w, "Spaces:                            %d / %s\n", q.GetUsedSpaces(), maxSpaces)
 			fmt.Fprintf(w, "Max Collections per Space:         %s\n",
 				output.UnlimitedIfZero(strconv.FormatUint(q.GetMaxCollectionsPerSpace(), 10), q.GetMaxCollectionsPerSpace()))
+			fmt.Fprintf(w, "Max API Keys per Space:            %s\n",
+				output.UnlimitedIfZero(strconv.FormatUint(q.GetMaxApiKeysPerSpace(), 10), q.GetMaxApiKeysPerSpace()))
 			fmt.Fprintf(w, "Max Size per Collection:           %s\n",
 				output.UnlimitedIfZero(resource.ByteQuantity(q.GetPlatformMaxSizePerCollection()).String(), q.GetPlatformMaxSizePerCollection()))
 			fmt.Fprintf(w, "Max Indexed Size per Collection:   %s\n",
