@@ -49,7 +49,7 @@ qcloud serverless space list --page-size 10`,
 				return nil, err
 			}
 
-			items, next, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacev1.Space, string, error) {
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*spacev1.Space, string, *int32, error) {
 				req := &spacev1.ListSpacesRequest{
 					AccountId: accountID,
 					PageSize:  pageSize,
@@ -62,16 +62,16 @@ qcloud serverless space list --page-size 10`,
 
 				resp, err := client.ServerlessSpace().ListSpaces(ctx, req)
 				if err != nil {
-					return nil, "", fmt.Errorf("failed to list spaces: %w", err)
+					return nil, "", nil, fmt.Errorf("failed to list spaces: %w", err)
 				}
 
-				return resp.GetItems(), resp.GetNextPageToken(), nil
+				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			return &spacev1.ListSpacesResponse{Items: items, NextPageToken: next}, nil
+			return &spacev1.ListSpacesResponse{Items: items, NextPageToken: next, TotalSize: total}, nil
 		},
 		OutputTable: func(_ *cobra.Command, w io.Writer, resp *spacev1.ListSpacesResponse) (output.TableRenderer, error) {
 			t := output.NewTable[*spacev1.Space](w)
