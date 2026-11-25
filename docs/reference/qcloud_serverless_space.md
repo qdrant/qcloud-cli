@@ -57,6 +57,7 @@ qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --state 
 * [qcloud serverless space backup](qcloud_serverless_space_backup.md)	 - Manage backups of serverless spaces
 * [qcloud serverless space create](qcloud_serverless_space_create.md)	 - Create a new space
 * [qcloud serverless space create-from-backup](qcloud_serverless_space_create-from-backup.md)	 - Create a new space from a backup
+* [qcloud serverless space dataset](qcloud_serverless_space_dataset.md)	 - Load sample datasets into a space
 * [qcloud serverless space delete](qcloud_serverless_space_delete.md)	 - Delete a space
 * [qcloud serverless space describe](qcloud_serverless_space_describe.md)	 - Describe a space
 * [qcloud serverless space key](qcloud_serverless_space_key.md)	 - Manage API keys for a space

@@ -6,6 +6,7 @@ import (
 	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
 	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
+	spacedatasetv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/dataset/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 )
 
@@ -72,4 +73,14 @@ func LimitUsageLevel(l spacev1.LimitUsageLevel) string {
 // LimitType returns a concise label for a serverless LimitType.
 func LimitType(t spacev1.LimitType) string {
 	return strings.TrimPrefix(t.String(), "LIMIT_TYPE_")
+}
+
+// SampleDatasetLoadStatus returns a concise label for a serverless SampleDatasetLoadStatus.
+func SampleDatasetLoadStatus(st spacedatasetv1.SampleDatasetLoadStatus) string {
+	return strings.TrimPrefix(st.String(), "SAMPLE_DATASET_LOAD_STATUS_")
+}
+
+// SampleDatasetDistance returns a concise label for a sample dataset vector Distance.
+func SampleDatasetDistance(d spacedatasetv1.Distance) string {
+	return strings.TrimPrefix(d.String(), "DISTANCE_")
 }
