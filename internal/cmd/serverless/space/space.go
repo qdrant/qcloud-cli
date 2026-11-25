@@ -47,6 +47,7 @@ qcloud serverless space alert list 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --state 
 		newBackupCommand(s),
 		newMetricsCommand(s),
 		newAlertCommand(s),
+		newDatasetCommand(s),
 	)
 	return cmd
 }

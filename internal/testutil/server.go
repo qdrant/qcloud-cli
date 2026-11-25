@@ -28,6 +28,7 @@ import (
 	serverlessquotav1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/quota/v1"
 	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
+	spacedatasetv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/dataset/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/oauth"
@@ -83,6 +84,7 @@ type TestEnv struct {
 	ServerlessPlatformServer    *FakeServerlessPlatformService
 	ServerlessQuotaServer       *FakeServerlessQuotaService
 	ServerlessMonitoringServer  *FakeServerlessMonitoringService
+	ServerlessDatasetServer     *FakeServerlessSampleDatasetService
 	Capture                     *RequestCapture
 	Cleanup                     func()
 }
@@ -156,6 +158,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fakeServerlessPlatform := &FakeServerlessPlatformService{}
 	fakeServerlessQuota := &FakeServerlessQuotaService{}
 	fakeServerlessMonitoring := &FakeServerlessMonitoringService{}
+	fakeServerlessDataset := &FakeServerlessSampleDatasetService{}
 	capture := &RequestCapture{}
 
 	// Start gRPC server on bufconn.
@@ -178,6 +181,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	serverlessplatformv1.RegisterPlatformServiceServer(srv, fakeServerlessPlatform)
 	serverlessquotav1.RegisterQuotaServiceServer(srv, fakeServerlessQuota)
 	serverlessmonitoringv1.RegisterMonitoringServiceServer(srv, fakeServerlessMonitoring)
+	spacedatasetv1.RegisterSampleDatasetServiceServer(srv, fakeServerlessDataset)
 
 	go func() {
 		_ = srv.Serve(lis)
@@ -242,6 +246,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		ServerlessPlatformServer:    fakeServerlessPlatform,
 		ServerlessQuotaServer:       fakeServerlessQuota,
 		ServerlessMonitoringServer:  fakeServerlessMonitoring,
+		ServerlessDatasetServer:     fakeServerlessDataset,
 		Capture:                     capture,
 		Cleanup:                     cleanup,
 	}

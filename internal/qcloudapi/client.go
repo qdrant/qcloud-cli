@@ -28,6 +28,7 @@ import (
 	serverlessquotav1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/quota/v1"
 	spaceauthv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/auth/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
+	spacedatasetv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/dataset/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 )
 
@@ -51,6 +52,7 @@ type Client struct {
 	serverlessPlatform    serverlessplatformv1.PlatformServiceClient
 	serverlessQuota       serverlessquotav1.QuotaServiceClient
 	serverlessMonitoring  serverlessmonitoringv1.MonitoringServiceClient
+	serverlessDataset     spacedatasetv1.SampleDatasetServiceClient
 }
 
 // New creates a new gRPC client connected to the given endpoint with the given API key.
@@ -112,6 +114,7 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 		serverlessPlatform:    serverlessplatformv1.NewPlatformServiceClient(conn),
 		serverlessQuota:       serverlessquotav1.NewQuotaServiceClient(conn),
 		serverlessMonitoring:  serverlessmonitoringv1.NewMonitoringServiceClient(conn),
+		serverlessDataset:     spacedatasetv1.NewSampleDatasetServiceClient(conn),
 	}
 }
 
@@ -198,6 +201,11 @@ func (c *Client) ServerlessQuota() serverlessquotav1.QuotaServiceClient {
 // ServerlessMonitoring returns the serverless MonitoringService gRPC client.
 func (c *Client) ServerlessMonitoring() serverlessmonitoringv1.MonitoringServiceClient {
 	return c.serverlessMonitoring
+}
+
+// ServerlessSampleDataset returns the serverless SampleDatasetService gRPC client.
+func (c *Client) ServerlessSampleDataset() spacedatasetv1.SampleDatasetServiceClient {
+	return c.serverlessDataset
 }
 
 // Close closes the underlying gRPC connection.

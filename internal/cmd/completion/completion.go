@@ -10,6 +10,7 @@ import (
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 	serverlessplatformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/platform/v1"
 	spacebackupv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/backup/v1"
+	spacedatasetv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/dataset/v1"
 	spacev1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/space/v1"
 
 	"github.com/qdrant/qcloud-cli/internal/state"
@@ -382,6 +383,89 @@ func SpaceBackupIDCompletion(s *state.State) func(*cobra.Command, []string, stri
 		completions := make([]string, 0, len(resp.GetItems()))
 		for _, b := range resp.GetItems() {
 			completions = append(completions, b.GetId()+"\t"+b.GetName())
+		}
+
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// SpaceSampleDatasetIDCompletion returns a ValidArgsFunction for commands that
+// take a space ID and a sample dataset ID: it completes space IDs for the first
+// argument and the sample datasets that can be loaded into that space for the
+// second.
+func SpaceSampleDatasetIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) == 0 {
+			return SpaceIDFlagCompletion(s)(cmd, args, "")
+		}
+
+		if len(args) > 1 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.ServerlessSampleDataset().ListSampleDatasets(ctx, &spacedatasetv1.ListSampleDatasetsRequest{
+			AccountId: accountID,
+			SpaceId:   args[0],
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, d := range resp.GetItems() {
+			completions = append(completions, d.GetId()+"\t"+d.GetName())
+		}
+
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+// SpaceSampleDatasetLoadIDCompletion returns a ValidArgsFunction for commands
+// that take a space ID and a sample dataset load ID: it completes space IDs for
+// the first argument and the loads of that space for the second.
+func SpaceSampleDatasetLoadIDCompletion(s *state.State) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) == 0 {
+			return SpaceIDFlagCompletion(s)(cmd, args, "")
+		}
+
+		if len(args) > 1 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		ctx := cmd.Context()
+		client, err := s.Client(ctx)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		accountID, err := s.AccountID()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		resp, err := client.ServerlessSampleDataset().ListSampleDatasetLoads(ctx, &spacedatasetv1.ListSampleDatasetLoadsRequest{
+			AccountId: accountID,
+			SpaceId:   args[0],
+		})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		completions := make([]string, 0, len(resp.GetItems()))
+		for _, l := range resp.GetItems() {
+			completions = append(completions, l.GetId()+"\t"+l.GetSampleDatasetId()+" -> "+l.GetCollectionName())
 		}
 
 		return completions, cobra.ShellCompDirectiveNoFileComp
