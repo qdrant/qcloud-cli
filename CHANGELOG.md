@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.37.0](https://github.com/qdrant/qcloud-cli/releases/tag/v0.37.0)
+
+[Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.36.1...v0.37.0)
+
+### Features
+
+- **serverless**: show space metrics totals and add --totals-only ([c041034](https://github.com/qdrant/qcloud-cli/commit/c04103427640c0614948f99dbe3197c578474a18))
+- **serverless**: add --order-by to space metrics summary (#266) ([575016d](https://github.com/qdrant/qcloud-cli/commit/575016d74b6a11a8c4746747445b6ee2fe24c1a6))
+- **serverless**: add space metrics inference command (#267) ([0bd8ba7](https://github.com/qdrant/qcloud-cli/commit/0bd8ba7adb61790b1df9853198db49c412fb1e3d))
+- **serverless**: add sample dataset commands for spaces (#268) ([03d218a](https://github.com/qdrant/qcloud-cli/commit/03d218a0704668d2a121e0acd66065074e1a9562))
+- **serverless**: add usage command with the billed usage per space (#269) ([f48f3ab](https://github.com/qdrant/qcloud-cli/commit/f48f3ab71d35b72f8f98301ed9d73454512a238b))
+
+### Bug Fixes
+
+- keep the total size in paginated list output (#263) ([5d06ea2](https://github.com/qdrant/qcloud-cli/commit/5d06ea2182628d099eecde8dec9c09fd7fa0da31))
+- **serverless**: keep the totals in space metrics output ([c041034](https://github.com/qdrant/qcloud-cli/commit/c04103427640c0614948f99dbe3197c578474a18))
+
 ## [v0.36.1](https://github.com/qdrant/qcloud-cli/releases/tag/v0.36.1)
 
 [Compare to previous version](https://github.com/qdrant/qcloud-cli/compare/v0.36.0...v0.36.1)
