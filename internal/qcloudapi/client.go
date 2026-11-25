@@ -20,6 +20,7 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
+	meteringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/metering/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
@@ -43,6 +44,7 @@ type Client struct {
 	auth                  authv1.AuthServiceClient
 	iam                   iamv1.IAMServiceClient
 	account               accountv1.AccountServiceClient
+	metering              meteringv1.MeteringServiceClient
 	serverlessSpace       spacev1.SpaceServiceClient
 	serverlessSpaceApiKey spaceauthv1.SpaceApiKeyServiceClient
 	serverlessBackup      spacebackupv1.BackupServiceClient
@@ -103,6 +105,7 @@ func newFromConn(conn *grpc.ClientConn) *Client {
 		auth:                  authv1.NewAuthServiceClient(conn),
 		iam:                   iamv1.NewIAMServiceClient(conn),
 		account:               accountv1.NewAccountServiceClient(conn),
+		metering:              meteringv1.NewMeteringServiceClient(conn),
 		serverlessSpace:       spacev1.NewSpaceServiceClient(conn),
 		serverlessSpaceApiKey: spaceauthv1.NewSpaceApiKeyServiceClient(conn),
 		serverlessBackup:      spacebackupv1.NewBackupServiceClient(conn),
@@ -160,6 +163,11 @@ func (c *Client) IAM() iamv1.IAMServiceClient {
 // Account returns the AccountService gRPC client.
 func (c *Client) Account() accountv1.AccountServiceClient {
 	return c.account
+}
+
+// Metering returns the MeteringService gRPC client.
+func (c *Client) Metering() meteringv1.MeteringServiceClient {
+	return c.metering
 }
 
 // ServerlessSpace returns the serverless SpaceService gRPC client.

@@ -20,6 +20,7 @@ import (
 	clusterv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/cluster/v1"
 	hybridv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/hybrid/v1"
 	iamv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/iam/v1"
+	meteringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/metering/v1"
 	monitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/monitoring/v1"
 	platformv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/platform/v1"
 	serverlessmonitoringv1 "github.com/qdrant/qdrant-cloud-public-api/gen/go/qdrant/cloud/serverless/monitoring/v1"
@@ -75,6 +76,7 @@ type TestEnv struct {
 	AuthServer                  *FakeAuthService
 	IAMServer                   *FakeIAMService
 	AccountServer               *FakeAccountService
+	MeteringServer              *FakeMeteringService
 	ServerlessSpaceServer       *FakeServerlessSpaceService
 	ServerlessSpaceApiKeyServer *FakeServerlessSpaceApiKeyService
 	ServerlessBackupServer      *FakeServerlessBackupService
@@ -147,6 +149,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	fakeAuth := &FakeAuthService{}
 	fakeIAM := &FakeIAMService{}
 	fakeAccount := &FakeAccountService{}
+	fakeMetering := &FakeMeteringService{}
 	fakeServerlessSpace := &FakeServerlessSpaceService{}
 	fakeServerlessSpaceApiKey := &FakeServerlessSpaceApiKeyService{}
 	fakeServerlessBackup := &FakeServerlessBackupService{}
@@ -168,6 +171,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 	authv1.RegisterAuthServiceServer(srv, fakeAuth)
 	iamv1.RegisterIAMServiceServer(srv, fakeIAM)
 	accountv1.RegisterAccountServiceServer(srv, fakeAccount)
+	meteringv1.RegisterMeteringServiceServer(srv, fakeMetering)
 	spacev1.RegisterSpaceServiceServer(srv, fakeServerlessSpace)
 	spaceauthv1.RegisterSpaceApiKeyServiceServer(srv, fakeServerlessSpaceApiKey)
 	spacebackupv1.RegisterBackupServiceServer(srv, fakeServerlessBackup)
@@ -231,6 +235,7 @@ func newBaseTestEnv(t *testing.T, cfg *envConfig) *TestEnv {
 		AuthServer:                  fakeAuth,
 		IAMServer:                   fakeIAM,
 		AccountServer:               fakeAccount,
+		MeteringServer:              fakeMetering,
 		ServerlessSpaceServer:       fakeServerlessSpace,
 		ServerlessSpaceApiKeyServer: fakeServerlessSpaceApiKey,
 		ServerlessBackupServer:      fakeServerlessBackup,

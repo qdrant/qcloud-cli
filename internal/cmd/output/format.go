@@ -54,6 +54,30 @@ func USDMillicents(v uint64) string {
 	return fmt.Sprintf("$%s.%02d", humanize.Comma(int64(cents/100)), cents%100) //nolint:gosec // dollars fit in int64
 }
 
+// Millicents formats an amount in millicents (1/1000 of the currency's minor
+// unit) in the given ISO 4217 currency. USD and an empty currency are shown as
+// dollars (e.g. "$1,234.56"); other currencies as the amount followed by the
+// code (e.g. "1,234.56 EUR"). Fractions of a cent are rounded down, and a
+// negative amount gets a leading minus sign.
+func Millicents(v int64, currency string) string {
+	abs := uint64(v) //nolint:gosec // v is non-negative here, negated below otherwise
+	if v < 0 {
+		abs = uint64(-v) //nolint:gosec // -v is positive
+	}
+
+	cents := abs / 1000
+	sign := ""
+	if v < 0 && cents > 0 {
+		sign = "-"
+	}
+
+	if currency == "" || currency == "USD" {
+		return sign + USDMillicents(abs)
+	}
+
+	return fmt.Sprintf("%s%s.%02d %s", sign, humanize.Comma(int64(cents/100)), cents%100, currency) //nolint:gosec // amounts fit in int64
+}
+
 // Rate formats a per-second rate with two decimals (e.g. "1.25/s").
 func Rate(v float64) string {
 	return strconv.FormatFloat(v, 'f', 2, 64) + "/s"

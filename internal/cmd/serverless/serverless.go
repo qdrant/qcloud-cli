@@ -6,6 +6,7 @@ import (
 	"github.com/qdrant/qcloud-cli/internal/cmd/serverless/cloudregion"
 	"github.com/qdrant/qcloud-cli/internal/cmd/serverless/quota"
 	"github.com/qdrant/qcloud-cli/internal/cmd/serverless/space"
+	"github.com/qdrant/qcloud-cli/internal/cmd/serverless/usage"
 	"github.com/qdrant/qcloud-cli/internal/state"
 )
 
@@ -21,12 +22,15 @@ A space is hosted in a single cloud region and scales its search workers
 automatically, so there are no nodes, packages or disks to size. Use the
 commands in this group to manage spaces together with their API keys and
 backups, to explore the regions spaces can be created in, and to inspect the
-account's serverless quota.`,
+account's serverless quota and billed usage.`,
 		Example: `# List the regions in which spaces can be created
 qcloud serverless cloud-region list
 
 # Show how many spaces the account can still create
 qcloud serverless quota
+
+# Show the billed serverless usage of the current month per space
+qcloud serverless usage
 
 # List all serverless spaces
 qcloud serverless space list
@@ -39,6 +43,7 @@ qcloud serverless space create --cloud-region eu-central-1 --wait`,
 		space.NewCommand(s),
 		cloudregion.NewCommand(s),
 		quota.NewCommand(s),
+		usage.NewCommand(s),
 	)
 	return cmd
 }
