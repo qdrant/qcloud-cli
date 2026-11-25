@@ -3,6 +3,7 @@ package space_test
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -422,4 +423,84 @@ func TestSpaceMetricsSummary_TotalsOnlyWithPagination(t *testing.T) {
 			assert.Equal(t, 0, env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Count())
 		})
 	}
+}
+
+func TestSpaceMetricsSummary_OrderBy(t *testing.T) {
+	tests := []struct {
+		value string
+		want  serverlessmonitoringv1.SpaceCollectionMetricsOrder
+	}{
+		{"name", serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_UNSPECIFIED},
+		{"points", serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_POINT_COUNT_DESC},
+		{"storage", serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_USED_STORAGE_BYTES_DESC},
+	}
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			env := testutil.NewTestEnv(t)
+			env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Returns(sampleSummary(), nil)
+
+			_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc", "--order-by", tt.value)
+			require.NoError(t, err)
+
+			req, ok := env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Last()
+			require.True(t, ok)
+			assert.Equal(t, tt.want, req.GetOrderBy())
+		})
+	}
+}
+
+func TestSpaceMetricsSummary_OrderByDefault(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Returns(sampleSummary(), nil)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc")
+	require.NoError(t, err)
+
+	req, ok := env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Last()
+	require.True(t, ok)
+	assert.Equal(t, serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_UNSPECIFIED, req.GetOrderBy())
+}
+
+func TestSpaceMetricsSummary_OrderByKeptAcrossPages(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.
+		OnCall(0, func(_ context.Context, _ *serverlessmonitoringv1.GetSpaceSummaryMetricsRequest) (*serverlessmonitoringv1.GetSpaceSummaryMetricsResponse, error) {
+			return &serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{
+				Items:         []*serverlessmonitoringv1.SpaceCollectionMetrics{{CollectionName: "big"}},
+				NextPageToken: new("page-2"),
+			}, nil
+		}).
+		OnCall(1, func(_ context.Context, _ *serverlessmonitoringv1.GetSpaceSummaryMetricsRequest) (*serverlessmonitoringv1.GetSpaceSummaryMetricsResponse, error) {
+			return &serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{
+				Items: []*serverlessmonitoringv1.SpaceCollectionMetrics{{CollectionName: "small"}},
+			}, nil
+		})
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc", "--order-by", "points")
+	require.NoError(t, err)
+	assert.Less(t, strings.Index(stdout, "big"), strings.Index(stdout, "small"), "the server's order is kept")
+
+	reqs := env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.All()
+	require.Len(t, reqs, 2)
+	for _, req := range reqs {
+		assert.Equal(t, serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_POINT_COUNT_DESC, req.GetOrderBy())
+	}
+}
+
+func TestSpaceMetricsSummary_OrderByInvalid(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc", "--order-by", "size")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid --order-by "size"`)
+	assert.Equal(t, 0, env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Count())
+}
+
+func TestSpaceMetricsSummary_OrderByWithTotalsOnly(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc", "--order-by", "points", "--totals-only")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "order-by")
+	assert.Equal(t, 0, env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Count())
 }
