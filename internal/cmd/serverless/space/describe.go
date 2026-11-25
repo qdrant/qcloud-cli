@@ -3,6 +3,7 @@ package space
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -23,9 +24,15 @@ func newDescribeCommand(s *state.State) *cobra.Command {
 		Long: `Describe a serverless space.
 
 Shows the space's phase, region and endpoint together with its configuration:
-network restrictions, per-collection size limits and search-worker settings.
-Limits prefixed with "platform" are derived from the account's quota and cannot
-be changed directly.`,
+network restrictions, per-collection size limits, search-worker settings, and
+the storage and monthly spend limits of the space. Limits prefixed with
+"platform" are derived from the account's quota and cannot be changed directly.
+
+When usage has been measured, the Usage section shows storage and this month's
+spend against each limit, and which operations the space accepts: FULL,
+WRITES_BLOCKED (a hard storage limit is reached: upserts are rejected, searches
+and deletes work) or BLOCKED (a hard spend limit is reached: all requests are
+rejected until the next month). Usage is refreshed about every 5 minutes.`,
 		Example: `# Describe a space
 qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
 
@@ -80,6 +87,12 @@ qcloud serverless space describe 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json`,
 			fmt.Fprintln(w, "Configuration:")
 			printSpaceConfiguration(w, cfg)
 
+			if limits := space.GetState().GetLimits(); limits != nil {
+				fmt.Fprintln(w)
+				fmt.Fprintln(w, "Usage:")
+				printSpaceLimitsStatus(w, cfg, limits)
+			}
+
 			return nil
 		},
 		ValidArgsFunction: completion.SpaceIDCompletion(s),
@@ -118,6 +131,7 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 	fmt.Fprintf(w, "  Allowed IPs:                     %s\n", output.JoinOrDefault(cfg.GetAllowedIpSourceRanges(), "(any)"))
 	fmt.Fprintf(w, "  Allowed Origins:                 %s\n", output.JoinOrDefault(cfg.GetAllowedOrigins(), notSet))
 	fmt.Fprintf(w, "  Max Collections (platform):      %s\n", output.UnlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxCollectionsPerSpace()), cfg.GetMaxCollectionsPerSpace()))
+	fmt.Fprintf(w, "  Max API Keys (platform):         %s\n", output.UnlimitedIfZero(fmt.Sprintf("%d", cfg.GetMaxApiKeysPerSpace()), cfg.GetMaxApiKeysPerSpace()))
 
 	col := cfg.GetCollectionSettings()
 	maxSize := notSet
@@ -171,4 +185,64 @@ func printSpaceConfiguration(w io.Writer, cfg *spacev1.SpaceConfiguration) {
 	}
 
 	fmt.Fprintf(w, "  Searcher Max Workers (platform): %s\n", platformMaxWorkers)
+	fmt.Fprintf(w, "  Storage Limit:                   %s\n", storageLimitString(cfg.GetStorageLimit()))
+	fmt.Fprintf(w, "  Monthly Spend Limit:             %s\n", spendLimitString(cfg.GetMonthlySpendLimit()))
+}
+
+// storageLimitString formats a storage limit, e.g. "10GiB (hard, alert at 80%)".
+func storageLimitString(l *spacev1.StorageLimit) string {
+	if l == nil {
+		return "unlimited"
+	}
+
+	return fmt.Sprintf("%s (%s)", resource.ByteQuantity(l.GetMaxSize()).String(), limitTypeAndAlert(l.GetType(), l.AlertThresholdPercent)) //nolint:gosec // sizes fit in int64
+}
+
+// spendLimitString formats a monthly spend limit, e.g. "$50.00 (hard, alert at 80%)".
+func spendLimitString(l *spacev1.SpendLimit) string {
+	if l == nil {
+		return "unlimited"
+	}
+
+	return fmt.Sprintf("%s (%s)", output.USDMillicents(l.GetMaxAmountMillicents()), limitTypeAndAlert(l.GetType(), l.AlertThresholdPercent))
+}
+
+// limitTypeAndAlert formats the type and alert threshold of a limit, e.g.
+// "hard, alert at 80%".
+func limitTypeAndAlert(t spacev1.LimitType, alertPercent *uint32) string {
+	s := strings.ToLower(output.LimitType(t))
+	if alertPercent != nil {
+		s += fmt.Sprintf(", alert at %d%%", *alertPercent)
+	}
+
+	return s
+}
+
+// printSpaceLimitsStatus prints the usage of a space against its storage and
+// monthly spend limits as indented "key: value" lines.
+func printSpaceLimitsStatus(w io.Writer, cfg *spacev1.SpaceConfiguration, st *spacev1.SpaceLimitsStatus) {
+	fmt.Fprintf(w, "  Access:                          %s\n", output.SpaceAccessMode(st.GetAccessMode()))
+
+	if storage := st.GetStorage(); storage != nil {
+		used := output.Bytes(storage.GetUsedSize())
+		if l := cfg.GetStorageLimit(); l != nil && l.GetMaxSize() > 0 {
+			used = fmt.Sprintf("%s of %s (%s)", used, resource.ByteQuantity(l.GetMaxSize()).String(), //nolint:gosec // sizes fit in int64
+				output.Percent(output.PercentOf(float64(storage.GetUsedSize()), float64(l.GetMaxSize()))))
+		}
+
+		fmt.Fprintf(w, "  Storage:                         %s, %s\n", used, output.LimitUsageLevel(storage.GetLevel()))
+	}
+
+	if spend := st.GetMonthlySpend(); spend != nil {
+		used := output.USDMillicents(spend.GetUsedAmountMillicents())
+		if l := cfg.GetMonthlySpendLimit(); l != nil && l.GetMaxAmountMillicents() > 0 {
+			used = fmt.Sprintf("%s of %s (%s)", used, output.USDMillicents(l.GetMaxAmountMillicents()),
+				output.Percent(output.PercentOf(float64(spend.GetUsedAmountMillicents()), float64(l.GetMaxAmountMillicents()))))
+		}
+
+		fmt.Fprintf(w, "  Spend This Month:                %s, %s\n", used, output.LimitUsageLevel(spend.GetLevel()))
+		if end := spend.GetPeriodEnd(); end != nil {
+			fmt.Fprintf(w, "  Spend Period Ends:               %s\n", output.FullDateTime(end.AsTime()))
+		}
+	}
 }

@@ -42,6 +42,18 @@ func Bytes(v uint64) string {
 	return humanize.IBytes(v)
 }
 
+// MillicentsPerUSD is the number of millicents in one US dollar. A millicent
+// is 1/1000 of a cent, so 1 USD = 100 cents = 100,000 millicents.
+const MillicentsPerUSD = 100_000
+
+// USDMillicents formats an amount in millicents (1/1000 of a US cent) as
+// dollars and cents with thousands separators (e.g. "$1,234.56"). Fractions of
+// a cent are rounded down.
+func USDMillicents(v uint64) string {
+	cents := v / 1000
+	return fmt.Sprintf("$%s.%02d", humanize.Comma(int64(cents/100)), cents%100) //nolint:gosec // dollars fit in int64
+}
+
 // Rate formats a per-second rate with two decimals (e.g. "1.25/s").
 func Rate(v float64) string {
 	return strconv.FormatFloat(v, 'f', 2, 64) + "/s"

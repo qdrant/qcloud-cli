@@ -32,6 +32,7 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 				AllowedIpSourceRanges:  []string{"10.0.0.0/8"},
 				AllowedOrigins:         []string{"https://app.example.com"},
 				MaxCollectionsPerSpace: 50,
+				MaxApiKeysPerSpace:     20,
 				CollectionSettings: &spacev1.CollectionSettings{
 					PlatformMaxSize:             uint64(100 * resource.GiB),
 					MaxSize:                     new(uint64(10 * resource.GiB)),
@@ -70,6 +71,7 @@ func TestSpaceDescribe_TextOutput(t *testing.T) {
 	assert.Contains(t, stdout, "100GiB")
 	assert.Contains(t, stdout, "Max Indexed Size:                2GiB")
 	assert.Contains(t, stdout, "Max Indexed Size (platform):     20GiB")
+	assert.Contains(t, stdout, "Max API Keys (platform):         20")
 	assert.Contains(t, stdout, "Size Warning Threshold:          85%")
 	assert.Contains(t, stdout, "Searcher Min Idle Timeout:       5m0s")
 	assert.NotContains(t, stdout, "Cloud:")
