@@ -10,7 +10,11 @@ The server returns a time series per collection for the search rate, write
 rate, search latency, point count, storage usage and number of search workers.
 The table condenses each series: point count, storage and workers show the
 latest value, while request rates and latency show the average and maximum over
-the period. Use --json to get the full time series.
+the period. The totals over all matching collections are condensed the same
+way and shown above the table; they don't depend on pagination. The search
+latency total is weighted by search rate. Use --totals-only to fetch only the
+quota and the totals, without the per-collection table. Use --json to get the
+full time series.
 
 By default, the period covers the last hour. When only --until is given, it
 covers the hour before it.
@@ -35,6 +39,9 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
   --collection products --since 2026-10-01 --until 2026-10-01
 
+# Show only the space-level totals over the last 7 days
+qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 7d --totals-only
+
 # Export the full time series as JSON
 qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 7d --json
 ```
@@ -49,6 +56,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
       --page-size int32              Maximum number of collections to return per page (manual pagination mode)
       --page-token string            Page token from a previous response to resume from (manual pagination mode)
   -s, --since string                 Start of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 24h or 7d; default: 1h before --until)
+      --totals-only[=true|false]     Only fetch the quota and the totals over all matching collections, without per-collection metrics
   -u, --until string                 End of the time range (RFC3339, YYYY-MM-DD, or a duration ago such as 1h; default: now)
 ```
 

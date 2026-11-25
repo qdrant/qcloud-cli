@@ -223,3 +223,108 @@ func TestSpaceMetricsUsage_APIError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get space usage metrics")
 }
+
+func sampleUsageTotals() *serverlessmonitoringv1.SpaceUsageTotals {
+	return &serverlessmonitoringv1.SpaceUsageTotals{
+		PointCount:             series(1000, 2000, 3000),
+		UsedStorageBytes:       series(0, float64(2*resource.GiB), float64(4*resource.GiB)),
+		CurrentSearcherWorkers: series(2, 6, 4),
+		SearchRequests:         series(2, 4, 12),
+		WriteRequests:          series(1, 1, 4),
+		SearchLatency:          series(5, 20, 11),
+	}
+}
+
+func TestSpaceMetricsUsage_Totals(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	resp := sampleUsage()
+	resp.Totals = sampleUsageTotals()
+	env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Returns(resp, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "usage", "space-abc")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "Totals:")
+	assert.Contains(t, stdout, "  Points:         3000")
+	assert.Contains(t, stdout, "  Storage:        4.0 GiB")
+	assert.Contains(t, stdout, "  Search Workers: 4")
+	assert.Contains(t, stdout, "  Searches:       6.00/s avg, 12.00/s max")
+	assert.Contains(t, stdout, "  Writes:         2.00/s avg, 4.00/s max")
+	assert.Contains(t, stdout, "  Latency:        12.0ms avg, 20.0ms max")
+	assert.Contains(t, stdout, "COLLECTION")
+	assert.Contains(t, stdout, "products")
+
+	req, ok := env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Last()
+	require.True(t, ok)
+	assert.False(t, req.GetTotalsOnly())
+}
+
+func TestSpaceMetricsUsage_EmptyTotalsSeries(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	resp := sampleUsage()
+	resp.Totals = &serverlessmonitoringv1.SpaceUsageTotals{}
+	env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Returns(resp, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "usage", "space-abc")
+	require.NoError(t, err)
+	assert.Contains(t, stdout, "  Points:         -")
+	assert.Contains(t, stdout, "  Searches:       -")
+}
+
+func TestSpaceMetricsUsage_TotalsJSON(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	resp := sampleUsage()
+	resp.Totals = sampleUsageTotals()
+	resp.TotalSize = new(int32(2))
+	env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Returns(resp, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "usage", "space-abc", "--page-size", "10", "--json")
+	require.NoError(t, err)
+
+	var result struct {
+		Items  []json.RawMessage `json:"items"`
+		Totals struct {
+			SearchRequests []struct {
+				Value float64 `json:"value"`
+			} `json:"searchRequests"`
+		} `json:"totals"`
+		TotalSize int32 `json:"totalSize"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	assert.Len(t, result.Items, 2)
+	require.Len(t, result.Totals.SearchRequests, 3)
+	assert.InDelta(t, 12.0, result.Totals.SearchRequests[2].Value, 1e-9)
+	assert.Equal(t, int32(2), result.TotalSize)
+}
+
+func TestSpaceMetricsUsage_TotalsOnly(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Returns(&serverlessmonitoringv1.GetSpaceUsageMetricsResponse{
+		Quota:  sampleQuotaSnapshot(),
+		Totals: sampleUsageTotals(),
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "usage", "space-abc",
+		"--totals-only", "--since", "24h", "--aggregator", "avg")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "Period: 2026-10-07 10:00:00 UTC to 2026-10-07 10:02:00 UTC")
+	assert.Contains(t, stdout, "  Points:         3000")
+	assert.NotContains(t, stdout, "COLLECTION")
+
+	assert.Equal(t, 1, env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Count())
+	req, ok := env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Last()
+	require.True(t, ok)
+	assert.True(t, req.GetTotalsOnly())
+	assert.Equal(t, serverlessmonitoringv1.Aggregator_AGGREGATOR_AVG, req.GetAggregator())
+	assert.Nil(t, req.PageSize)
+	assert.Nil(t, req.PageToken)
+}
+
+func TestSpaceMetricsUsage_TotalsOnlyWithPagination(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	_, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "usage", "space-abc", "--totals-only", "--page-size", "5")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "totals-only")
+	assert.Equal(t, 0, env.ServerlessMonitoringServer.GetSpaceUsageMetricsCalls.Count())
+}

@@ -13,7 +13,10 @@ several intervals; the table shows the shortest one, which is named above the
 table. Use --json to get the averages for all intervals.
 
 The space's quota is shown above the table so that storage and worker usage
-can be compared against the per-collection limits.
+can be compared against the per-collection limits. The totals over all
+matching collections are shown as well; they don't depend on pagination. The
+search latency total is weighted by search rate. Use --totals-only to fetch
+only the quota and the totals, without the per-collection table.
 
 By default, all collections are fetched automatically across multiple pages.
 Use --page-size and --page-token for manual pagination.
@@ -34,6 +37,9 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --c
 # Only show collections whose name contains "staging"
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --collection-contains staging
 
+# Only show the space-level totals
+qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --totals-only
+
 # Output all interval averages as JSON
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --json
 ```
@@ -46,6 +52,7 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
   -h, --help[=true|false]            help for summary
       --page-size int32              Maximum number of collections to return per page (manual pagination mode)
       --page-token string            Page token from a previous response to resume from (manual pagination mode)
+      --totals-only[=true|false]     Only fetch the quota and the totals over all matching collections, without per-collection metrics
 ```
 
 ### Options inherited from parent commands

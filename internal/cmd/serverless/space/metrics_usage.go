@@ -30,7 +30,11 @@ The server returns a time series per collection for the search rate, write
 rate, search latency, point count, storage usage and number of search workers.
 The table condenses each series: point count, storage and workers show the
 latest value, while request rates and latency show the average and maximum over
-the period. Use --json to get the full time series.
+the period. The totals over all matching collections are condensed the same
+way and shown above the table; they don't depend on pagination. The search
+latency total is weighted by search rate. Use --totals-only to fetch only the
+quota and the totals, without the per-collection table. Use --json to get the
+full time series.
 
 By default, the period covers the last hour. When only --until is given, it
 covers the hour before it.
@@ -46,6 +50,9 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 # Show usage of a single collection on a specific day
 qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 \
   --collection products --since 2026-10-01 --until 2026-10-01
+
+# Show only the space-level totals over the last 7 days
+qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 7d --totals-only
 
 # Export the full time series as JSON
 qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 7d --json`,
@@ -83,14 +90,15 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 				return nil, err
 			}
 
-			var quota *serverlessmonitoringv1.SpaceQuotaSnapshot
-			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionUsageMetrics, string, *int32, error) {
+			totalsOnly, _ := cmd.Flags().GetBool("totals-only")
+			newRequest := func(pageSize *int32, pageToken *string) *serverlessmonitoringv1.GetSpaceUsageMetricsRequest {
 				req := &serverlessmonitoringv1.GetSpaceUsageMetricsRequest{
 					AccountId:  accountID,
 					SpaceId:    args[0],
 					Since:      timestamppb.New(since),
 					Until:      timestamppb.New(until),
 					Aggregator: aggregator,
+					TotalsOnly: totalsOnly,
 					PageSize:   pageSize,
 					PageToken:  pageToken,
 				}
@@ -101,13 +109,29 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 					req.CollectionFilter = &serverlessmonitoringv1.GetSpaceUsageMetricsRequest_CollectionNameContains{CollectionNameContains: *filter.contains}
 				}
 
-				resp, err := client.ServerlessMonitoring().GetSpaceUsageMetrics(ctx, req)
+				return req
+			}
+
+			// The server ignores pagination with totals_only and returns no items.
+			if totalsOnly {
+				resp, err := client.ServerlessMonitoring().GetSpaceUsageMetrics(ctx, newRequest(nil, nil))
+				if err != nil {
+					return nil, fmt.Errorf("failed to get space usage metrics: %w", err)
+				}
+
+				return resp, nil
+			}
+
+			// Quota and totals are the same on every page; keep the first.
+			var first *serverlessmonitoringv1.GetSpaceUsageMetricsResponse
+			items, next, total, err := util.FetchPages(cmd, func(pageSize *int32, pageToken *string) ([]*serverlessmonitoringv1.SpaceCollectionUsageMetrics, string, *int32, error) {
+				resp, err := client.ServerlessMonitoring().GetSpaceUsageMetrics(ctx, newRequest(pageSize, pageToken))
 				if err != nil {
 					return nil, "", nil, fmt.Errorf("failed to get space usage metrics: %w", err)
 				}
 
-				if quota == nil {
-					quota = resp.GetQuota()
+				if first == nil {
+					first = resp
 				}
 
 				return resp.GetItems(), resp.GetNextPageToken(), resp.TotalSize, nil
@@ -116,12 +140,18 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 				return nil, err
 			}
 
-			return &serverlessmonitoringv1.GetSpaceUsageMetricsResponse{Items: items, Quota: quota, NextPageToken: next, TotalSize: total}, nil
+			return &serverlessmonitoringv1.GetSpaceUsageMetricsResponse{
+				Items:         items,
+				Quota:         first.GetQuota(),
+				Totals:        first.GetTotals(),
+				TotalSize:     total,
+				NextPageToken: next,
+			}, nil
 		},
-		PrintText: func(_ *cobra.Command, w io.Writer, resp *serverlessmonitoringv1.GetSpaceUsageMetricsResponse) error {
+		PrintText: func(cmd *cobra.Command, w io.Writer, resp *serverlessmonitoringv1.GetSpaceUsageMetricsResponse) error {
 			printQuotaSnapshot(w, resp.GetQuota())
 
-			if first, last, ok := usagePeriod(resp.GetItems()); ok {
+			if first, last, ok := usagePeriod(resp); ok {
 				fmt.Fprintf(w, "Period: %s to %s\n\n", output.FullDateTime(first), output.FullDateTime(last))
 			}
 
@@ -153,6 +183,29 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 			}
 			count := func(v float64) string { return strconv.FormatUint(uint64(v), 10) }
 			bytes := func(v float64) string { return output.Bytes(uint64(v)) }
+			avgMax := func(r seriesRollup, format func(float64) string) string {
+				if !r.ok {
+					return "-"
+				}
+
+				return format(r.avg) + " avg, " + format(r.max) + " max"
+			}
+
+			if totals := resp.GetTotals(); totals != nil {
+				points, storage, workers := rollup(totals.GetPointCount()), rollup(totals.GetUsedStorageBytes()), rollup(totals.GetCurrentSearcherWorkers())
+				fmt.Fprintln(w, "Totals:")
+				fmt.Fprintf(w, "  Points:         %s\n", value(points, points.latest, count))
+				fmt.Fprintf(w, "  Storage:        %s\n", value(storage, storage.latest, bytes))
+				fmt.Fprintf(w, "  Search Workers: %s\n", value(workers, workers.latest, count))
+				fmt.Fprintf(w, "  Searches:       %s\n", avgMax(rollup(totals.GetSearchRequests()), output.Rate))
+				fmt.Fprintf(w, "  Writes:         %s\n", avgMax(rollup(totals.GetWriteRequests()), output.Rate))
+				fmt.Fprintf(w, "  Latency:        %s\n", avgMax(rollup(totals.GetSearchLatency()), output.Milliseconds))
+				fmt.Fprintln(w)
+			}
+
+			if totalsOnly, _ := cmd.Flags().GetBool("totals-only"); totalsOnly {
+				return nil
+			}
 
 			t := output.NewTable[row](w)
 			t.AddField("COLLECTION", func(r row) string { return r.name })
@@ -178,33 +231,42 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 	_ = cmd.RegisterFlagCompletionFunc("aggregator", cobra.FixedCompletions([]string{"sum", "avg", "max", "min"}, cobra.ShellCompDirectiveNoFileComp))
 	addCollectionFilterFlags(cmd, false)
 	util.AddPaginationFlags(cmd, "collections")
+	addTotalsOnlyFlag(cmd)
 
 	return cmd
 }
 
-// usagePeriod returns the earliest and latest timestamps across all series.
-func usagePeriod(items []*serverlessmonitoringv1.SpaceCollectionUsageMetrics) (first, last time.Time, ok bool) {
-	for _, item := range items {
-		for _, series := range [][]*serverlessmonitoringv1.Metric{
+// usagePeriod returns the earliest and latest timestamps across all series of
+// the collections and the totals.
+func usagePeriod(resp *serverlessmonitoringv1.GetSpaceUsageMetricsResponse) (first, last time.Time, ok bool) {
+	totals := resp.GetTotals()
+	all := [][]*serverlessmonitoringv1.Metric{
+		totals.GetSearchRequests(), totals.GetWriteRequests(), totals.GetSearchLatency(),
+		totals.GetPointCount(), totals.GetUsedStorageBytes(), totals.GetCurrentSearcherWorkers(),
+	}
+	for _, item := range resp.GetItems() {
+		all = append(all,
 			item.GetSearchRequests(), item.GetWriteRequests(), item.GetSearchLatency(),
 			item.GetPointCount(), item.GetUsedStorageBytes(), item.GetCurrentSearcherWorkers(),
-		} {
-			for _, m := range series {
-				if m.GetTimestamp() == nil {
-					continue
-				}
+		)
+	}
 
-				ts := m.GetTimestamp().AsTime()
-				if !ok || ts.Before(first) {
-					first = ts
-				}
-
-				if !ok || ts.After(last) {
-					last = ts
-				}
-
-				ok = true
+	for _, series := range all {
+		for _, m := range series {
+			if m.GetTimestamp() == nil {
+				continue
 			}
+
+			ts := m.GetTimestamp().AsTime()
+			if !ok || ts.Before(first) {
+				first = ts
+			}
+
+			if !ok || ts.After(last) {
+				last = ts
+			}
+
+			ok = true
 		}
 	}
 

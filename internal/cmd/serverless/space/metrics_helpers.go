@@ -28,6 +28,15 @@ func addCollectionFilterFlags(cmd *cobra.Command, allowSpaceOnly bool) {
 	}
 }
 
+// addTotalsOnlyFlag registers --totals-only, which maps to the totals_only
+// field of the monitoring requests. The server ignores pagination with it, so
+// it can't be combined with the pagination flags.
+func addTotalsOnlyFlag(cmd *cobra.Command) {
+	cmd.Flags().Bool("totals-only", false, "Only fetch the quota and the totals over all matching collections, without per-collection metrics")
+	cmd.MarkFlagsMutuallyExclusive("totals-only", "page-size")
+	cmd.MarkFlagsMutuallyExclusive("totals-only", "page-token")
+}
+
 // collectionFilter holds the collection filter flags. At most one field is set.
 type collectionFilter struct {
 	name      *string

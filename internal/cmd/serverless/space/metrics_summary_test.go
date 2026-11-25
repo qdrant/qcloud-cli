@@ -291,3 +291,135 @@ func TestSpaceMetrics_Help(t *testing.T) {
 	assert.Contains(t, stdout, "summary")
 	assert.Contains(t, stdout, "usage")
 }
+
+func sampleSummaryTotals() *serverlessmonitoringv1.SpaceSummaryTotals {
+	return &serverlessmonitoringv1.SpaceSummaryTotals{
+		PointCount:             54321,
+		UsedStorageBytes:       uint64(3 * resource.GiB),
+		CurrentSearcherWorkers: 5,
+		SearchRequests:         overview(4.5, 9),
+		WriteRequests:          overview(0.75, 1),
+		SearchLatency:          overview(8.5, 9),
+	}
+}
+
+func TestSpaceMetricsSummary_Totals(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	resp := sampleSummary()
+	resp.Totals = sampleSummaryTotals()
+	resp.TotalSize = new(int32(2))
+	env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Returns(resp, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "Totals:")
+	assert.Contains(t, stdout, "  Points:         54321")
+	assert.Contains(t, stdout, "  Storage:        3.0 GiB")
+	assert.Contains(t, stdout, "  Search Workers: 5")
+	assert.Contains(t, stdout, "  Searches:       4.50/s")
+	assert.Contains(t, stdout, "  Writes:         0.75/s")
+	assert.Contains(t, stdout, "  Latency:        8.5ms")
+	assert.Contains(t, stdout, "COLLECTION")
+	assert.Contains(t, stdout, "products")
+
+	req, ok := env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Last()
+	require.True(t, ok)
+	assert.False(t, req.GetTotalsOnly())
+}
+
+func TestSpaceMetricsSummary_NoTotalsSection(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Returns(sampleSummary(), nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc")
+	require.NoError(t, err)
+	assert.NotContains(t, stdout, "Totals:")
+}
+
+func TestSpaceMetricsSummary_TotalsKeptAcrossPages(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.
+		OnCall(0, func(_ context.Context, _ *serverlessmonitoringv1.GetSpaceSummaryMetricsRequest) (*serverlessmonitoringv1.GetSpaceSummaryMetricsResponse, error) {
+			return &serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{
+				Quota:         sampleQuotaSnapshot(),
+				Totals:        sampleSummaryTotals(),
+				TotalSize:     new(int32(2)),
+				Items:         []*serverlessmonitoringv1.SpaceCollectionMetrics{{CollectionName: "first"}},
+				NextPageToken: new("page-2"),
+			}, nil
+		}).
+		OnCall(1, func(_ context.Context, _ *serverlessmonitoringv1.GetSpaceSummaryMetricsRequest) (*serverlessmonitoringv1.GetSpaceSummaryMetricsResponse, error) {
+			return &serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{
+				Quota:     sampleQuotaSnapshot(),
+				Totals:    sampleSummaryTotals(),
+				TotalSize: new(int32(2)),
+				Items:     []*serverlessmonitoringv1.SpaceCollectionMetrics{{CollectionName: "second"}},
+			}, nil
+		})
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc", "--json")
+	require.NoError(t, err)
+
+	var result struct {
+		Items  []json.RawMessage `json:"items"`
+		Totals struct {
+			PointCount       string `json:"pointCount"`
+			UsedStorageBytes string `json:"usedStorageBytes"`
+			SearchRequests   struct {
+				Avg []struct {
+					Value float64 `json:"value"`
+				} `json:"avg"`
+			} `json:"searchRequests"`
+		} `json:"totals"`
+		TotalSize *int32 `json:"totalSize"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+	assert.Len(t, result.Items, 2)
+	assert.Equal(t, "54321", result.Totals.PointCount)
+	assert.Equal(t, "3221225472", result.Totals.UsedStorageBytes)
+	require.Len(t, result.Totals.SearchRequests.Avg, 2)
+	assert.InDelta(t, 4.5, result.Totals.SearchRequests.Avg[0].Value, 1e-9)
+	// When all pages are fetched, the total size stays unset like in list commands.
+	assert.Nil(t, result.TotalSize)
+}
+
+func TestSpaceMetricsSummary_TotalsOnly(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Returns(&serverlessmonitoringv1.GetSpaceSummaryMetricsResponse{
+		Quota:     sampleQuotaSnapshot(),
+		Totals:    sampleSummaryTotals(),
+		TotalSize: new(int32(2)),
+	}, nil)
+
+	stdout, _, err := testutil.Exec(t, env, "serverless", "space", "metrics", "summary", "space-abc",
+		"--totals-only", "--collection-contains", "prod")
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout, "Collections:             2 / 10")
+	assert.Contains(t, stdout, "Rates and latency averaged over the last 2m.")
+	assert.Contains(t, stdout, "  Points:         54321")
+	assert.Contains(t, stdout, "  Searches:       4.50/s")
+	assert.NotContains(t, stdout, "COLLECTION")
+
+	assert.Equal(t, 1, env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Count())
+	req, ok := env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Last()
+	require.True(t, ok)
+	assert.True(t, req.GetTotalsOnly())
+	assert.Equal(t, "prod", req.GetCollectionNameContains())
+	assert.Nil(t, req.PageSize)
+	assert.Nil(t, req.PageToken)
+}
+
+func TestSpaceMetricsSummary_TotalsOnlyWithPagination(t *testing.T) {
+	for _, flags := range [][]string{{"--page-size", "5"}, {"--page-token", "page-2"}} {
+		t.Run(flags[0], func(t *testing.T) {
+			env := testutil.NewTestEnv(t)
+			args := append([]string{"serverless", "space", "metrics", "summary", "space-abc", "--totals-only"}, flags...)
+			_, _, err := testutil.Exec(t, env, args...)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "totals-only")
+			assert.Equal(t, 0, env.ServerlessMonitoringServer.GetSpaceSummaryMetricsCalls.Count())
+		})
+	}
+}
