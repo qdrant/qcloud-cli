@@ -10,7 +10,8 @@ Metrics are reported per collection: request rates, search latency, point
 counts, storage usage and the number of search workers. The summary command
 gives a current overview, while the usage command reports time series over a
 chosen period. Both also report the space's quota so that usage can be compared
-against the limits.
+against the limits. The inference command reports the tokens processed by
+inference per collection and model.
 
 ### Examples
 
@@ -20,6 +21,9 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60
 
 # Show usage over the last 24 hours
 qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 24h
+
+# Show inference token usage over the last 30 days
+qcloud serverless space metrics inference 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --since 30d
 ```
 
 ### Options
@@ -44,6 +48,7 @@ qcloud serverless space metrics usage 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --sin
 ### SEE ALSO
 
 * [qcloud serverless space](qcloud_serverless_space.md)	 - Manage serverless spaces
+* [qcloud serverless space metrics inference](qcloud_serverless_space_metrics_inference.md)	 - Show inference token usage of a space's collections
 * [qcloud serverless space metrics summary](qcloud_serverless_space_metrics_summary.md)	 - Show a metrics overview of a space's collections
 * [qcloud serverless space metrics usage](qcloud_serverless_space_metrics_usage.md)	 - Show usage metrics of a space's collections over time
 
