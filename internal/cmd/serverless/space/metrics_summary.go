@@ -35,6 +35,12 @@ matching collections are shown as well; they don't depend on pagination. The
 search latency total is weighted by search rate. Use --totals-only to fetch
 only the quota and the totals, without the per-collection table.
 
+Collections are ordered by name. Use --order-by points or --order-by storage to
+list the largest collections first; together with --page-size this shows the
+top collections without fetching every page. Ties are ordered by name. Pages
+are not stable while the metrics change, so a later page may skip or repeat a
+collection whose value moved between calls.
+
 By default, all collections are fetched automatically across multiple pages.
 Use --page-size and --page-token for manual pagination.`,
 		Example: `# Show an overview of all collections in a space
@@ -46,6 +52,9 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --c
 # Only show collections whose name contains "staging"
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --collection-contains staging
 
+# Show the 5 collections that use the most storage
+qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --order-by storage --page-size 5
+
 # Only show the space-level totals
 qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --totals-only
 
@@ -56,6 +65,15 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 			filter, err := readCollectionFilter(cmd)
 			if err != nil {
 				return nil, err
+			}
+
+			orderBy := serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_UNSPECIFIED
+			if cmd.Flags().Changed("order-by") {
+				v, _ := cmd.Flags().GetString("order-by")
+				orderBy, err = parseMetricsOrder(v)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			ctx := cmd.Context()
@@ -75,6 +93,7 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 					AccountId:  accountID,
 					SpaceId:    args[0],
 					TotalsOnly: totalsOnly,
+					OrderBy:    orderBy,
 					PageSize:   pageSize,
 					PageToken:  pageToken,
 				}
@@ -194,6 +213,9 @@ qcloud serverless space metrics summary 0e7a3c1d-5f2b-4c8e-9a6d-1b2c3d4e5f60 --j
 	addCollectionFilterFlags(cmd, false)
 	util.AddPaginationFlags(cmd, "collections")
 	addTotalsOnlyFlag(cmd)
+	cmd.Flags().String("order-by", "name", "Order of the collections: name, points or storage (largest first)")
+	cmd.MarkFlagsMutuallyExclusive("order-by", "totals-only")
+	_ = cmd.RegisterFlagCompletionFunc("order-by", cobra.FixedCompletions(metricsOrderValues, cobra.ShellCompDirectiveNoFileComp))
 
 	return cmd
 }

@@ -110,6 +110,23 @@ func printQuotaSnapshot(w io.Writer, q *serverlessmonitoringv1.SpaceQuotaSnapsho
 	fmt.Fprintln(w)
 }
 
+// metricsOrderValues are the accepted --order-by values, in completion order.
+var metricsOrderValues = []string{"name", "points", "storage"}
+
+// parseMetricsOrder maps the --order-by flag value to the proto enum.
+func parseMetricsOrder(s string) (serverlessmonitoringv1.SpaceCollectionMetricsOrder, error) {
+	switch s {
+	case "name":
+		return serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_UNSPECIFIED, nil
+	case "points":
+		return serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_POINT_COUNT_DESC, nil
+	case "storage":
+		return serverlessmonitoringv1.SpaceCollectionMetricsOrder_SPACE_COLLECTION_METRICS_ORDER_USED_STORAGE_BYTES_DESC, nil
+	default:
+		return 0, fmt.Errorf("invalid --order-by %q: must be one of name, points, storage", s)
+	}
+}
+
 // parseAggregator maps the --aggregator flag value to the proto enum.
 func parseAggregator(s string) (serverlessmonitoringv1.Aggregator, error) {
 	switch s {
